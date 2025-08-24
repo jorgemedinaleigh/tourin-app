@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native'
+import { Image, StyleSheet } from 'react-native'
 import { Link } from 'expo-router'
 import ThemedText from '../components/ThemedText'
 import ThemedView from '../components/ThemedView'
@@ -6,8 +6,9 @@ import ThemedView from '../components/ThemedView'
 const index = () => {
   return (
     <ThemedView style={styles.container}>
+      <Image source={require('../assets/dolmen-icon.png')} style={styles.logo} />
       <ThemedText style={styles.title} title={true}>Tourin App</ThemedText>
-      <Link href="dashboard/mapa" style={styles.link}>Mapa</Link>
+      <Link href="dashboard/mapa" style={styles.link}><ThemedText>Mapa</ThemedText></Link>
     </ThemedView>
   )
 }
@@ -18,7 +19,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center'
   },
   title: {
     fontWeight: 'bold',
@@ -26,6 +26,13 @@ const styles = StyleSheet.create({
   },
   link: {
     marginVertical: 10,
-    borderBottomWidth: 1
+    borderBottomWidth: 1,
+    fontSize: 20
+  },
+  logo: {
+    width: 150,
+    height: 150,
+    borderRadius: 10,
+    marginVertical: 20
   }
 })
