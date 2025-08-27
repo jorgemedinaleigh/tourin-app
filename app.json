@@ -5,11 +5,11 @@
     "slug": "tourin-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/dolmen-icon.png",
+    "icon": "./assets/dolmen-icon.jpeg",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/dolmen-icon.png",
+      "image": "./assets/dolmen-icon.jpeg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,16 +18,24 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/dolmen-icon.png",
+        "foregroundImage": "./assets/dolmen-icon.jpeg",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.dolmen.tourinapp"
     },
     "web": {
-      "favicon": "./assets/dolmen-icon.png"
+      "favicon": "./assets/dolmen-icon.jpeg"
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d718b8a6-38af-4b2d-b470-1d5b4e4cb5aa"
+      }
+    },
+    "owner": "jorgemedinaleigh"
   }
 }
