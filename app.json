@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/dolmen-icon.jpeg",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/dolmen-icon.jpeg",
@@ -14,9 +14,16 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Mostramos tu ubicación en el mapa."
+      }
     },
     "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/dolmen-icon.jpeg",
         "backgroundColor": "#ffffff"
@@ -28,7 +35,8 @@
       "favicon": "./assets/dolmen-icon.jpeg"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      ["@maplibre/maplibre-react-native"]
     ],
     "extra": {
       "router": {},

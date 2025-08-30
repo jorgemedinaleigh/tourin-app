@@ -6,7 +6,7 @@ import ThemedView from '../components/ThemedView'
 const index = () => {
   return (
     <ThemedView style={styles.container}>
-      <Image source={require('../assets/dolmen-icon.png')} style={styles.logo} />
+      <Image source={require('../assets/dolmen-icon.jpeg')} style={styles.logo} />
       <ThemedText style={styles.title} title={true}>Tourin App</ThemedText>
       <Link href="dashboard/mapa" style={styles.link}><ThemedText>Mapa</ThemedText></Link>
     </ThemedView>
