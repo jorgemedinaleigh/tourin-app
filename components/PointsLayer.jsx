@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react"
-import { ShapeSource, CircleLayer, SymbolLayer } from "@maplibre/maplibre-react-native"
+import { ShapeSource, CircleLayer } from "@maplibre/maplibre-react-native"
 import { useGeoData } from "../contexts/GeoDataContext"
 
 function PointsLayer({ cameraRef, onPointPress }) {
@@ -15,17 +15,17 @@ function PointsLayer({ cameraRef, onPointPress }) {
       onPointPress(feature)
       return
     }
+    const props = feature.properties || {}
+    const [lon, lat] = feature.geometry?.coordinates || []
+    Alert.alert(props?.name ?? "Punto", `${props?.description ?? ""}\n(${lat?.toFixed?.(5)}, ${lon?.toFixed?.(5)})`)
   }, [onPointPress])
   
-  if (!geoData) return null
+  if (!geoData || !geoData.features?.length) return null
 
   return (
-    <ShapeSource
-      ref={sourceRef}
-      shape={geoData}
-      onPress={handlePress}
-    >
+    <ShapeSource id="heritage-source" ref={sourceRef} shape={geoData} onPress={handlePress}>
       <CircleLayer
+        id="heritage-points"
         style={{
           circleColor: "#10b981",
           circleOpacity: 0.9,

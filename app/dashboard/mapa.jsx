@@ -1,6 +1,6 @@
 import * as Location from "expo-location"
 import { useEffect, useState, useRef } from "react"
-import { Pressable, StyleSheet, Alert } from "react-native"
+import { Pressable, StyleSheet, Alert, Text, ActivityIndicator } from "react-native"
 import { MapView, Camera, UserLocation } from "@maplibre/maplibre-react-native"
 import { Ionicons } from '@expo/vector-icons'
 import { GeoDataProvider, useGeoData } from "../../contexts/GeoDataContext"
@@ -14,9 +14,9 @@ function GeoDataStatus() {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
+      <ThemedView style={styles.loading}>
         <ActivityIndicator />
-      </View>
+      </ThemedView>
     )
   }
 
@@ -72,18 +72,15 @@ const mapa = () => {
         >
           <UserLocation visible />
           <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
+          <PointsLayer
+            cameraRef={cameraRef}
+            onPointPress={(feature) => {
+              const props = feature.properties || {}
+              const [lon, lat] = feature.geometry?.coordinates || []
+              Alert.alert(props?.name ?? "Punto", `${props?.description ?? ""}\n(${lat?.toFixed?.(5)}, ${lon?.toFixed?.(5)})`)
+            }}
+          />
         </MapView>
-        <PointsLayer
-          cameraRef={cameraRef}
-          onPointPress={(feature) => {
-            const props = feature.properties || {}
-            const [lng, lat] = feature.geometry?.coordinates || []
-            Alert.alert(
-              props?.title ?? "Punto",
-              `${props?.subtitle ?? ""}\n(${lat?.toFixed?.(5)}, ${lng?.toFixed?.(5)})`
-            )
-          }}
-        />
         <GeoDataStatus />
         <Pressable onPress={centerOnUser} hitSlop={10} style={styles.button} >
           <Ionicons size={25} name="locate" color="#201e2b" />
@@ -107,9 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8e7ef",
   },
   loading: {
-    position: "absolute",
-    top: 16,
-    left: 16,
+    flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 12,
     padding: 8,
