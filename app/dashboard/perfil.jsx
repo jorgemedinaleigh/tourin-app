@@ -1,11 +1,11 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import ThemedView from "../../components/ThemedView"
+import ThemedText from "../../components/ThemedText"
 
 const perfil = () => {
   return (
-    <View>
-      <Text>perfil</Text>
-    </View>
+    <ThemedView style={{ flex: 1 }} safe>
+      <ThemedText>Perfil</ThemedText>
+    </ThemedView>
   )
 }
 

@@ -4,9 +4,11 @@ import { Pressable, StyleSheet, Alert, Text, ActivityIndicator } from "react-nat
 import { MapView, Camera, UserLocation } from "@maplibre/maplibre-react-native"
 import { Ionicons } from '@expo/vector-icons'
 import { GeoDataProvider, useGeoData } from "../../contexts/GeoDataContext"
+import mapStyle from "../../constants/positronTourin.json"
 import ThemedView from "../../components/ThemedView"
 import PointsLayer from "../../components/PointsLayer"
-import mapStyle from "../../constants/positronTourin.json"
+import ThemedSpinner from "../../components/ThemedSpinner"
+import InfoCard from "../../components/InfoCard"
 
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
@@ -14,9 +16,7 @@ function GeoDataStatus() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.loading}>
-        <ActivityIndicator />
-      </ThemedView>
+      <ThemedSpinner />
     )
   }
 
@@ -31,6 +31,7 @@ function GeoDataStatus() {
 const mapa = () => {
 
   const [coord, setCoord] = useState(null)
+  const [popup, setPopup] = useState(null)
   const cameraRef = useRef(null)
 
   useEffect(() => {
@@ -72,19 +73,31 @@ const mapa = () => {
         >
           <UserLocation visible />
           <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
-          <PointsLayer
-            cameraRef={cameraRef}
-            onPointPress={(feature) => {
-              const props = feature.properties || {}
-              const [lon, lat] = feature.geometry?.coordinates || []
-              Alert.alert(props?.name ?? "Punto", `${props?.description ?? ""}\n(${lat?.toFixed?.(5)}, ${lon?.toFixed?.(5)})`)
-            }}
-          />
+          <PointsLayer onPointPress={(feature) => {
+            const props = feature.properties || {}
+            const [lon, lat] = feature.geometry?.coordinates || []
+            setPopup({props, lat, lon})
+            cameraRef.current?.setCamera({
+              centerCoordinate: [lon,lat],
+              zoomLevel: 16,
+              animationDuration: 600,
+            })
+          }}/>
         </MapView>
-        <GeoDataStatus />
+
         <Pressable onPress={centerOnUser} hitSlop={10} style={styles.button} >
           <Ionicons size={25} name="locate" color="#201e2b" />
         </Pressable>
+
+        <InfoCard
+          visible={!!popup}
+          info={popup?.props}
+          lat={popup?.lat}
+          lon={popup?.lon}
+          onClose={() => setPopup(null)}
+        />
+
+        <GeoDataStatus />
       </ThemedView>
     </GeoDataProvider>
   )
@@ -102,12 +115,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     elevation: 4,
     backgroundColor: "#e8e7ef",
-  },
-  loading: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 12,
-    padding: 8,
   },
   toast: {
     position: "absolute",

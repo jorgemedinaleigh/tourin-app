@@ -1,11 +1,11 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import ThemedView from "../../components/ThemedView"
+import ThemedText from "../../components/ThemedText"
 
 const pasaporte = () => {
   return (
-    <View>
-      <Text>pasaporte</Text>
-    </View>
+    <ThemedView style={{ flex: 1 }} safe>
+      <ThemedText>Pasaporte</ThemedText>
+    </ThemedView>
   )
 }
 
