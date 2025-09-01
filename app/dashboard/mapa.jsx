@@ -89,13 +89,7 @@ const mapa = () => {
           <Ionicons size={25} name="locate" color="#201e2b" />
         </Pressable>
 
-        <InfoCard
-          visible={!!popup}
-          info={popup?.props}
-          lat={popup?.lat}
-          lon={popup?.lon}
-          onClose={() => setPopup(null)}
-        />
+        <InfoCard visible={!!popup} info={popup?.props} onClose={() => setPopup(null)} />
 
         <GeoDataStatus />
       </ThemedView>

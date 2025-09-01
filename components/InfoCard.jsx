@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from "react-native"
+import { Ionicons } from '@expo/vector-icons'
 
-function InfoCard({ visible, info, lat, lon, onClose }) {
+function InfoCard({ visible, info, onClose }) {
   if (!visible) return null
 
   return (
@@ -16,12 +17,30 @@ function InfoCard({ visible, info, lat, lon, onClose }) {
         </View>
 
         {!!info.description && <Text style={styles.cardBody}>{info.description}</Text>}
+        {
+          info.isFree ? <View style={styles.priceContainer}>
+                          <Ionicons size={20} name={"logo-usd"} color={"#8e9794ff"} />
+                          <Text style={styles.priceText}>Gratis</Text>
+                        </View>
+                      : <View style={styles.priceContainer}>
+                          <Ionicons size={20} name={"logo-usd"} color={"#2cb587ff"} />
+                          <Text style={styles.priceText}>{info.price || "Pagado"}</Text>
+                        </View>
+        }
 
-        {(lat != null && lon != null) && (
-          <Text style={styles.cardCoords}>
-            ({Number(lat).toFixed(5)}, {Number(lon).toFixed(5)})
-          </Text>
-        )}
+        <Pressable hitSlop={10}
+          style={({ pressed }) => ([
+            styles.stampBtn,
+            pressed && {
+            opacity: 0.85,
+            transform: [{ scale: 0.95 }],
+            }
+          ])}
+          android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+        >
+          <Text style={styles.stampBtnText}>Estampar</Text>
+        </Pressable>
+
       </View>
     </View>
   )
@@ -30,7 +49,7 @@ function InfoCard({ visible, info, lat, lon, onClose }) {
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.15)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
   },
   cardContainer: {
     position: "absolute",
@@ -52,7 +71,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "600",
     color: "#111827",
   },
@@ -65,8 +84,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
   },
   closeBtnText: {
-    fontSize: 18,
-    lineHeight: 18,
+    fontSize: 20,
+    lineHeight: 20,
     color: "#374151",
   },
   cardBody: {
@@ -74,11 +93,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#374151",
   },
-  cardCoords: {
-    marginTop: 10,
-    fontSize: 12,
-    color: "#6B7280",
+  priceContainer:
+  {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 15,
+    height: 30,
   },
+  priceText: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  stampBtn: {
+    borderRadius: 15,
+    height: 50,
+    backgroundColor: "#0f9724ff",
+    marginTop: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  stampBtnText: {
+    fontWeight: "600",
+    color: "#fff",
+    fontSize: 16,
+  }
 })
 
 export default InfoCard
