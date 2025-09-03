@@ -1,14 +1,13 @@
-import { Image, StyleSheet } from 'react-native'
+import { Image, StyleSheet, Text } from 'react-native'
 import { Link } from 'expo-router'
-import ThemedText from '../components/ThemedText'
 import ThemedView from '../components/ThemedView'
 
 const index = () => {
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={styles.container} safe>
       <Image source={require('../assets/dolmen-icon.jpeg')} style={styles.logo} />
-      <ThemedText style={styles.title} title={true}>Tourin App</ThemedText>
-      <Link href="dashboard/mapa" style={styles.link}><ThemedText>Mapa</ThemedText></Link>
+      <Text style={styles.title} >Tourin App</Text>
+      <Link href="dashboard/mapa" style={styles.link}><Text>Mapa</Text></Link>
     </ThemedView>
   )
 }

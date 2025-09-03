@@ -1,8 +1,9 @@
 import * as Location from "expo-location"
 import { useEffect, useState, useRef } from "react"
-import { Pressable, StyleSheet, Alert, Text, ActivityIndicator } from "react-native"
+import { Pressable, StyleSheet, Alert, Text } from "react-native"
 import { MapView, Camera, UserLocation } from "@maplibre/maplibre-react-native"
 import { Ionicons } from '@expo/vector-icons'
+import { IconButton, Modal, PaperProvider, Portal } from "react-native-paper"
 import { GeoDataProvider, useGeoData } from "../../contexts/GeoDataContext"
 import mapStyle from "../../constants/positronTourin.json"
 import ThemedView from "../../components/ThemedView"
@@ -14,11 +15,7 @@ function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
   if (!loading && !error) return null
 
-  if (loading) {
-    return (
-      <ThemedSpinner />
-    )
-  }
+  if (loading) return (<ThemedSpinner />)
 
   return (
     <Pressable onPress={refresh} style={styles.toast}>
@@ -32,7 +29,11 @@ const mapa = () => {
 
   const [coord, setCoord] = useState(null)
   const [popup, setPopup] = useState(null)
+  const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
+  
+  const showModal = () => setVisible(true)
+  const hideModal = () => setVisible(false)
 
   useEffect(() => {
     (async () => {
@@ -63,37 +64,49 @@ const mapa = () => {
   }
 
   return (
-    <GeoDataProvider>
-      <ThemedView style={{ flex: 1 }} safe>
-        <MapView 
-          style={{ flex: 1 }}
-          mapStyle={mapStyle}
-          onMapReady={() => console.log("Map is ready")}
-          onDidFinishLoadingStyle={() => console.log("Style loaded")}
-        >
-          <UserLocation visible />
-          <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
-          <PointsLayer onPointPress={(feature) => {
-            const props = feature.properties || {}
-            const [lon, lat] = feature.geometry?.coordinates || []
-            setPopup({props, lat, lon})
-            cameraRef.current?.setCamera({
-              centerCoordinate: [lon,lat],
-              zoomLevel: 16,
-              animationDuration: 600,
-            })
-          }}/>
-        </MapView>
+    <PaperProvider>
+      <GeoDataProvider>
+        <ThemedView style={{ flex: 1 }} safe>
+          <MapView style={ StyleSheet.absoluteFillObject } mapStyle={mapStyle}>
 
-        <Pressable onPress={centerOnUser} hitSlop={10} style={styles.button} >
-          <Ionicons size={25} name="locate" color="#201e2b" />
-        </Pressable>
+            <UserLocation visible />
+            <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
 
-        <InfoCard visible={!!popup} info={popup?.props} onClose={() => setPopup(null)} />
+            <PointsLayer
+              onPointPress={(feature) => {
+                const props = feature.properties || {}
+                const [lon, lat] = feature.geometry?.coordinates || []
+                setPopup({props, lat, lon})
+                cameraRef.current?.setCamera({
+                  centerCoordinate: [lon,lat],
+                  zoomLevel: 16,
+                  animationDuration: 600,
+                })
+                showModal()
+              }}
+            />
+          </MapView>
+          
+          <IconButton 
+            mode="contained-tonal" 
+            icon="crosshairs-gps" 
+            iconColor="#000"
+            size={30}
+            animated={true}
+            style={styles.button}
+            onPress={centerOnUser} 
+          />
 
-        <GeoDataStatus />
-      </ThemedView>
-    </GeoDataProvider>
+          <Portal>
+            <Modal visible={visible} onDismiss={hideModal} style={{ padding: 20 }} >
+              <InfoCard info={popup?.props} onClose={hideModal}/>
+            </Modal>
+          </Portal>
+        
+          <GeoDataStatus />
+        </ThemedView>
+      </GeoDataProvider>
+    </PaperProvider>
   )
 }
 
@@ -102,12 +115,8 @@ export default mapa
 const styles = StyleSheet.create({
   button: {
     position: "absolute",
-    right: 16,
-    bottom: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 24,
-    elevation: 4,
+    right: 10,
+    bottom: 5,
     backgroundColor: "#e8e7ef",
   },
   toast: {
