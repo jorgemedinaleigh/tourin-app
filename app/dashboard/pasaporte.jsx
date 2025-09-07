@@ -1,10 +1,10 @@
-import ThemedView from "../../components/ThemedView"
-import ThemedText from "../../components/ThemedText"
+import { Text } from 'react-native'
+import ThemedView from '../../components/ThemedView'
 
 const pasaporte = () => {
   return (
-    <ThemedView style={{ flex: 1 }} safe>
-      <ThemedText>Pasaporte</ThemedText>
+    <ThemedView style={{ flex: 1 }} >
+      <Text>Pasaporte</Text>
     </ThemedView>
   )
 }

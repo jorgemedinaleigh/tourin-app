@@ -1,23 +1,35 @@
+import { useMaterial3Theme } from '@pchmn/expo-material3-theme'
 import { View } from 'react-native'
+import { MD3LightTheme, PaperProvider } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useTheme } from 'react-native-paper'
 
-const ThemedView = ({ style, safe = false, ...props }) => {
+const ThemedView = ({ children, style, ...props }) => {
 
-  const theme = useTheme()
   const insets = useSafeAreaInsets()
+  const { theme } = useMaterial3Theme()
+  const base = MD3LightTheme
+  const materialColors = theme.light
+
+  const customTheme = {
+    ...base,
+    colors: { ...base.colors, ...materialColors }
+  }
 
   return (
-    <View 
-      style={[
-        {
-          backgroundColor: theme.background,
-          paddingTop: insets.top
-        }, 
-        style
-      ]} 
-      {...props}
-    />
+    <PaperProvider theme={customTheme} >
+      <View 
+        style={[
+          {
+            paddingTop: insets.top
+          }, 
+          style
+        ]} 
+        {...props}
+      >
+        { children }
+      </View>  
+    </PaperProvider>
+    
   )
   
 }

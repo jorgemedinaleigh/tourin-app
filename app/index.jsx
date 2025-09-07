@@ -4,7 +4,7 @@ import ThemedView from '../components/ThemedView'
 
 const index = () => {
   return (
-    <ThemedView style={styles.container} safe>
+    <ThemedView style={styles.container} >
       <Image source={require('../assets/dolmen-icon.jpeg')} style={styles.logo} />
       <Text style={styles.title} >Tourin App</Text>
       <Link href="dashboard/mapa" style={styles.link}><Text>Mapa</Text></Link>

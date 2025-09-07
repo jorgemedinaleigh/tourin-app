@@ -1,21 +1,22 @@
-import * as Location from "expo-location"
-import { useEffect, useState, useRef } from "react"
-import { Pressable, StyleSheet, Alert, Text } from "react-native"
-import { MapView, Camera, UserLocation } from "@maplibre/maplibre-react-native"
+import * as Location from 'expo-location'
+import { useEffect, useState, useRef } from 'react'
+import { Pressable, StyleSheet, Alert, Text } from 'react-native'
+import { MapView, Camera, UserLocation } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { IconButton, Modal, PaperProvider, Portal } from "react-native-paper"
-import { GeoDataProvider, useGeoData } from "../../contexts/GeoDataContext"
-import mapStyle from "../../constants/positronTourin.json"
-import ThemedView from "../../components/ThemedView"
-import PointsLayer from "../../components/PointsLayer"
-import ThemedSpinner from "../../components/ThemedSpinner"
-import InfoCard from "../../components/InfoCard"
+import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
+import { GeoDataProvider, useGeoData } from '../../contexts/GeoDataContext'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import mapStyle from '../../constants/positronTourin.json'
+import ThemedView from '../../components/ThemedView'
+import PointsLayer from '../../components/PointsLayer'
+import InfoCard from '../../components/InfoCard'
 
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
+
   if (!loading && !error) return null
 
-  if (loading) return (<ThemedSpinner />)
+  if (loading) return (<ActivityIndicator animating={true} size={'large'} />)
 
   return (
     <Pressable onPress={refresh} style={styles.toast}>
@@ -26,7 +27,7 @@ function GeoDataStatus() {
 }
 
 const mapa = () => {
-
+  const insets = useSafeAreaInsets()
   const [coord, setCoord] = useState(null)
   const [popup, setPopup] = useState(null)
   const [visible, setVisible] = useState(false)
@@ -64,49 +65,54 @@ const mapa = () => {
   }
 
   return (
-    <PaperProvider>
-      <GeoDataProvider>
-        <ThemedView style={{ flex: 1 }} safe>
-          <MapView style={ StyleSheet.absoluteFillObject } mapStyle={mapStyle}>
-
-            <UserLocation visible />
-            <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
-
-            <PointsLayer
-              onPointPress={(feature) => {
-                const props = feature.properties || {}
-                const [lon, lat] = feature.geometry?.coordinates || []
-                setPopup({props, lat, lon})
-                cameraRef.current?.setCamera({
-                  centerCoordinate: [lon,lat],
-                  zoomLevel: 16,
-                  animationDuration: 600,
-                })
-                showModal()
-              }}
-            />
-          </MapView>
-          
-          <IconButton 
-            mode="contained-tonal" 
-            icon="crosshairs-gps" 
-            iconColor="#000"
-            size={30}
-            animated={true}
-            style={styles.button}
-            onPress={centerOnUser} 
+    <GeoDataProvider>
+      <ThemedView style={{ flex: 1 }} >
+        <MapView 
+          style={ StyleSheet.absoluteFillObject } 
+          mapStyle={mapStyle}
+          compassEnabled={true}
+          logoEnabled={false}
+          attributionEnabled={false}
+          compassViewPosition={3}
+          compassViewMargins={{ x: 15, y: insets.bottom + 40 }}
+        >
+          <UserLocation visible />
+          <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
+          <PointsLayer
+            onPointPress={(feature) => {
+              const props = feature.properties || {}
+              const [lon, lat] = feature.geometry?.coordinates || []
+              setPopup({props, lat, lon})
+              cameraRef.current?.setCamera({
+                centerCoordinate: [lon,lat],
+                zoomLevel: 16,
+                animationDuration: 600,
+              })
+              showModal()
+            }}
           />
-
-          <Portal>
-            <Modal visible={visible} onDismiss={hideModal} style={{ padding: 20 }} >
-              <InfoCard info={popup?.props} onClose={hideModal}/>
-            </Modal>
-          </Portal>
+        </MapView>
         
-          <GeoDataStatus />
-        </ThemedView>
-      </GeoDataProvider>
-    </PaperProvider>
+        <IconButton 
+          mode="contained-tonal" 
+          icon="crosshairs-gps" 
+          iconColor="#e8e7ef"
+          size={30}
+          animated={true}
+          style={styles.button}
+          onPress={centerOnUser} 
+        />
+
+        <Portal>
+          <Modal visible={visible} onDismiss={hideModal} style={{ padding: 20 }} >
+            <InfoCard info={popup?.props} onClose={hideModal}/>
+          </Modal>
+        </Portal>
+      
+        <GeoDataStatus />
+        
+      </ThemedView>
+    </GeoDataProvider>
   )
 }
 
@@ -117,7 +123,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     bottom: 5,
-    backgroundColor: "#e8e7ef",
+    backgroundColor: "#000",
   },
   toast: {
     position: "absolute",
