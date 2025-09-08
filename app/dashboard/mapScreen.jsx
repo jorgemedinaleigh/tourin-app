@@ -26,7 +26,7 @@ function GeoDataStatus() {
   )
 }
 
-const mapa = () => {
+const mapScreen = () => {
   const insets = useSafeAreaInsets()
   const [coord, setCoord] = useState(null)
   const [popup, setPopup] = useState(null)
@@ -116,7 +116,7 @@ const mapa = () => {
   )
 }
 
-export default mapa
+export default mapScreen
 
 const styles = StyleSheet.create({
   button: {

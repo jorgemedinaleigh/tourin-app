@@ -23,7 +23,7 @@ const DashboardLayout = () => {
         }}
       >
         <Tabs.Screen 
-          name="mapa" 
+          name="mapScreen" 
           options={{ 
             title: 'Mapa',
             tabBarIcon: ({ focused }) => (
