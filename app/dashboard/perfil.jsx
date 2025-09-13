@@ -1,11 +1,10 @@
 import { Text } from 'react-native'
-import ThemedView from '../../components/ThemedView'
-import { useUser } from '../../hooks/useUser'
 import { Button } from 'react-native-paper'
+import { useUser } from '../../hooks/useUser'
+import ThemedView from '../../components/ThemedView'
 
 const perfil = () => {
   const { logout, user } = useUser()
-
 
   return (
     <ThemedView style={{ padding: 20 }} safe>
