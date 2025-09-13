@@ -4,12 +4,14 @@ import { useUser } from '../../hooks/useUser'
 import { Button } from 'react-native-paper'
 
 const perfil = () => {
-  const { logout } = useUser()
+  const { logout, user } = useUser()
 
 
   return (
     <ThemedView style={{ padding: 20 }} safe>
       <Text>Perfil</Text>
+      <Text>{user.name}</Text>
+      <Text>{user.email}</Text>
       <Button 
         mode="contained-tonal" 
         icon={"logout"}
