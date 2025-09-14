@@ -9,7 +9,7 @@ const GuestOnly = ({ children }) => {
 
   useEffect(() => {
     if (authChecked && user !== null) {
-      router.replace('dashboard/perfil')
+      router.replace('dashboard/profileScreen')
     }
   }, [user, authChecked])
 

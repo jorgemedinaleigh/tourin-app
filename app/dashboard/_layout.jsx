@@ -63,7 +63,7 @@ const DashboardLayout = () => {
           }} 
         />
         <Tabs.Screen 
-          name="perfil" 
+          name="profileScreen" 
           options={{ 
             title: 'Perfil',
             tabBarIcon: ({ focused }) => (

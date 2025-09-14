@@ -8,6 +8,7 @@ const index = () => {
       <Image source={require('../assets/dolmen-icon.jpeg')} style={styles.logo} />
       <Text style={styles.title} >Tourin App</Text>
       <Link href="dashboard/mapScreen" style={styles.link} >Mapa</Link>
+      <Link href="dashboard/profileScreen" style={styles.link} >Perfil</Link>
       <Link href="auth/loginScreen" style={styles.link} >Login</Link>
       <Link href="auth/registerScreen" style={styles.link} >Register</Link>
     </ThemedView>
