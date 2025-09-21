@@ -1,4 +1,4 @@
-import { Query } from 'react-native-appwrite'
+import { Query, ID } from 'react-native-appwrite'
 import { useEffect, useState } from 'react'
 import { tables } from '../lib/appwrite'
 
@@ -18,7 +18,21 @@ export function useStats(userId) {
           Query.limit(1),
         ],
       })
-      setStats(response.rows?.[0] ?? null)
+      if(response.total > 0)
+      {
+        setStats(response.rows?.[0])
+      }
+      else {
+        const created = await tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: TABLE_ID,
+          rowId: ID.unique(),
+          data: {
+            userId: userId
+          }
+        })
+        setStats(created)
+      }
     } catch (error) {
       console.error('Error fetching stats:', error)
       setStats(null)
