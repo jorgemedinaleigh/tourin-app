@@ -1,9 +1,35 @@
 import { Text } from 'react-native'
 import { Button, Card, Chip, IconButton, useTheme } from 'react-native-paper'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import { useUser } from '../hooks/useUser'
+import { useSiteVisits } from '../hooks/useSiteVisits'
+import { useEffect, useState } from 'react'
 
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
+  const { user } = useUser()
+  const { getVisit } = useSiteVisits(user.$id)
+
+  const [isVisited, setIsVisited] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setIsVisited(false)
+      try {
+        const v = await getVisit(user.$id, info.id)
+        if(alive) {
+          setIsVisited(!!v)
+        }
+      } catch (err) {
+        console.error('Error fetching visits:', err)
+        if(alive) {
+          setIsVisited(false)
+        }
+      }
+    })()
+    return () => { alive = false }
+  }, [user?.$id, info?.id])
 
   return (
     <Card mode="elevated" >
@@ -25,7 +51,10 @@ function InfoCard({ info, onClose }) {
       </Card.Content>
       
       <Card.Actions>
-        <Button icon="stamper" mode="contained" style={{ marginTop: 8 }} theme={theme} >Estampar</Button>
+        {
+          isVisited ? <Button icon="check-decagram" mode="contained" style={{ marginTop: 8 }} buttonColor='#17972fff'>Sitio Visitado</Button>
+                    : <Button icon="stamper" mode="contained" style={{ marginTop: 8 }} theme={theme} >Estampar</Button>
+        }
       </Card.Actions>
     </Card>
   )

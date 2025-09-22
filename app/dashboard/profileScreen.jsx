@@ -6,7 +6,7 @@ import ThemedView from '../../components/ThemedView'
 
 const profileScreen = () => {
   const { logout, user } = useUser()
-  const { stats, addPoints, siteVisited, eventAttended } = useStats(user.$id)
+  const { stats } = useStats(user.$id)
 
   return (
     <ThemedView style={{ padding: 20 }} safe>

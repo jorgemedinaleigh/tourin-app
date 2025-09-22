@@ -50,7 +50,7 @@ const DashboardLayout = () => {
           }} 
         />
         <Tabs.Screen 
-          name="clasificacion" 
+          name="rankingScreen" 
           options={{ 
             title: 'Clasificación',
             tabBarIcon: ({ focused }) => (

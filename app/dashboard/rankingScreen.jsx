@@ -1,7 +1,7 @@
 import { Text } from 'react-native'
 import ThemedView from '../../components/ThemedView'
 
-const clasificacion = () => {
+const rankingScreen = () => {
   return (
     <ThemedView style={{ flex: 1 }} safe>
       <Text>Clasificacion</Text>
@@ -9,4 +9,4 @@ const clasificacion = () => {
   )
 }
 
-export default clasificacion
+export default rankingScreen
