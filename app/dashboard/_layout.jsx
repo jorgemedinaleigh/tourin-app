@@ -37,7 +37,7 @@ const DashboardLayout = () => {
           }} 
         />
         <Tabs.Screen 
-          name="pasaporte" 
+          name="passportScreen" 
           options={{ 
             title: 'Pasaporte',
             tabBarIcon: ({ focused }) => (

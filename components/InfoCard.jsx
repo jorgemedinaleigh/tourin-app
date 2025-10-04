@@ -8,9 +8,10 @@ import { useEffect, useState } from 'react'
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
   const { user } = useUser()
-  const { getVisit } = useSiteVisits(user.$id)
+  const { getVisit, stampVisit } = useSiteVisits(user.$id)
 
   const [isVisited, setIsVisited] = useState(false)
+  const [stamping, setStamping] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -30,6 +31,18 @@ function InfoCard({ info, onClose }) {
     })()
     return () => { alive = false }
   }, [user?.$id, info?.id])
+
+  const handleStamp = async () => {
+    try {
+      setStamping(true)
+      await stampVisit(user.$id, info.id)
+      setIsVisited(true)
+    } catch (error) {
+      console.error('Error stamping visit:', error)
+    } finally {
+      setStamping(false)
+    }
+  }
 
   return (
     <Card mode="elevated" >
@@ -52,8 +65,25 @@ function InfoCard({ info, onClose }) {
       
       <Card.Actions>
         {
-          isVisited ? <Button icon="check-decagram" mode="contained" style={{ marginTop: 8 }} buttonColor='#17972fff'>Sitio Visitado</Button>
-                    : <Button icon="stamper" mode="contained" style={{ marginTop: 8 }} theme={theme} >Estampar</Button>
+          isVisited ? <Button 
+                        icon="check-decagram" 
+                        mode="contained" 
+                        style={{ marginTop: 8 }} 
+                        buttonColor='#17972fff'
+                      >
+                        Sitio Visitado
+                      </Button>
+                    : <Button 
+                        icon="stamper" 
+                        mode="contained" 
+                        style={{ marginTop: 8 }} 
+                        theme={theme} 
+                        onPress={handleStamp} 
+                        loading={stamping}
+                        disabled={stamping}
+                      >
+                        Estampar
+                      </Button>
         }
       </Card.Actions>
     </Card>
