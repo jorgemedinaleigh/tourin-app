@@ -56,7 +56,17 @@ export function useSiteVisits(userId, siteId) {
           Query.equal('userId', [userId])
         ]
       })
-      setVisits(response.rows)
+      const stampedSites = response.rows
+      const siteIds = stampedSites.map(v => v.siteId)
+
+      const sitesResponse = await tables.listRows({
+        databaseId: DATABASE_ID,
+        tableId: SITES_TABLE_ID,
+        queries: [
+          Query.equal('$id', siteIds)
+        ]
+      })
+      setVisits(sitesResponse.rows)
     } catch (error) {
       console.error('Error fetching info:', error)
     }

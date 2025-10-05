@@ -1,10 +1,10 @@
-import { Text } from 'react-native'
-import { FlatList } from 'react-native'
+import { useCallback } from 'react'
+import { useFocusEffect } from 'expo-router'
+import { Text, FlatList, Image } from 'react-native'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
-import { useCallback } from 'react'
-import { useFocusEffect } from 'expo-router'
+import { Card, Avatar } from 'react-native-paper'
 
 const passportScreen = () => {
   const { user } = useUser()
@@ -24,7 +24,19 @@ const passportScreen = () => {
         data={visits ?? []}
         keyExtractor={(item) => String(item.$id)}
         renderItem={({item}) => (
-          <Text>{item.siteId}</Text>
+          <Card style={{ marginBottom: 12 }}>
+            <Card.Title 
+              title={item.name} 
+              left={(props) => (
+                <Avatar.Image
+                  {...props}
+                  size={48}
+                  source={{ uri: item.stamp }}
+                  onError={(e) => console.log('Error Avatar.Image:', e.nativeEvent)}
+                />
+              )}
+            />
+          </Card>
         )}
         ListEmptyComponent={<Text>No tienes visitas estampadas aún.</Text>}
       />
