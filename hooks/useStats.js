@@ -103,5 +103,5 @@ export function useStats(userId) {
     getStats()
   }, [userId])
 
-  return { stats, addPoints, siteVisited, eventAttended }
+  return { stats, getStats, addPoints, siteVisited, eventAttended }
 }

@@ -4,11 +4,13 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useUser } from '../hooks/useUser'
 import { useSiteVisits } from '../hooks/useSiteVisits'
 import { useEffect, useState } from 'react'
+import { useStats } from '../hooks/useStats'
 
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
   const { user } = useUser()
-  const { getVisit, stampVisit } = useSiteVisits(user.$id)
+  const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
+  const { addPoints, siteVisited, getStats } = useStats(user.$id)
 
   const [isVisited, setIsVisited] = useState(false)
   const [stamping, setStamping] = useState(false)
@@ -36,6 +38,9 @@ function InfoCard({ info, onClose }) {
     try {
       setStamping(true)
       await stampVisit(user.$id, info.id)
+      await addPoints(info.score)
+      await siteVisited()
+      await Promise.all([getStats(), fetchVisits(user.$id)])
       setIsVisited(true)
     } catch (error) {
       console.error('Error stamping visit:', error)

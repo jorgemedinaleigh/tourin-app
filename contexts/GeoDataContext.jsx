@@ -41,7 +41,10 @@ export function GeoDataProvider({ children }) {
             id: row.$id,
             name: row.name,
             description: row.description,
-            isFree: row.isFree
+            isFree: row.isFree,
+            price: row.price,
+            score: row.score,
+            stamp: row.stamp,
           }
         }
       }).filter(Boolean)

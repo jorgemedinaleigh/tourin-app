@@ -3,10 +3,20 @@ import { Button } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
 import ThemedView from '../../components/ThemedView'
+import { useFocusEffect } from 'expo-router'
+import { useCallback } from 'react'
 
 const profileScreen = () => {
   const { logout, user } = useUser()
-  const { stats } = useStats(user.$id)
+  const { stats, getStats } = useStats(user.$id)
+
+  useFocusEffect(
+    useCallback(() => {
+      if(user?.$id) {
+        getStats()
+      }
+    }, [user?.$id])
+  )
 
   return (
     <ThemedView style={{ padding: 20 }} safe>

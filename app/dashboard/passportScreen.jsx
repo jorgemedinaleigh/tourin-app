@@ -3,17 +3,20 @@ import { FlatList } from 'react-native'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
-import { useEffect } from 'react'
+import { useCallback } from 'react'
+import { useFocusEffect } from 'expo-router'
 
 const passportScreen = () => {
   const { user } = useUser()
   const { visits, fetchVisits } = useSiteVisits(user.$id)
 
-  useEffect(() => {
-    if(user?.$id) {
-      fetchVisits(user.$id)
-    }
-  }, [user?.$id])
+  useFocusEffect(
+    useCallback(() => {
+      if(user?.$id) {
+        fetchVisits(user.$id)
+      }
+    }, [user?.$id])
+  )
 
   return (
     <ThemedView style={{ flex: 1 }} >
@@ -23,7 +26,7 @@ const passportScreen = () => {
         renderItem={({item}) => (
           <Text>{item.siteId}</Text>
         )}
-        ListEmptyComponent={<Text>No tienes visitad estampadas aún.</Text>}
+        ListEmptyComponent={<Text>No tienes visitas estampadas aún.</Text>}
       />
     </ThemedView>
   )
