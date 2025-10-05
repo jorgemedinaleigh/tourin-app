@@ -8,6 +8,7 @@ const SITES_TABLE_ID = 'heritage_sites'
 
 export function useSiteVisits(userId, siteId) {
   const [visits, setVisits] = useState(null)
+  const [sitesVisited, setSitesVisited] = useState(null)
 
   async function stampVisit(userId, siteId) {
     try {
@@ -56,6 +57,7 @@ export function useSiteVisits(userId, siteId) {
           Query.equal('userId', [userId])
         ]
       })
+      setVisits(response.rows)
       const stampedSites = response.rows
       const siteIds = stampedSites.map(v => v.siteId)
 
@@ -66,11 +68,11 @@ export function useSiteVisits(userId, siteId) {
           Query.equal('$id', siteIds)
         ]
       })
-      setVisits(sitesResponse.rows)
+      setSitesVisited(sitesResponse.rows)
     } catch (error) {
       console.error('Error fetching info:', error)
     }
   }
 
-  return { visits, getVisit, fetchVisits, stampVisit}
+  return { visits, sitesVisited, getVisit, fetchVisits, stampVisit}
 }
