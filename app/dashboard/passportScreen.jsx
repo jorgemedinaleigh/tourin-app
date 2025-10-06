@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity } from 'react-native'
 import { Card, Avatar } from 'react-native-paper'
@@ -31,6 +31,12 @@ const passportScreen = () => {
     }, [user?.$id])
   )
 
+  const visitBySite = useMemo(() => {
+    const map = {};
+    (visits ?? []).forEach(v => { map[v.siteId] = v; });
+    return map;
+  }, [visits])
+
   return (
     <ThemedView style={{ flex: 1 }} >
       <Text style={styles.title}>Tu pasaporte Patrimonial Digital</Text>
@@ -39,17 +45,22 @@ const passportScreen = () => {
         keyExtractor={(item) => String(item.$id)}
         renderItem={({item}) => (
           <Card style={styles.stampCard} onPress={() => openImage(item.stamp)}>
-            <Card.Title 
-              title={item.name} 
-              left={(props) => (
-                <Avatar.Image
-                  {...props}
-                  size={48}
-                  source={{ uri: item.stamp }}
-                  onError={(e) => console.log('Error Avatar.Image:', e.nativeEvent)}
-                />
-              )}
-            />
+            <View style={styles.row}>
+              <Image
+                source={{ uri: item.stamp }}
+                style={styles.stampLeft}
+                resizeMode="cover"
+                onError={(e) => console.log('Error Image:', e.nativeEvent)}
+              />
+              <View style={styles.info}>
+                <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+                <Text style={styles.date}>
+                  {visitBySite[item.$id]?.$createdAt
+                    ? new Date(visitBySite[item.$id].$createdAt).toLocaleString()
+                    : '—'}
+                </Text>
+              </View>
+            </View>
           </Card>
         )}
         ListEmptyComponent={<Text>No tienes visitas estampadas aún.</Text>}
@@ -90,7 +101,8 @@ const styles = StyleSheet.create({
   stampCard: {
     marginTop: 10, 
     marginHorizontal: 10,
-    padding: 5, 
+    padding: 0,
+    overflow: 'hidden',  
   },
   modalBackdrop: {
     flex: 1,
@@ -115,5 +127,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600'
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: 92,
+  },
+  stampLeft: {
+    width: 100,
+    height: '100%',
+    alignSelf: 'stretch',
+  },
+  info: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  date: {
+    opacity: 0.7,
   }
 })
