@@ -1,14 +1,19 @@
-import { Text } from 'react-native'
-import { Button } from 'react-native-paper'
+import { StyleSheet, Text, View } from 'react-native'
+import { Button, useTheme } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
-import ThemedView from '../../components/ThemedView'
 import { useFocusEffect } from 'expo-router'
 import { useCallback } from 'react'
+import ThemedView from '../../components/ThemedView'
+import Nameplate from '../../components/Nameplate'
+import Badge from '../../components/Badge'
 
 const profileScreen = () => {
   const { logout, user } = useUser()
   const { stats, getStats } = useStats(user.$id)
+  const theme = useTheme()
+
+  const displayName = user?.name || 'Usuario'
 
   useFocusEffect(
     useCallback(() => {
@@ -20,12 +25,37 @@ const profileScreen = () => {
 
   return (
     <ThemedView style={{ padding: 20 }} safe>
-      <Text>Perfil</Text>
-      <Text>{user.name}</Text>
-      <Text>{user.email}</Text>
-      <Text>Puntaje: {stats?.score ?? 0}</Text>
-      <Text>Sitios: {stats?.sitesVisited ?? 0}</Text>
-      <Text>Eventos: {stats?.eventsAttended ?? 0}</Text>
+      <Text style={styles.title}>Perfil</Text>
+
+      <Nameplate
+        name={displayName}
+        subtitle={user?.email}
+        avatarUri={user?.photoUrl}
+        backgroundColor={theme.colors.primary}
+      />
+
+      <View  style={styles.badgesRow}>
+        <Badge
+          label="Puntaje"
+          value={stats?.score ?? 0}
+          icon="trophy"
+          tint={theme.colors.primary}
+          style={{ marginRight: 12 }}
+        />
+        <Badge
+          label="Sitios"
+          value={stats?.sitesVisited ?? 0}
+          icon="map-marker"
+          tint={theme.colors.tertiary || theme.colors.primary}
+          style={{ marginRight: 12 }}
+        />
+        <Badge
+          label="Eventos"
+          value={stats?.eventsAttended ?? 0}
+          icon="calendar-check"
+          tint={theme.colors.secondary || theme.colors.primary}
+        />
+      </View >
 
       <Button 
         mode="contained-tonal" 
@@ -41,3 +71,18 @@ const profileScreen = () => {
 }
 
 export default profileScreen
+
+const styles = StyleSheet.create({
+  title: {
+    fontSize: 20, 
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center'
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 16,
+  },
+})
