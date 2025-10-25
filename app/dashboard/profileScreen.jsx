@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Button, useTheme } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
-import { useFocusEffect } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { useCallback } from 'react'
 import ThemedView from '../../components/ThemedView'
 import Nameplate from '../../components/Nameplate'
@@ -41,6 +41,7 @@ const profileScreen = () => {
           icon="trophy"
           tint={theme.colors.primary}
           style={{ marginRight: 12 }}
+          onPress={() => router.push('dashboard/rankingScreen')}
         />
         <Badge
           label="Sitios"
@@ -48,6 +49,7 @@ const profileScreen = () => {
           icon="map-marker"
           tint={theme.colors.tertiary || theme.colors.primary}
           style={{ marginRight: 12 }}
+          onPress={() => router.push('dashboard/passportScreen')}
         />
         <Badge
           label="Eventos"

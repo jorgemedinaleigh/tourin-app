@@ -1,6 +1,5 @@
-import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import { useTheme, Icon } from 'react-native-paper'
+import { useTheme, Icon, TouchableRipple  } from 'react-native-paper'
 
 /**
  * Badge
@@ -14,7 +13,7 @@ import { useTheme, Icon } from 'react-native-paper'
  * - background?: string      (fondo; por defecto elevation.level2)
  * - style?: ViewStyle        (estilos externos)
  */
-const Badge = ({ label, value, icon = 'trophy', tint, background, style }) => {
+const Badge = ({ label, value, icon = 'trophy', tint, background, style, onPress }) => {
   const theme = useTheme()
   const tintColor = tint || theme.colors?.primary || '#3f51b5'
   const bg = background || theme.colors?.elevation?.level2 || '#f3f4f6'
@@ -24,24 +23,32 @@ const Badge = ({ label, value, icon = 'trophy', tint, background, style }) => {
     ? new Intl.NumberFormat().format(value)
     : String(value ?? '')
 
-  return (
-    <View
-      style={[styles.card, { backgroundColor: bg, borderColor: `${tintColor}33` }, style]}
-      accessibilityRole="summary"
-    >
-      <View style={[styles.iconWrap]}>
-        <Icon source={icon} size={30} color={tintColor} />
-      </View>
+  const handlePress = async () => {
+    onPress()
+    return
+  }
 
-      <View style={styles.texts}>
-        <Text numberOfLines={1} style={[styles.value, { color: tintColor }]}>
-          {display}
-        </Text>
-        <Text numberOfLines={1} style={[styles.label, { color: onBg, opacity: 0.7 }]}>
-          {label}
-        </Text>
+  return (
+    <TouchableRipple 
+      onPress={onPress ? handlePress : null} 
+      borderless
+      style={[styles.card, { backgroundColor: bg, borderColor: `${tintColor}33` }, style]}
+    >
+      <View accessibilityRole="summary" style={[styles.inner]}>
+        <View style={[styles.iconWrap]}>
+          <Icon source={icon} size={30} color={tintColor} />
+        </View>
+
+        <View style={styles.texts}>
+          <Text numberOfLines={1} style={[styles.value, { color: tintColor }]}>
+            {display}
+          </Text>
+          <Text numberOfLines={1} style={[styles.label, { color: onBg, opacity: 0.7 }]}>
+            {label}
+          </Text>
+        </View>
       </View>
-    </View>
+    </TouchableRipple>
   )
 }
 
@@ -59,6 +66,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   iconWrap: {
     width: 36,

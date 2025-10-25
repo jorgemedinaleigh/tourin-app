@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity } from 'react-native'
-import { Card, Avatar } from 'react-native-paper'
+import { Card } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
