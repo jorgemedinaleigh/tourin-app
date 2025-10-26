@@ -4,37 +4,7 @@ import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity } from
 import { Card } from 'react-native-paper'
 import ThemedView from '../../components/ThemedView'
 import { useUser } from '../../hooks/useUser'
-// If you already have a real data hook, replace this import with it, e.g.:
-// import { useAchievements } from '../../hooks/useAchievements'
-
-// Temporary, in-file minimal data hook so the screen renders right away.
-// Replace with your real implementation when available.
-const useAchievements = (userId) => {
-  const [achievements, setAchievements] = useState([])
-
-  const fetchAchievements = async () => {
-    // TODO: swap this with your real fetch (Appwrite/REST/etc.)
-    // Expected shape for each item (used by the UI):
-    // { $id: string|number, name: string, badge: string (image URI), unlockedAt?: string|Date }
-    const demo = [
-      {
-        $id: 'a1',
-        name: 'Primera visita',
-        badge: 'https://dummyimage.com/300x300/cccccc/000000&text=A1',
-        unlockedAt: new Date().toISOString(),
-      },
-      {
-        $id: 'a2',
-        name: 'Explorador',
-        badge: 'https://dummyimage.com/300x300/aaaaaa/000000&text=A2',
-        unlockedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-      },
-    ]
-    setAchievements(demo)
-  }
-
-  return { achievements, fetchAchievements }
-}
+import { useAchievements } from '../../hooks/useAchievements'
 
 const AchievementsScreen = () => {
   const { user } = useUser()
