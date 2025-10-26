@@ -56,6 +56,19 @@ const DashboardLayout = () => {
             tabBarIcon: ({ focused }) => (
               <Ionicons 
                 size={24} 
+                name={focused ? "podium" : "podium-outline"} 
+                color={focused ? theme.iconColorFocused : theme.iconColor}
+              />
+            )
+          }} 
+        />
+        <Tabs.Screen 
+          name="achievementsScreen" 
+          options={{ 
+            title: 'Logros',
+            tabBarIcon: ({ focused }) => (
+              <Ionicons 
+                size={24} 
                 name={focused ? "trophy" : "trophy-outline"} 
                 color={focused ? theme.iconColorFocused : theme.iconColor}
               />

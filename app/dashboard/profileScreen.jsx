@@ -34,15 +34,24 @@ const profileScreen = () => {
         backgroundColor={theme.colors.primary}
       />
 
-      <View  style={styles.badgesRow}>
+      <View style={styles.badgesRow}>
         <Badge
           label="Puntaje"
           value={stats?.score ?? 0}
-          icon="trophy"
+          icon="podium"
           tint={theme.colors.primary}
           style={{ marginRight: 12 }}
           onPress={() => router.push('dashboard/rankingScreen')}
         />
+        <Badge 
+          label="Logros"
+          value={stats?.achivementsUnlocked ?? 0}
+          icon="trophy-award"
+          tint={theme.colors.success || theme.colors.primary}
+          onPress={() => router.push('dashboard/achievementsScreen')}
+        />
+      </View >
+      <View style={styles.badgesRow}>
         <Badge
           label="Sitios"
           value={stats?.sitesVisited ?? 0}
@@ -57,7 +66,7 @@ const profileScreen = () => {
           icon="calendar-check"
           tint={theme.colors.secondary || theme.colors.primary}
         />
-      </View >
+      </View>
 
       <Button 
         mode="contained-tonal" 
