@@ -1,6 +1,6 @@
-import { Text } from 'react-native'
+import { Text, View, StyleSheet, useWindowDimensions } from 'react-native'
 import { Button, Card, Chip, IconButton, useTheme } from 'react-native-paper'
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import { Ionicons } from '@expo/vector-icons'
 import { useUser } from '../hooks/useUser'
 import { useSiteVisits } from '../hooks/useSiteVisits'
 import { useEffect, useState } from 'react'
@@ -8,6 +8,7 @@ import { useStats } from '../hooks/useStats'
 
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
+  const { height } = useWindowDimensions() 
   const { user } = useUser()
   const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
   const { addPoints, siteVisited, getStats } = useStats(user.$id)
@@ -50,25 +51,41 @@ function InfoCard({ info, onClose }) {
   }
 
   return (
-    <Card mode="elevated" >
-      <Card.Title 
+    <Card mode="elevated" style={[styles.card, { maxHeight: height * 0.9 }]}>
+      <Card.Title
+        titleStyle={styles.title}
+        titleNumberOfLines={3}
         title={info.name || "Punto"}  
         right={(props) => <IconButton {...props} icon="close" onPress={onClose} />}
       />
       <Card.Content >
-        <Card.Cover source={{ uri: 'https://picsum.photos/700' }} />
+        <Card.Cover source={{ uri: 'https://picsum.photos/700' }} style={{ height: 180, marginBottom: 8, }} />
+        <View style={styles.chipsRow}>
+          {
+            info.isFree ? <Chip
+                            icon={() => (
+                              <Ionicons name="logo-usd" size={25} color="#9a9a9aff" />
+                            )}>Gratis</Chip>
+                        : <Chip
+                            icon={() => (
+                              <Ionicons name="logo-usd" size={25} color="#2cb587ff" />
+                            )}>Pagado</Chip>
+          }
+          <Chip 
+            icon={() => (
+              <Ionicons name="location-outline" size={25} color="#ee2828ff" />
+            )}>{info.subType}</Chip>
+          {
+            info.route ? <Chip
+                            icon={() => (
+                              <Ionicons name="git-branch-outline" size={25} color="#6c4a00ff" />
+                            )}>Ruta: {info.route}</Chip> : null
+          }
+        </View>
         {!!info.description && <Text style={{ marginTop: 8, marginBottom: 8 }} >{info.description}</Text>}
-        {
-          info.isFree ? <Chip icon={() => (
-                          <MaterialCommunityIcons name="currency-usd" size={25} color="#9a9a9aff" />
-                        )}>Gratis</Chip>
-                      : <Chip icon={() => (
-                          <MaterialCommunityIcons name="currency-usd" size={25} color="#2cb587ff" />
-                        )}>{info.price || "Pagado"}</Chip>
-        }
       </Card.Content>
-      
-      <Card.Actions>
+        
+      <Card.Actions >
         {
           isVisited ? <Button 
                         icon="check-decagram" 
@@ -96,3 +113,22 @@ function InfoCard({ info, onClose }) {
 }
 
 export default InfoCard
+
+const styles = StyleSheet.create({
+  title: {
+    fontSize: 20, 
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  card: {
+    flexShrink: 1,
+    overflow: 'hidden',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+})

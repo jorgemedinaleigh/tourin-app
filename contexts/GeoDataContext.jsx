@@ -1,8 +1,10 @@
 import { createContext, useContext, useCallback, useMemo, useState, useEffect } from "react"
+import { Query } from "react-native-appwrite"
 import { tables } from "../lib/appwrite"
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const TABLE_ID = 'heritage_sites'
+const PAGE_LIMIT = 500
 
 export const GeoDataContext = createContext({
   geoData: null,
@@ -16,16 +18,32 @@ export function GeoDataProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  const fetchAllRows = async () => {
+    let all = []
+    let cursor = null
+    let total = 0
+    do {
+      const res = await tables.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: [
+          Query.limit(PAGE_LIMIT),
+          ...(cursor ? [Query.cursorAfter(cursor)] : []),
+        ],
+      })
+      all.push(...res.rows)
+      total = res.total ?? all.length
+      cursor = res.rows.length ? res.rows[res.rows.length - 1].$id : null
+    } while (cursor && all.length < total)
+    return all
+  }
+
   const fetchGeoData = useCallback( async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const response = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID
-      })
-      const rows = response?.rows ?? []
+      const rows = await fetchAllRows()
       const features = rows.map((row) => {
         const lat = Number(row.latitude)
         const lon = Number(row.longitude)
@@ -45,6 +63,14 @@ export function GeoDataProvider({ children }) {
             price: row.price,
             score: row.score,
             stamp: row.stamp,
+            type: row.type,
+            subType: row.subType,
+            location: row.location,
+            legalStatus: row.legalStatus,
+            comuna: row.comuna,
+            region: row.region,
+            stampRadius: row.stampRadius,
+            route: row.route,
           }
         }
       }).filter(Boolean)
