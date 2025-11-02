@@ -62,7 +62,7 @@ const DashboardLayout = () => {
             )
           }} 
         />
-        <Tabs.Screen 
+        {/* <Tabs.Screen 
           name="achievementsScreen" 
           options={{ 
             title: 'Logros',
@@ -74,7 +74,7 @@ const DashboardLayout = () => {
               />
             )
           }} 
-        />
+        /> */}
         <Tabs.Screen 
           name="profileScreen" 
           options={{ 
