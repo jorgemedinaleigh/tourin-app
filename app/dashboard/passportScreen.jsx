@@ -1,18 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity, Platform } from 'react-native'
+import { Text, StyleSheet, Modal, Image, View, TouchableOpacity, ScrollView, Platform } from 'react-native'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
-
-const COLS = 2
-const ROWS = 3
-const STAMPS_PER_PAGE = COLS * ROWS
-
-const PAGE_PADDING_H = 16
-const PAGE_PADDING_V = 12
-const ROW_GAP = 12
-const COL_GAP = 14
 
 const PassportScreen = () => {
   const { user } = useUser()
@@ -20,18 +11,8 @@ const PassportScreen = () => {
 
   const [viewerVisible, setViewerVisible] = useState(false)
   const [viewerUri, setViewerUri] = useState(null)
-  const [listWidth, setListWidth] = useState(0)
-  const [listHeight, setListHeight] = useState(0)
-
-  const openImage = (uri) => {
-    if (!uri) return
-    setViewerUri(uri)
-    setViewerVisible(true)
-  }
-  const closeImage = () => {
-    setViewerVisible(false)
-    setViewerUri(null)
-  }
+  const [viewerTitle, setViewerTitle] = useState('')
+  const [viewerDate, setViewerDate] = useState('')
 
   useFocusEffect(
     useCallback(() => {
@@ -39,11 +20,9 @@ const PassportScreen = () => {
     }, [user?.$id])
   )
 
-  const visitBySite = useMemo(() => {
+  const visitsBySite = useMemo(() => {
     const map = {}
-    ;(visits ?? []).forEach((v) => {
-      map[v.siteId] = v
-    })
+    ;(visits ?? []).forEach((v) => { map[v.siteId] = v })
     return map
   }, [visits])
 
@@ -51,20 +30,11 @@ const PassportScreen = () => {
   const sortedSites = useMemo(() => {
     const arr = (sitesVisited ?? []).map((s) => ({
       ...s,
-      _obtainedTs: visitBySite[s.$id]?.$createdAt ? new Date(visitBySite[s.$id].$createdAt).getTime() : 0,
+      _obtainedTs: visitsBySite[s.$id]?.$createdAt ? new Date(visitsBySite[s.$id].$createdAt).getTime() : 0,
     }))
     arr.sort((a, b) => b._obtainedTs - a._obtainedTs)
     return arr
-  }, [sitesVisited, visitBySite])
-
-  // Paginación de 6 por página (2x3)
-  const pages = useMemo(() => {
-    const out = []
-    for (let i = 0; i < sortedSites.length; i += STAMPS_PER_PAGE) {
-      out.push(sortedSites.slice(i, i + STAMPS_PER_PAGE))
-    }
-    return out
-  }, [sortedSites])
+  }, [sitesVisited, visitsBySite])
 
   // Ángulo determinístico por sello (-3..+3 grados)
   const angleFor = useCallback((id = '') => {
@@ -74,109 +44,52 @@ const PassportScreen = () => {
     return `${deg}deg`
   }, [])
 
-  const renderStamp = (site, idxInCol, totalInCol) => {
-    const dateLabel = visitBySite[site.$id]?.$createdAt
-      ? new Date(visitBySite[site.$id].$createdAt).toLocaleDateString()
+  const openImage = (site) => {
+    if (!site?.stamp) return
+    const dateLabel = visitsBySite[site.$id]?.$createdAt
+      ? new Date(visitsBySite[site.$id].$createdAt).toLocaleDateString()
       : '—'
-    const angle = angleFor(site.$id)
-
-    return (
-      <TouchableOpacity
-        key={String(site.$id)}
-        style={[styles.stampWrap, { marginBottom: idxInCol < totalInCol - 1 ? ROW_GAP : 0 }]}
-        activeOpacity={0.9}
-        onPress={() => openImage(site.stamp)}
-      >
-        <View style={styles.stampSlot}>
-          {/* Grupo rotado: imagen + fecha */}
-          <View style={[styles.twistGroup, { transform: [{ rotate: angle }] }]}>
-            <Image
-              source={{ uri: site.stamp }}
-              style={styles.stampImage}
-              resizeMode="contain"
-              onError={(e) => console.log('Error Image:', e.nativeEvent)}
-            />
-            <Text style={styles.inkDate}>{dateLabel}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    )
+    const nameLabel = site?.name || site?.title || site?.label || ''
+    setViewerUri(site.stamp)
+    setViewerTitle(nameLabel)
+    setViewerDate(dateLabel)
+    setViewerVisible(true)
+  }
+  const closeImage = () => {
+    setViewerVisible(false)
+    setViewerUri(null)
+    setViewerTitle('')
+    setViewerDate('')
   }
 
-  const renderPage = useCallback(
-    ({ item: pageItems }) => {
-      const colLeft = pageItems.slice(0, ROWS)
-      const colRight = pageItems.slice(ROWS, STAMPS_PER_PAGE)
-
-      return (
-        <View
-          style={[
-            styles.page,
-            {
-              width: listWidth,
-              height: listHeight,
-              paddingHorizontal: PAGE_PADDING_H,
-              paddingVertical: PAGE_PADDING_V,
-            },
-          ]}
-        >
-          {/* Borde/fondo tipo pasaporte (sin línea punteada central) */}
-          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <View style={styles.pageBorder} />
-          </View>
-
-          <View style={styles.columns}>
-            {/* Columna izquierda */}
-            <View style={[styles.column, { paddingRight: COL_GAP / 2 }]}>
-              {colLeft.map((site, i) => renderStamp(site, i, colLeft.length))}
-              {colLeft.length < ROWS &&
-                Array.from({ length: ROWS - colLeft.length }).map((_, i) => (
-                  <View
-                    key={'phL-' + i}
-                    style={[styles.stampWrap, { opacity: 0, marginBottom: i < ROWS - colLeft.length - 1 ? ROW_GAP : 0 }]}
-                  />
-                ))}
-            </View>
-
-            {/* Columna derecha */}
-            <View style={[styles.column, { paddingLeft: COL_GAP / 2 }]}>
-              {colRight.map((site, i) => renderStamp(site, i, colRight.length))}
-              {colRight.length < ROWS &&
-                Array.from({ length: ROWS - colRight.length }).map((_, i) => (
-                  <View
-                    key={'phR-' + i}
-                    style={[styles.stampWrap, { opacity: 0, marginBottom: i < ROWS - colRight.length - 1 ? ROW_GAP : 0 }]}
-                  />
-                ))}
-            </View>
-          </View>
-        </View>
-      )
-    },
-    [listWidth, listHeight, visitBySite, angleFor]
-  )
-
   return (
-    <ThemedView style={{ flex: 1 }}>
-      <View
-        style={{ flex: 1 }}
-        onLayout={(e) => {
-          const { width, height } = e.nativeEvent.layout
-          setListWidth(width)
-          setListHeight(height)
-        }}
-      >
-        <FlatList
-          data={pages}
-          keyExtractor={(_, i) => 'page-' + i}
-          renderItem={renderPage}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          bounces={false}
-        />
-      </View>
+    <ThemedView style={styles.root}>
+      <ScrollView>
+        <View style={styles.gridWrap}>
+          {sortedSites.map((site) => {
+            const angle = angleFor(site.$id)
+            return (
+              <TouchableOpacity
+                key={String(site.$id)}
+                activeOpacity={0.9}
+                onPress={() => openImage(site)}
+                style={styles.tile}
+              >
+                <View style={styles.stampSlot}>
+                  <View style={[styles.twistGroup, { transform: [{ rotate: angle }] }]}>
+                    <Image
+                      source={{ uri: site.stamp }}
+                      style={styles.stampImage}
+                      resizeMode="contain"
+                      onError={(e) => console.log('Error Image:', e.nativeEvent)}
+                    />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </ScrollView>
 
       <Modal visible={viewerVisible} transparent animationType="fade" onRequestClose={closeImage}>
         <View style={styles.modalBackdrop}>
@@ -186,8 +99,20 @@ const PassportScreen = () => {
             resizeMode="contain"
             onError={(e) => console.log('Error cargando imagen:', e.nativeEvent)}
           />
+
+          <View style={styles.infoPanel}>
+            {!!viewerTitle && <Text style={styles.infoTitle} numberOfLines={2}>{viewerTitle}</Text>}
+            <Text style={styles.infoDate}>{viewerDate}</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.closeBtn} onPress={closeImage} activeOpacity={0.1}>
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar"
+          style={styles.closeBtn}
+          onPress={closeImage}
+          activeOpacity={0.1}
+        >
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
       </Modal>
@@ -198,51 +123,40 @@ const PassportScreen = () => {
 export default PassportScreen
 
 const styles = StyleSheet.create({
-  page: {
-    position: 'relative',
-    backgroundColor: '#F4EDE1', // papel
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  pageBorder: {
-    position: 'absolute',
-    inset: 0,
-    borderWidth: 1,
-    borderRadius: 18,
-    borderColor: '#D7CBB8',
-  },
-
-  columns: {
+  root: {
     flex: 1,
+    backgroundColor: '#F4EDE1',
+  },
+  gridWrap: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignContent: 'flex-start',
   },
-  column: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-
-  stampWrap: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  stampSlot: {
-    flex: 1,
+  tile: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 140,
+    minWidth: 140,
+    maxWidth: '100%',
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Grupo rotado (imagen + fecha)
+  stampSlot: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   twistGroup: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Imagen del sello; se deja espacio para la fecha
   stampImage: {
     width: '90%',
-    height: '78%',
+    height: '85%',
     opacity: 0.96,
     shadowColor: '#000',
     shadowOpacity: 0.08,
@@ -250,18 +164,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-
-  // Fecha que sigue el ángulo del sello (hereda rotación)
-  inkDate: {
-    fontWeight: 'bold',
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
-    fontSize: 15,
-    color: '#2A3B4C',
-    opacity: 0.7,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.90)',
@@ -271,6 +173,31 @@ const styles = StyleSheet.create({
   fullImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#F4EDE1'
+  },
+  infoPanel: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  infoTitle: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  infoDate: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    letterSpacing: 0.4,
   },
   closeBtn: {
     position: 'absolute',
