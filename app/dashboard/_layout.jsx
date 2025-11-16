@@ -50,19 +50,6 @@ const DashboardLayout = () => {
           }} 
         />
         <Tabs.Screen 
-          name="rankingScreen" 
-          options={{ 
-            title: 'Clasificación',
-            tabBarIcon: ({ focused }) => (
-              <Ionicons 
-                size={24} 
-                name={focused ? "podium" : "podium-outline"} 
-                color={focused ? theme.iconColorFocused : theme.iconColor}
-              />
-            )
-          }} 
-        />
-        {/* <Tabs.Screen 
           name="achievementsScreen" 
           options={{ 
             title: 'Logros',
@@ -74,7 +61,7 @@ const DashboardLayout = () => {
               />
             )
           }} 
-        /> */}
+        />
         <Tabs.Screen 
           name="profileScreen" 
           options={{ 

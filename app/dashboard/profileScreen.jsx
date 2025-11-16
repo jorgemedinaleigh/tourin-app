@@ -36,28 +36,11 @@ const profileScreen = () => {
 
       <View style={styles.badgesRow}>
         <Badge
-          label="Puntaje"
-          value={stats?.score ?? 0}
-          icon="podium"
-          tint={theme.colors.primary}
-          style={{ marginRight: 12 }}
-          onPress={() => router.push('dashboard/rankingScreen')}
-        />
-        <Badge 
-          label="Logros"
-          value={stats?.achivementsUnlocked ?? 0}
-          icon="trophy-award"
-          tint={theme.colors.success || theme.colors.primary}
-          onPress={() => router.push('dashboard/achievementsScreen')}
-        />
-      </View >
-      <View style={styles.badgesRow}>
-        <Badge
           label="Sitios"
           value={stats?.sitesVisited ?? 0}
           icon="map-marker"
           tint={theme.colors.tertiary || theme.colors.primary}
-          style={{ marginRight: 12 }}
+          style={{ marginRight: 5 }}
           onPress={() => router.push('dashboard/passportScreen')}
         />
         <Badge
@@ -65,6 +48,14 @@ const profileScreen = () => {
           value={stats?.eventsAttended ?? 0}
           icon="calendar-check"
           tint={theme.colors.secondary || theme.colors.primary}
+          style={{ marginRight: 5 }}
+        />
+        <Badge 
+          label="Logros"
+          value={stats?.achivementsUnlocked ?? 0}
+          icon="trophy-award"
+          tint={theme.colors.success || theme.colors.primary}
+          onPress={() => router.push('dashboard/achievementsScreen')}
         />
       </View>
 
