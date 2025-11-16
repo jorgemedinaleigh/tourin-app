@@ -1,18 +1,23 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { Text, StyleSheet, Modal, Image, View, TouchableOpacity, ScrollView, Platform } from 'react-native'
+import { Text, StyleSheet, Modal, Image, View, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
+import Nameplate from '../../components/Nameplate'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const PAGE_SIZE = 6
 
 const PassportScreen = () => {
   const { user } = useUser()
   const { visits, sitesVisited, fetchVisits } = useSiteVisits(user.$id)
-
   const [viewerVisible, setViewerVisible] = useState(false)
   const [viewerUri, setViewerUri] = useState(null)
   const [viewerTitle, setViewerTitle] = useState('')
   const [viewerDate, setViewerDate] = useState('')
+
+  const displayName = user?.name || 'Usuario'
 
   useFocusEffect(
     useCallback(() => {
@@ -22,25 +27,27 @@ const PassportScreen = () => {
 
   const visitsBySite = useMemo(() => {
     const map = {}
-    ;(visits ?? []).forEach((v) => { map[v.siteId] = v })
+    ;(visits ?? []).forEach((v) => {
+      map[v.siteId] = v
+    })
     return map
   }, [visits])
 
-  // Orden: más nuevas -> más antiguas
   const sortedSites = useMemo(() => {
     const arr = (sitesVisited ?? []).map((s) => ({
       ...s,
-      _obtainedTs: visitsBySite[s.$id]?.$createdAt ? new Date(visitsBySite[s.$id].$createdAt).getTime() : 0,
+      _obtainedTs: visitsBySite[s.$id]?.$createdAt
+        ? new Date(visitsBySite[s.$id].$createdAt).getTime()
+        : 0,
     }))
     arr.sort((a, b) => b._obtainedTs - a._obtainedTs)
     return arr
   }, [sitesVisited, visitsBySite])
 
-  // Ángulo determinístico por sello (-3..+3 grados)
   const angleFor = useCallback((id = '') => {
     let h = 0
     for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
-    const deg = (Math.abs(h) % 7) - 3
+    const deg = (Math.abs(h) % 31) - 15
     return `${deg}deg`
   }, [])
 
@@ -55,6 +62,7 @@ const PassportScreen = () => {
     setViewerDate(dateLabel)
     setViewerVisible(true)
   }
+
   const closeImage = () => {
     setViewerVisible(false)
     setViewerUri(null)
@@ -62,33 +70,79 @@ const PassportScreen = () => {
     setViewerDate('')
   }
 
+  const pages = useMemo(() => {
+    const out = []
+    for (let i = 0; i < sortedSites.length; i += PAGE_SIZE) {
+      out.push(sortedSites.slice(i, i + PAGE_SIZE))
+    }
+    return out
+  }, [sortedSites])
+  const formatAppwriteDate = (isoDate) => {
+    const date = new Date(isoDate)
+    const day = date.getDate().toString().padStart(2, '0')
+    const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
+    const month = monthNames[date.getMonth()]
+    const year = date.getFullYear()
+
+    return `${day}-${month}-${year}`
+  }
+
   return (
     <ThemedView style={styles.root}>
-      <ScrollView>
-        <View style={styles.gridWrap}>
-          {sortedSites.map((site) => {
-            const angle = angleFor(site.$id)
-            return (
-              <TouchableOpacity
-                key={String(site.$id)}
-                activeOpacity={0.9}
-                onPress={() => openImage(site)}
-                style={styles.tile}
-              >
-                <View style={styles.stampSlot}>
-                  <View style={[styles.twistGroup, { transform: [{ rotate: angle }] }]}>
-                    <Image
-                      source={{ uri: site.stamp }}
-                      style={styles.stampImage}
-                      resizeMode="contain"
-                      onError={(e) => console.log('Error Image:', e.nativeEvent)}
-                    />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )
-          })}
+      
+      <View style={styles.userHeader}>
+        <Image source={{ uri: user?.photoUrl }} style={styles.userAvatar}/>
+        <View style={styles.userInfoText}>
+          <Text style={styles.userName} numberOfLines={1}>
+            {user?.name || 'Visitante'}
+          </Text>
+          <Text>Fecha de emisión</Text>
+          <Text style={styles.userName} numberOfLines={1}>
+            {formatAppwriteDate(user?.registration) || '01-01-1900'}
+          </Text>
         </View>
+      </View>
+
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={styles.book}
+        contentContainerStyle={styles.bookContent}
+      >
+        {pages.map((pageSites, index) => (
+          <View key={`page-${index}`} style={styles.page}>
+            <View style={styles.pageCard}>
+              <View style={styles.gridWrap}>
+                {pageSites.map((site) => {
+                  const angle = angleFor(site.$id)
+                  return (
+                    <TouchableOpacity
+                      key={String(site.$id)}
+                      activeOpacity={0.9}
+                      onPress={() => openImage(site)}
+                      style={styles.tile}
+                    >
+                      <View style={styles.stampSlot}>
+                        <View style={[styles.twistGroup, { transform: [{ rotate: angle }] }]}>
+                          <Image
+                            source={{ uri: site.stamp }}
+                            style={styles.stampImage}
+                            resizeMode="contain"
+                            onError={(e) => console.log('Error Image:', e.nativeEvent)}
+                          />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              <View style={styles.pageFooter}>
+                <Text style={styles.pageNumber}>Página {index + 1}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
       </ScrollView>
 
       <Modal visible={viewerVisible} transparent animationType="fade" onRequestClose={closeImage}>
@@ -101,7 +155,11 @@ const PassportScreen = () => {
           />
 
           <View style={styles.infoPanel}>
-            {!!viewerTitle && <Text style={styles.infoTitle} numberOfLines={2}>{viewerTitle}</Text>}
+            {!!viewerTitle && (
+              <Text style={styles.infoTitle} numberOfLines={2}>
+                {viewerTitle}
+              </Text>
+            )}
             <Text style={styles.infoDate}>{viewerDate}</Text>
           </View>
         </View>
@@ -125,12 +183,57 @@ export default PassportScreen
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4EDE1',
+  },
+  book: {
+    flex: 1,
+  },
+  bookContent: {
+    flexGrow: 1,
+  },
+  page: {
+    width: SCREEN_WIDTH,
+    paddingVertical: 20,
+    paddingHorizontal: 5,
+  },
+  pageCard: {
+    flex: 1,
+    backgroundColor: '#F9F1DE',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    shadowColor: '#000',
+    shadowOpacity: Platform.OS === 'ios' ? 0.12 : 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  pageFooter: {
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 4,
+    color: '#3C3A32',
+  },
+  pageSubtitle: {
+    fontSize: 12,
+    marginTop: 4,
+    color: '#6F6A5C',
+  },
+  pageNumber: {
+    fontSize: 11,
+    color: '#8B8576',
   },
   gridWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignContent: 'flex-start',
+    flexGrow: 1,
   },
   tile: {
     flexGrow: 1,
@@ -155,13 +258,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stampImage: {
-    width: '90%',
-    height: '85%',
-    opacity: 0.96,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    width: '100%',
+    height: '100%',
     elevation: 2,
   },
   modalBackdrop: {
@@ -173,7 +271,7 @@ const styles = StyleSheet.create({
   fullImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F4EDE1'
+    backgroundColor: '#F4EDE1',
   },
   infoPanel: {
     position: 'absolute',
@@ -206,11 +304,32 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.40)',
   },
   closeText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  userHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  userInfoText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3C3A32',
   },
 })
