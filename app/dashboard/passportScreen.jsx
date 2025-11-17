@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { Text, StyleSheet, Modal, Image, View, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native'
+import { Avatar } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
@@ -77,6 +78,7 @@ const PassportScreen = () => {
     }
     return out
   }, [sortedSites])
+
   const formatAppwriteDate = (isoDate) => {
     const date = new Date(isoDate)
     const day = date.getDate().toString().padStart(2, '0')
@@ -87,14 +89,35 @@ const PassportScreen = () => {
     return `${day}-${month}-${year}`
   }
 
+  const initials = (user?.name || 'Usuario')
+    .split(/\s+/)
+    .map(n => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
   return (
     <ThemedView style={styles.root}>
       
       <View style={styles.userHeader}>
-        <Image source={{ uri: user?.photoUrl }} style={styles.userAvatar}/>
+        {
+          user?.photoUrl ? 
+            (<Image source={{ uri: user?.photoUrl }} style={styles.userAvatar}/>) 
+            : 
+            (
+              <Avatar.Text
+                size={56}
+                label={initials}
+                color={'#FFF'}
+                style={[styles.userAvatar, { backgroundColor: 'rgba(50, 50, 50, 1)' }]}
+              />
+            )
+        }
+        
         <View style={styles.userInfoText}>
           <Text style={styles.userName} numberOfLines={1}>
-            {user?.name || 'Visitante'}
+            {user?.name || 'Usuario'}
           </Text>
           <Text>Fecha de emisión</Text>
           <Text style={styles.userName} numberOfLines={1}>
@@ -316,12 +339,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
   },
   userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 70,
+    height: 70,
+    borderRadius: 10,
   },
   userInfoText: {
     marginLeft: 12,

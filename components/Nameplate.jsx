@@ -2,18 +2,6 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { Avatar, useTheme } from 'react-native-paper'
 
-/**
- * Nameplate
- * Muestra un banner con avatar + nombre + subtítulo (ej: email).
- *
- * Props:
- * - name: string (requerido)
- * - subtitle?: string
- * - avatarUri?: string (si existe, usa Avatar.Image; si no, Avatar.Text con iniciales)
- * - backgroundColor?: string (por defecto theme.colors.primary)
- * - style?: ViewStyle (para sobrescribir estilos externos)
- * - rightSlot?: ReactNode (opcional: botones/acciones a la derecha)
- */
 const Nameplate = ({
   name,
   subtitle,
@@ -43,7 +31,7 @@ const Nameplate = ({
         <Avatar.Image size={56} source={{ uri: avatarUri }} style={styles.avatar} />
       ) : (
         <Avatar.Text
-          size={56}
+          size={70}
           label={initials}
           color={onPrimary}
           style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.18)' }]}
@@ -66,7 +54,6 @@ const Nameplate = ({
         )}
       </View>
 
-      {/* Slot opcional a la derecha (chips, botón de editar, etc.) */}
       {!!rightSlot && <View style={styles.right}>{rightSlot}</View>}
     </View>
   )
@@ -79,18 +66,34 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     marginBottom: 16,
-    // Sombra sutil
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { 
+      width: 0, 
+      height: 4 
+    },
   },
-  avatar: { marginRight: 12 },
-  textBlock: { flex: 1, minWidth: 0 },
-  name: { fontSize: 22, fontWeight: '700', letterSpacing: 0.3 },
-  subtitle: { marginTop: 2 },
-  right: { marginLeft: 8 },
+  avatar: { 
+    marginRight: 12,
+    borderRadius: 10
+  },
+  textBlock: { 
+    flex: 1, 
+    minWidth: 0 
+  },
+  name: { 
+    fontSize: 22, 
+    fontWeight: '700', 
+    letterSpacing: 0.3 
+  },
+  subtitle: { 
+    marginTop: 2 
+  },
+  right: { 
+    marginLeft: 8 
+  },
 })
 
 export default Nameplate
