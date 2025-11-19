@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
+import * as ImageManipulator from 'expo-image-manipulator'
 import {
   Text,
   StyleSheet,
@@ -24,6 +25,7 @@ import ThemedView from '../../components/ThemedView'
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PAGE_SIZE = 6
 const PASSPORT_LINK = 'https://tourin.app/passport-placeholder'
+const MAX_SHARE_WIDTH = 1400
 
 const PassportScreen = () => {
   const { user } = useUser()
@@ -32,6 +34,10 @@ const PassportScreen = () => {
   const [viewerUri, setViewerUri] = useState(null)
   const [viewerTitle, setViewerTitle] = useState('')
   const [viewerDate, setViewerDate] = useState('')
+  const [preparedStampPath, setPreparedStampPath] = useState(null)
+  const [preparedStampFor, setPreparedStampFor] = useState(null)
+  const [sharingAvailable, setSharingAvailable] = useState(null)
+  const stampCacheRef = useRef({})
 
   const displayName = user?.name || 'Usuario'
 
@@ -77,6 +83,8 @@ const PassportScreen = () => {
     setViewerTitle(nameLabel)
     setViewerDate(dateLabel)
     setViewerVisible(true)
+    // Iniciar precarga inmediata para que compartir sea mas rapido al instante de abrir el modal.
+    precacheStampForSharing(site.stamp)
   }
 
   const closeImage = () => {
@@ -84,44 +92,148 @@ const PassportScreen = () => {
     setViewerUri(null)
     setViewerTitle('')
     setViewerDate('')
+    setPreparedStampPath(null)
+    setPreparedStampFor(null)
   }
+
+  const hashUri = useCallback((uri = '') => {
+    let h = 0
+    for (let i = 0; i < uri.length; i++) {
+      h = ((h << 5) - h + uri.charCodeAt(i)) | 0
+    }
+    return Math.abs(h).toString(16)
+  }, [])
+
+  // Prepara el archivo en cache cuando se abre el modal, para que el boton compartir sea inmediato.
+  const precacheStampForSharing = useCallback(
+    async (targetUri = viewerUri) => {
+      if (!targetUri) return null
+      if (preparedStampFor === targetUri && preparedStampPath) return preparedStampPath
+
+      const fileNameFromUrl = targetUri.split('/').pop()?.split('?')[0] ?? 'stamp.jpg'
+      const ext = fileNameFromUrl.includes('.') ? fileNameFromUrl.split('.').pop() : 'jpg'
+      const hash = hashUri(targetUri)
+      const fileUri = FileSystem.cacheDirectory + `stamp-share-${hash}.${ext}`
+
+      // Reutiliza si ya existe en disco o en cache en memoria.
+      try {
+        if (stampCacheRef.current[targetUri]) {
+          const cachedInfo = await FileSystem.getInfoAsync(stampCacheRef.current[targetUri])
+          if (cachedInfo.exists) {
+            setPreparedStampPath(stampCacheRef.current[targetUri])
+            setPreparedStampFor(targetUri)
+            return stampCacheRef.current[targetUri]
+          }
+        }
+
+        const existingInfo = await FileSystem.getInfoAsync(fileUri)
+        if (existingInfo.exists) {
+          stampCacheRef.current[targetUri] = fileUri
+          setPreparedStampPath(fileUri)
+          setPreparedStampFor(targetUri)
+          return fileUri
+        }
+      } catch (infoError) {
+        console.log('Error verificando cache de estampa:', infoError)
+      }
+
+      try {
+        const { uri: downloadedUri } = await FileSystem.downloadAsync(targetUri, fileUri)
+
+        let finalUri = downloadedUri
+        // Comprime/redimensiona para acelerar compartir (archivos grandes tardan mas en abrir el menu nativo).
+        const isPng = ext.toLowerCase() === 'png'
+        const format = isPng ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG
+        try {
+          const { uri: compressedUri } = await ImageManipulator.manipulateAsync(
+            downloadedUri,
+            [{ resize: { width: MAX_SHARE_WIDTH } }],
+            { compress: 0.82, format }
+          )
+          finalUri = compressedUri
+          if (compressedUri !== downloadedUri) {
+            await FileSystem.deleteAsync(downloadedUri, { idempotent: true })
+          }
+        } catch (compressError) {
+          console.log('Error al comprimir estampa para compartir, usando original:', compressError)
+        }
+
+        stampCacheRef.current[targetUri] = finalUri
+        setPreparedStampPath(finalUri)
+        setPreparedStampFor(targetUri)
+        return finalUri
+      } catch (error) {
+        console.log('Error precargando estampa para compartir:', error)
+        setPreparedStampPath(null)
+        setPreparedStampFor(null)
+        return null
+      }
+    },
+    [preparedStampFor, preparedStampPath, viewerUri, hashUri]
+  )
+
+  useEffect(() => {
+    let active = true
+    Sharing.isAvailableAsync()
+      .then((available) => {
+        if (active) setSharingAvailable(available)
+      })
+      .catch(() => {
+        if (active) setSharingAvailable(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!viewerUri) {
+      setPreparedStampPath(null)
+      setPreparedStampFor(null)
+      return
+    }
+    precacheStampForSharing(viewerUri)
+  }, [viewerUri, precacheStampForSharing])
 
   const shareCurrentStamp = useCallback(async () => {
     if (!viewerUri) return
 
     try {
-      // Obtener nombre/extension de la imagen remota
+      const available = sharingAvailable ?? (await Sharing.isAvailableAsync())
+      if (!available) {
+        Alert.alert('Compartir no disponible', 'No es posible compartir imagenes en este dispositivo.')
+        return
+      }
+
+      const uriToShare =
+        preparedStampFor === viewerUri && preparedStampPath
+          ? preparedStampPath
+          : await precacheStampForSharing(viewerUri)
+
+      if (!uriToShare) {
+        Alert.alert('Error', 'No se pudo preparar la estampa para compartir.')
+        return
+      }
+
       const fileNameFromUrl = viewerUri.split('/').pop()?.split('?')[0] ?? 'stamp.jpg'
       const ext = fileNameFromUrl.includes('.') ? fileNameFromUrl.split('.').pop() : 'jpg'
 
-      const fileUri = FileSystem.cacheDirectory + `stamp-${Date.now()}.${ext}`
-
-      // Descargar la imagen a cache
-      const downloadResumable = FileSystem.createDownloadResumable(viewerUri, fileUri)
-      const { uri } = await downloadResumable.downloadAsync()
-
-      try {
-        const available = await Sharing.isAvailableAsync()
-        if (!available) {
-          Alert.alert(
-            'Compartir no disponible',
-            'No es posible compartir imagenes en este dispositivo.'
-          )
-          return
-        }
-
-        await Sharing.shareAsync(uri, {
-          mimeType: ext === 'png' ? 'image/png' : 'image/jpeg',
-          dialogTitle: viewerTitle || 'Estampa TourIn',
-        })
-      } catch (errorShare) {
-        console.log('Error al compartir por sharing:', errorShare)
-      }
+      await Sharing.shareAsync(uriToShare, {
+        mimeType: ext === 'png' ? 'image/png' : 'image/jpeg',
+        dialogTitle: viewerTitle || 'Estampa TourIn',
+      })
     } catch (error) {
       console.log('Error al compartir estampa:', error)
       Alert.alert('Error', 'No se pudo compartir la estampa.')
     }
-  }, [viewerUri, viewerTitle])
+  }, [
+    viewerUri,
+    viewerTitle,
+    preparedStampFor,
+    preparedStampPath,
+    precacheStampForSharing,
+    sharingAvailable,
+  ])
 
   const sharePassportLink = useCallback(async () => {
     try {
