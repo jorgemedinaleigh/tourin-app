@@ -7,7 +7,7 @@ import UserOnly from '../../components/auth/UserOnly'
 const DashboardLayout = () => {
 
   const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme] && Colors.light
+  const theme = Colors[colorScheme] || Colors.light
 
   return (
     <UserOnly>

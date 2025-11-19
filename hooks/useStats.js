@@ -5,10 +5,24 @@ import { tables } from '../lib/appwrite'
 const DATABASE_ID = '68b399490018d7cb309b'
 const TABLE_ID = 'user_stats'
 
+function normalizeRow(row) {
+  if (!row) return null
+  return {
+    ...row,
+    score: typeof row.score === 'number' ? row.score : 0,
+    sitesVisited: typeof row.sitesVisited === 'number' ? row.sitesVisited : 0,
+    eventsAttended: typeof row.eventsAttended === 'number' ? row.eventsAttended : 0,
+  }
+}
+
 export function useStats(userId) {
   const [stats, setStats] = useState(null)
 
   async function getStats() {
+    if (!userId) {
+      setStats(null)
+      return null
+    }
     try {
       const response = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -20,7 +34,9 @@ export function useStats(userId) {
       })
       if(response.total > 0)
       {
-        setStats(response.rows?.[0])
+        const row = normalizeRow(response.rows?.[0])
+        setStats(row)
+        return row
       }
       else {
         const created = await tables.createRow({
@@ -28,22 +44,31 @@ export function useStats(userId) {
           tableId: TABLE_ID,
           rowId: ID.unique(),
           data: {
-            userId: userId
+            userId: userId,
+            score: 0,
+            sitesVisited: 0,
+            eventsAttended: 0,
           }
         })
-        setStats(created)
+        const normalized = normalizeRow(created)
+        setStats(normalized)
+        return normalized
       }
     } catch (error) {
       console.error('Error fetching stats:', error)
       setStats(null)
+      return null
     }
   }
 
   async function addPoints(points) {
+    if (!userId) return null
     try {
-      let row = stats ?? (await refresh())
+      const row = stats ?? (await getStats())
+      if (!row) return null
 
-      const newScore = row.score + points
+      const increment = Number(points) || 0
+      const newScore = row.score + increment
 
       const updated = await tables.updateRow({
         databaseId: DATABASE_ID,
@@ -53,15 +78,19 @@ export function useStats(userId) {
           score: newScore
         }
       })
-      setStats(updated)
+      const normalized = normalizeRow(updated)
+      setStats(normalized)
+      return normalized
     } catch(error) {
       return null
     }
   }
 
   async function siteVisited() {
+    if (!userId) return null
     try {
-      let row = stats ?? (await refresh())
+      const row = stats ?? (await getStats())
+      if (!row) return null
 
       const numSitesVisited = row.sitesVisited + 1
 
@@ -73,15 +102,19 @@ export function useStats(userId) {
           sitesVisited: numSitesVisited
         }
       })
-      setStats(updated)
+      const normalized = normalizeRow(updated)
+      setStats(normalized)
+      return normalized
     } catch(error) {
       return null
     }
   }
 
   async function eventAttended() {
+    if (!userId) return null
     try {
-      let row = stats ?? (await refresh())
+      const row = stats ?? (await getStats())
+      if (!row) return null
 
       const numEventsAttended = row.eventsAttended + 1
 
@@ -93,14 +126,20 @@ export function useStats(userId) {
           eventsAttended: numEventsAttended
         }
       })
-      setStats(updated)
+      const normalized = normalizeRow(updated)
+      setStats(normalized)
+      return normalized
     } catch(error) {
       return null
     }
   }
 
   useEffect(() => {
-    getStats()
+    if (userId) {
+      getStats()
+    } else {
+      setStats(null)
+    }
   }, [userId])
 
   return { stats, getStats, addPoints, siteVisited, eventAttended }

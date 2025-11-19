@@ -7,12 +7,13 @@ const VISITS_TABLE_ID  = 'site_visits'
 const SITES_TABLE_ID = 'heritage_sites'
 
 export function useSiteVisits(userId, siteId) {
-  const [visits, setVisits] = useState(null)
-  const [sitesVisited, setSitesVisited] = useState(null)
+  const [visits, setVisits] = useState([])
+  const [sitesVisited, setSitesVisited] = useState([])
 
   async function stampVisit(userId, siteId) {
+    if (!userId || !siteId) return null
     try {
-      const response = await tables.createRow({
+      await tables.createRow({
         databaseId: DATABASE_ID,
         tableId: VISITS_TABLE_ID,
         rowId: ID.unique(),
@@ -21,12 +22,15 @@ export function useSiteVisits(userId, siteId) {
           siteId: siteId 
         }
       })
+      return true
     }catch (error) {
       console.error('Error fetching info:', error)
+      return null
     }
   }
   
   async function getVisit(userId, siteId) {
+    if (!userId || !siteId) return false
     try {
       const response = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -37,18 +41,19 @@ export function useSiteVisits(userId, siteId) {
           Query.limit(1),
         ],
       })
-      if(response.total > 0) {
-        return true
-      }
-      else {
-        return false
-      }
+      return response.total > 0
     } catch (error) {
       console.error('Error fetching info:', error)
+      return false
     }
   }
 
   async function fetchVisits(userId) {
+    if (!userId) {
+      setVisits([])
+      setSitesVisited([])
+      return []
+    }
     try {
       const response = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -57,9 +62,14 @@ export function useSiteVisits(userId, siteId) {
           Query.equal('userId', [userId])
         ]
       })
-      setVisits(response.rows)
-      const stampedSites = response.rows
-      const siteIds = stampedSites.map(v => v.siteId)
+      const stampedSites = response.rows ?? []
+      setVisits(stampedSites)
+      const siteIds = stampedSites.map(v => v.siteId).filter(Boolean)
+
+      if (!siteIds.length) {
+        setSitesVisited([])
+        return stampedSites
+      }
 
       const sitesResponse = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -68,9 +78,13 @@ export function useSiteVisits(userId, siteId) {
           Query.equal('$id', siteIds)
         ]
       })
-      setSitesVisited(sitesResponse.rows)
+      setSitesVisited(sitesResponse.rows ?? [])
+      return stampedSites
     } catch (error) {
       console.error('Error fetching info:', error)
+      setVisits([])
+      setSitesVisited([])
+      return []
     }
   }
 
