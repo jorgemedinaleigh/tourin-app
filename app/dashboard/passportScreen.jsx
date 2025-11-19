@@ -1,14 +1,29 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { Text, StyleSheet, Modal, Image, View, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native'
+import * as FileSystem from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
+import {
+  Text,
+  StyleSheet,
+  Modal,
+  Image,
+  View,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  Dimensions,
+  Alert,
+  Share,
+} from 'react-native'
 import { Avatar } from 'react-native-paper'
+import { Ionicons } from '@expo/vector-icons'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
-import Nameplate from '../../components/Nameplate'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PAGE_SIZE = 6
+const PASSPORT_LINK = 'https://tourin.app/passport-placeholder'
 
 const PassportScreen = () => {
   const { user } = useUser()
@@ -56,7 +71,7 @@ const PassportScreen = () => {
     if (!site?.stamp) return
     const dateLabel = visitsBySite[site.$id]?.$createdAt
       ? new Date(visitsBySite[site.$id].$createdAt).toLocaleDateString()
-      : '—'
+      : 'Sin fecha'
     const nameLabel = site?.name || site?.title || site?.label || ''
     setViewerUri(site.stamp)
     setViewerTitle(nameLabel)
@@ -70,6 +85,57 @@ const PassportScreen = () => {
     setViewerTitle('')
     setViewerDate('')
   }
+
+  const shareCurrentStamp = useCallback(async () => {
+    if (!viewerUri) return
+
+    try {
+      // Obtener nombre/extension de la imagen remota
+      const fileNameFromUrl = viewerUri.split('/').pop()?.split('?')[0] ?? 'stamp.jpg'
+      const ext = fileNameFromUrl.includes('.') ? fileNameFromUrl.split('.').pop() : 'jpg'
+
+      const fileUri = FileSystem.cacheDirectory + `stamp-${Date.now()}.${ext}`
+
+      // Descargar la imagen a cache
+      const downloadResumable = FileSystem.createDownloadResumable(viewerUri, fileUri)
+      const { uri } = await downloadResumable.downloadAsync()
+
+      try {
+        const available = await Sharing.isAvailableAsync()
+        if (!available) {
+          Alert.alert(
+            'Compartir no disponible',
+            'No es posible compartir imagenes en este dispositivo.'
+          )
+          return
+        }
+
+        await Sharing.shareAsync(uri, {
+          mimeType: ext === 'png' ? 'image/png' : 'image/jpeg',
+          dialogTitle: viewerTitle || 'Estampa TourIn',
+        })
+      } catch (errorShare) {
+        console.log('Error al compartir por sharing:', errorShare)
+      }
+    } catch (error) {
+      console.log('Error al compartir estampa:', error)
+      Alert.alert('Error', 'No se pudo compartir la estampa.')
+    }
+  }, [viewerUri, viewerTitle])
+
+  const sharePassportLink = useCallback(async () => {
+    try {
+      await Share.share({
+        title: 'Pasaporte TourIn',
+        message: `Mira mi pasaporte TourIn:\n${PASSPORT_LINK}`,
+        url: PASSPORT_LINK,
+      })
+    } catch (error) {
+      console.log('Error al compartir pasaporte:', error)
+      Alert.alert('Error', 'No se pudo compartir el pasaporte.')
+    }
+  }, [])
+
 
   const pages = useMemo(() => {
     const out = []
@@ -91,7 +157,7 @@ const PassportScreen = () => {
 
   const initials = (user?.name || 'Usuario')
     .split(/\s+/)
-    .map(n => n[0])
+    .map((n) => n[0])
     .filter(Boolean)
     .slice(0, 2)
     .join('')
@@ -99,31 +165,37 @@ const PassportScreen = () => {
 
   return (
     <ThemedView style={styles.root}>
-      
       <View style={styles.userHeader}>
-        {
-          user?.photoUrl ? 
-            (<Image source={{ uri: user?.photoUrl }} style={styles.userAvatar}/>) 
-            : 
-            (
-              <Avatar.Text
-                size={56}
-                label={initials}
-                color={'#FFF'}
-                style={[styles.userAvatar, { backgroundColor: 'rgba(50, 50, 50, 1)' }]}
-              />
-            )
-        }
-        
-        <View style={styles.userInfoText}>
-          <Text style={styles.userName} numberOfLines={1}>
-            {user?.name || 'Usuario'}
-          </Text>
-          <Text>Fecha de emisión</Text>
-          <Text style={styles.userName} numberOfLines={1}>
-            {formatAppwriteDate(user?.registration) || '01-01-1900'}
-          </Text>
+        <View style={styles.userProfile}>
+          {user?.photoUrl ? (
+            <Image source={{ uri: user?.photoUrl }} style={styles.userAvatar} />
+          ) : (
+            <Avatar.Text
+              size={56}
+              label={initials}
+              color={'#FFF'}
+              style={[styles.userAvatar, { backgroundColor: 'rgba(50, 50, 50, 1)' }]}
+            />
+          )}
+
+          <View style={styles.userInfoText}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {user?.name || 'Usuario'}
+            </Text>
+            <Text>Fecha de emision</Text>
+            <Text style={styles.userName} numberOfLines={1}>
+              {formatAppwriteDate(user?.registration) || '01-01-1900'}
+            </Text>
+          </View>
         </View>
+        <TouchableOpacity
+          style={styles.shareLinkButton}
+          onPress={sharePassportLink}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="share-social" size={18} color="#3C3A32" style={styles.shareButtonIcon} />
+          <Text style={styles.shareLinkText}>Compartir</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -140,28 +212,31 @@ const PassportScreen = () => {
                 {pageSites.map((site) => {
                   const angle = angleFor(site.$id)
                   return (
-                    <TouchableOpacity
-                      key={String(site.$id)}
-                      activeOpacity={0.9}
-                      onPress={() => openImage(site)}
-                      style={styles.tile}
-                    >
-                      <View style={styles.stampSlot}>
-                        <View style={[styles.twistGroup, { transform: [{ rotate: angle }] }]}>
-                          <Image
-                            source={{ uri: site.stamp }}
-                            style={styles.stampImage}
-                            resizeMode="contain"
-                            onError={(e) => console.log('Error Image:', e.nativeEvent)}
-                          />
+                    <View key={String(site.$id)} style={styles.tile}>
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => openImage(site)}
+                        style={styles.stampTouchArea}
+                      >
+                        <View style={styles.stampSlot}>
+                          <View style={[styles.twistGroup, { transform: [{ rotate: angle }] }]}>
+                            <Image
+                              source={{ uri: site.stamp }}
+                              style={styles.stampImage}
+                              resizeMode="contain"
+                              onError={(e) => console.log('Error Image:', e.nativeEvent)}
+                            />
+                          </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                    </View>
                   )
                 })}
               </View>
+
+              {/* Footer con numero de pagina */}
               <View style={styles.pageFooter}>
-                <Text style={styles.pageNumber}>Página {index + 1}</Text>
+                <Text style={styles.pageNumber}>Pagina {index + 1}</Text>
               </View>
             </View>
           </View>
@@ -178,12 +253,29 @@ const PassportScreen = () => {
           />
 
           <View style={styles.infoPanel}>
-            {!!viewerTitle && (
-              <Text style={styles.infoTitle} numberOfLines={2}>
-                {viewerTitle}
-              </Text>
-            )}
-            <Text style={styles.infoDate}>{viewerDate}</Text>
+            <View style={styles.infoTextBlock}>
+              {!!viewerTitle && (
+                <Text style={styles.infoTitle} numberOfLines={2}>
+                  {viewerTitle}
+                </Text>
+              )}
+              <Text style={styles.infoDate}>{viewerDate}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.modalShareButton}
+              onPress={shareCurrentStamp}
+              activeOpacity={0.8}
+            >
+              <View style={styles.shareButtonContent}>
+                <Ionicons
+                  name="share-social"
+                  size={16}
+                  color="#fff"
+                  style={styles.shareButtonIcon}
+                />
+                <Text style={styles.modalShareText}>Compartir</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -194,7 +286,7 @@ const PassportScreen = () => {
           onPress={closeImage}
           activeOpacity={0.1}
         >
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={styles.closeText}>Cerrar</Text>
         </TouchableOpacity>
       </Modal>
     </ThemedView>
@@ -234,7 +326,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   pageFooter: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 8,
   },
   pageTitle: {
@@ -267,6 +361,11 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  stampTouchArea: {
+    width: '100%',
+    height: '100%',
   },
   stampSlot: {
     width: '100%',
@@ -284,6 +383,37 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     elevation: 2,
+  },
+  // Boton compartir estampa (overlay)
+  shareStampBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  shareStampIcon: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  // Boton compartir pagina
+  sharePageButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.16)',
+    backgroundColor: 'rgba(0,0,0,0.02)',
+  },
+  shareButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareButtonIcon: {
+    marginRight: 6,
   },
   modalBackdrop: {
     flex: 1,
@@ -307,6 +437,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoTextBlock: {
+    flex: 1,
+    marginRight: 12,
   },
   infoTitle: {
     color: '#fff',
@@ -340,6 +476,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
+  userProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   userAvatar: {
     width: 70,
     height: 70,
@@ -353,5 +494,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#3C3A32',
+  },
+  shareLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    marginRight: 12,
+  },
+  shareLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3C3A32',
+  },
+  modalShareButton: {
+    marginTop: 0,
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  modalShareText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 })
