@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
-import * as ImageManipulator from 'expo-image-manipulator'
+import ViewShot, { captureRef } from 'react-native-view-shot'
 import {
   Text,
   StyleSheet,
@@ -25,7 +25,8 @@ import ThemedView from '../../components/ThemedView'
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PAGE_SIZE = 6
 const PASSPORT_LINK = 'https://tourin.app/passport-placeholder'
-const MAX_SHARE_WIDTH = 1400
+const PASSPORT_BG = '#F9F1DE'
+const SHARE_CANVAS_SIZE = 1400
 
 const PassportScreen = () => {
   const { user } = useUser()
@@ -38,6 +39,7 @@ const PassportScreen = () => {
   const [preparedStampFor, setPreparedStampFor] = useState(null)
   const [sharingAvailable, setSharingAvailable] = useState(null)
   const stampCacheRef = useRef({})
+  const viewShotRef = useRef(null)
 
   const displayName = user?.name || 'Usuario'
 
@@ -140,28 +142,10 @@ const PassportScreen = () => {
       try {
         const { uri: downloadedUri } = await FileSystem.downloadAsync(targetUri, fileUri)
 
-        let finalUri = downloadedUri
-        // Comprime/redimensiona para acelerar compartir (archivos grandes tardan mas en abrir el menu nativo).
-        const isPng = ext.toLowerCase() === 'png'
-        const format = isPng ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG
-        try {
-          const { uri: compressedUri } = await ImageManipulator.manipulateAsync(
-            downloadedUri,
-            [{ resize: { width: MAX_SHARE_WIDTH } }],
-            { compress: 0.82, format }
-          )
-          finalUri = compressedUri
-          if (compressedUri !== downloadedUri) {
-            await FileSystem.deleteAsync(downloadedUri, { idempotent: true })
-          }
-        } catch (compressError) {
-          console.log('Error al comprimir estampa para compartir, usando original:', compressError)
-        }
-
-        stampCacheRef.current[targetUri] = finalUri
-        setPreparedStampPath(finalUri)
+        stampCacheRef.current[targetUri] = downloadedUri
+        setPreparedStampPath(downloadedUri)
         setPreparedStampFor(targetUri)
-        return finalUri
+        return downloadedUri
       } catch (error) {
         console.log('Error precargando estampa para compartir:', error)
         setPreparedStampPath(null)
@@ -205,21 +189,39 @@ const PassportScreen = () => {
         return
       }
 
-      const uriToShare =
-        preparedStampFor === viewerUri && preparedStampPath
-          ? preparedStampPath
-          : await precacheStampForSharing(viewerUri)
+      let uriToShare = null
+
+      // Genera una version con fondo igual al pasaporte (#F9F1DE) usando captura del view oculto.
+      try {
+        await Image.prefetch(viewerUri)
+        if (viewShotRef.current) {
+          uriToShare = await captureRef(viewShotRef.current, {
+            format: 'jpg',
+            quality: 0.96,
+            result: 'tmpfile',
+          })
+        }
+      } catch (captureError) {
+        console.log('Error al generar imagen con fondo:', captureError)
+      }
+
+      if (!uriToShare) {
+        uriToShare =
+          preparedStampFor === viewerUri && preparedStampPath
+            ? preparedStampPath
+            : await precacheStampForSharing(viewerUri)
+      }
 
       if (!uriToShare) {
         Alert.alert('Error', 'No se pudo preparar la estampa para compartir.')
         return
       }
 
-      const fileNameFromUrl = viewerUri.split('/').pop()?.split('?')[0] ?? 'stamp.jpg'
-      const ext = fileNameFromUrl.includes('.') ? fileNameFromUrl.split('.').pop() : 'jpg'
+      const uriLower = uriToShare.toLowerCase()
+      const mimeType = uriLower.endsWith('.png') ? 'image/png' : 'image/jpeg'
 
       await Sharing.shareAsync(uriToShare, {
-        mimeType: ext === 'png' ? 'image/png' : 'image/jpeg',
+        mimeType,
         dialogTitle: viewerTitle || 'Estampa TourIn',
       })
     } catch (error) {
@@ -357,6 +359,24 @@ const PassportScreen = () => {
 
       <Modal visible={viewerVisible} transparent animationType="fade" onRequestClose={closeImage}>
         <View style={styles.modalBackdrop}>
+          {/* View oculto para capturar la estampa con fondo de pasaporte */}
+          <ViewShot
+            ref={viewShotRef}
+            style={styles.shareShotWrapper}
+            options={{ format: 'jpg', quality: 0.96, result: 'tmpfile' }}
+            collapsable={false}
+          >
+            <View style={styles.shareShotCanvas}>
+              {!!viewerUri && (
+                <Image
+                  source={{ uri: viewerUri }}
+                  style={styles.shareShotImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </ViewShot>
+
           <Image
             source={{ uri: viewerUri || '' }}
             style={styles.fullImage}
@@ -424,7 +444,7 @@ const styles = StyleSheet.create({
   },
   pageCard: {
     flex: 1,
-    backgroundColor: '#F9F1DE',
+    backgroundColor: PASSPORT_BG,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
@@ -638,5 +658,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  shareShotWrapper: {
+    position: 'absolute',
+    opacity: 0,
+    pointerEvents: 'none',
+  },
+  shareShotCanvas: {
+    width: SHARE_CANVAS_SIZE,
+    height: SHARE_CANVAS_SIZE,
+    backgroundColor: PASSPORT_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareShotImage: {
+    width: '90%',
+    height: '90%',
   },
 })
