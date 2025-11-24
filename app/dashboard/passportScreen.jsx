@@ -294,7 +294,7 @@ const PassportScreen = () => {
 
           <View style={styles.userInfoText}>
             <Text style={styles.userName} numberOfLines={1}>
-              {user?.name || 'Usuario'}
+              {user?.name || 'Usuario'} 🇨🇱
             </Text>
             <Text>Fecha de emision</Text>
             <Text style={styles.userName} numberOfLines={1}>
