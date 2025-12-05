@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router"
 import { useUser } from "../../hooks/useUser"
 import { useEffect } from "react"
-import { Text } from "react-native"
+import LoadingScreen from "../LoadingScreen"
 
 const UserOnly = ({ children }) => {
   const { user, authChecked } = useUser()
@@ -14,9 +14,7 @@ const UserOnly = ({ children }) => {
   }, [user, authChecked])
 
   if (!authChecked || !user) {
-    return (
-      <Text>Cargando...</Text>
-    )
+    return <LoadingScreen />
   }
   return children
 }
