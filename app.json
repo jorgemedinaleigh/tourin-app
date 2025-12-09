@@ -5,11 +5,11 @@
     "slug": "tourin-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/dolmen-icon.png",
+    "icon": "./assets/tourin_icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/dolmen-icon.png",
+      "image": "./assets/tourin_icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -25,14 +25,14 @@
         "ACCESS_FINE_LOCATION"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/dolmen-icon.png",
+        "foregroundImage": "./assets/tourin_icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.dolmen.tourinapp"
     },
     "web": {
-      "favicon": "./assets/dolmen-icon.png"
+      "favicon": "./assets/tourin_icon.png"
     },
     "plugins": [
       "expo-router",

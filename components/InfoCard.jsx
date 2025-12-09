@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, useWindowDimensions, Image } from 'react-native'
+import { Text, View, StyleSheet, useWindowDimensions, Image, ScrollView } from 'react-native'
 import { Button, Card, Chip, IconButton, Portal, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import { useUser } from '../hooks/useUser'
@@ -20,6 +20,7 @@ function InfoCard({ info, onClose }) {
   const [stamping, setStamping] = useState(false)
   const [showStampOverlay, setShowStampOverlay] = useState(false)
   const [overlayDismissible, setOverlayDismissible] = useState(false)
+  const cardMaxHeight = height * 0.9
 
   const stampUri = useMemo(() => {
     const pickUri = (candidate) => {
@@ -127,63 +128,71 @@ function InfoCard({ info, onClose }) {
 
   return (
     <>
-      <Card mode="elevated" style={[styles.card, { maxHeight: height * 0.9 }]}>
-        <Card.Title
-          titleStyle={styles.title}
-          titleNumberOfLines={3}
-          title={info.name || "Punto"}  
-          right={(props) => <IconButton {...props} icon="close" onPress={onClose} />}
-        />
-        <Card.Content >
-          <Card.Cover source={{ uri: 'https://picsum.photos/700' }} style={{ height: 180, marginBottom: 8, }} />
-          <View style={styles.chipsRow}>
-            {
-              info.isFree ? <Chip
-                              icon={() => (
-                                <Ionicons name="logo-usd" size={25} color="#9a9a9aff" />
-                              )}>Gratis</Chip>
-                          : <Chip
-                              icon={() => (
-                                <Ionicons name="logo-usd" size={25} color="#2cb587ff" />
-                              )}>Pagado</Chip>
-            }
-            <Chip 
-              icon={() => (
-                <Ionicons name="location-outline" size={25} color="#ee2828ff" />
-              )}>{info.subType}</Chip>
-            {
-              info.route ? <Chip
-                              icon={() => (
-                                <Ionicons name="git-branch-outline" size={25} color="#6c4a00ff" />
-                              )}>Ruta: {info.route}</Chip> : null
-            }
+      <Card mode="elevated" style={[styles.card, { maxHeight: cardMaxHeight }]}>
+        <ScrollView
+          style={[styles.scrollArea, { maxHeight: cardMaxHeight }]}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator
+        >
+          <Card.Title
+            titleStyle={styles.title}
+            titleNumberOfLines={3}
+            title={info.name || "Punto"}  
+            right={(props) => <IconButton {...props} icon="close" onPress={onClose} />}
+          />
+          <View style={styles.coverWrapper}>
+            <Card.Cover source={{ uri: 'https://picsum.photos/700' }} style={styles.cover} />
           </View>
-          {!!info.description && <Text style={{ marginTop: 8, marginBottom: 8 }} >{info.description}</Text>}
-        </Card.Content>
-          
-        <Card.Actions >
-          {
-            isVisited ? <Button 
-                          icon="check-decagram" 
-                          mode="contained" 
-                          style={{ marginTop: 8 }} 
-                          buttonColor='#17972fff'
-                        >
-                          Sitio Visitado
-                        </Button>
-                      : <Button 
-                          icon="stamper" 
-                          mode="contained" 
-                          style={{ marginTop: 8 }} 
-                          theme={theme} 
-                          onPress={handleStamp} 
-                          loading={stamping}
-                          disabled={stamping}
-                        >
-                          Estampar
-                        </Button>
-          }
-        </Card.Actions>
+          <Card.Content>
+            <View style={styles.chipsRow}>
+              {
+                info.isFree ? <Chip
+                                icon={() => (
+                                  <Ionicons name="logo-usd" size={25} color="#9a9a9aff" />
+                                )}>Gratis</Chip>
+                            : <Chip
+                                icon={() => (
+                                  <Ionicons name="logo-usd" size={25} color="#2cb587ff" />
+                                )}>Pagado</Chip>
+              }
+              <Chip 
+                icon={() => (
+                  <Ionicons name="location-outline" size={25} color="#ee2828ff" />
+                )}>{info.subType}</Chip>
+              {
+                info.route ? <Chip
+                                icon={() => (
+                                  <Ionicons name="git-branch-outline" size={25} color="#6c4a00ff" />
+                                )}>Ruta: {info.route}</Chip> : null
+              }
+            </View>
+            {!!info.description && <Text style={styles.description}>{info.description}</Text>}
+          </Card.Content>
+            
+          <Card.Actions >
+            {
+              isVisited ? <Button 
+                            icon="check-decagram" 
+                            mode="contained" 
+                            style={{ marginTop: 8 }} 
+                            buttonColor='#17972fff'
+                          >
+                            Sitio Visitado
+                          </Button>
+                        : <Button 
+                            icon="stamper" 
+                            mode="contained" 
+                            style={{ marginTop: 8 }} 
+                            theme={theme} 
+                            onPress={handleStamp} 
+                            loading={stamping}
+                            disabled={stamping}
+                          >
+                            Estampar
+                          </Button>
+            }
+          </Card.Actions>
+        </ScrollView>
       </Card>
 
       <Portal>
@@ -214,11 +223,29 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     overflow: 'hidden',
   },
+  scrollArea: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingBottom: 12,
+  },
+  coverWrapper: {
+    paddingHorizontal: 16,
+  },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     marginTop: 8,
     gap: 8,
+  },
+  cover: {
+    height: 180,
+    marginBottom: 8,
+  },
+  description: {
+    marginTop: 8,
+    marginBottom: 8,
   },
 })
