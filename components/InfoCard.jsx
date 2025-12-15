@@ -8,6 +8,37 @@ import { useStats } from '../hooks/useStats'
 import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
 
+const pickUri = (candidate) => {
+  if (!candidate) return null
+  if (typeof candidate === 'string' && candidate.trim().length) return candidate
+  if (Array.isArray(candidate)) {
+    for (const item of candidate) {
+      const uri = pickUri(item)
+      if (uri) return uri
+    }
+  }
+  if (typeof candidate === 'object') {
+    const uriLike =
+      candidate.url ||
+      candidate.href ||
+      candidate.uri ||
+      candidate.link ||
+      candidate.$url ||
+      candidate.$href ||
+      candidate.$uri
+    if (uriLike && typeof uriLike === 'string' && uriLike.trim().length) return uriLike
+  }
+  return null
+}
+
+const findUri = (candidates) => {
+  for (const candidate of candidates) {
+    const uri = pickUri(candidate)
+    if (uri) return uri
+  }
+  return null
+}
+
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
   const { height } = useWindowDimensions() 
@@ -23,29 +54,6 @@ function InfoCard({ info, onClose }) {
   const cardMaxHeight = height * 0.9
 
   const stampUri = useMemo(() => {
-    const pickUri = (candidate) => {
-      if (!candidate) return null
-      if (typeof candidate === 'string' && candidate.trim().length) return candidate
-      if (Array.isArray(candidate)) {
-        for (const item of candidate) {
-          const uri = pickUri(item)
-          if (uri) return uri
-        }
-      }
-      if (typeof candidate === 'object') {
-        const uriLike =
-          candidate.url ||
-          candidate.href ||
-          candidate.uri ||
-          candidate.link ||
-          candidate.$url ||
-          candidate.$href ||
-          candidate.$uri
-        if (uriLike && typeof uriLike === 'string' && uriLike.trim().length) return uriLike
-      }
-      return null
-    }
-
     if (!info) return null
     const candidates = [
       info?.stamp,
@@ -65,12 +73,25 @@ function InfoCard({ info, onClose }) {
       info?.STAMPS,
     ]
 
-    for (const candidate of candidates) {
-      const uri = pickUri(candidate)
-      if (uri) return uri
-    }
+    const uri = findUri(candidates)
+    if (uri) return uri
 
     return null
+  }, [info])
+
+  const coverUri = useMemo(() => {
+    if (!info) return null
+    return findUri([
+      info?.coverPhoto,
+      info?.properties?.coverPhoto,
+      info?.cover_photo,
+      info?.coverUrl,
+      info?.cover,
+      info?.image,
+      info?.imageUrl,
+      info?.photoUrl,
+      info?.media,
+    ])
   }, [info])
 
   useEffect(() => {
@@ -141,7 +162,7 @@ function InfoCard({ info, onClose }) {
             right={(props) => <IconButton {...props} icon="close" onPress={onClose} />}
           />
           <View style={styles.coverWrapper}>
-            <Card.Cover source={{ uri: 'https://picsum.photos/700' }} style={styles.cover} />
+            <Card.Cover source={{ uri: coverUri || 'https://picsum.photos/700' }} style={styles.cover} />
           </View>
           <Card.Content>
             <View style={styles.chipsRow}>

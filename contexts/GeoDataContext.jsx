@@ -63,6 +63,7 @@ export function GeoDataProvider({ children }) {
             price: row.price,
             score: row.score,
             stamp: row.stamp,
+            coverPhoto: row.coverPhoto,
             type: row.type,
             subType: row.subType,
             location: row.location,
