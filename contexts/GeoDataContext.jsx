@@ -72,6 +72,7 @@ export function GeoDataProvider({ children }) {
             region: row.region,
             stampRadius: row.stampRadius,
             route: row.route,
+            website: row.website,
           }
         }
       }).filter(Boolean)

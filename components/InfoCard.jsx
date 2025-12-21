@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, useWindowDimensions, Image, ScrollView } from 'react-native'
+import { Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, Linking } from 'react-native'
 import { Button, Card, Chip, IconButton, Portal, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import { useUser } from '../hooks/useUser'
@@ -94,6 +94,16 @@ function InfoCard({ info, onClose }) {
     ])
   }, [info])
 
+  const websiteUrl = useMemo(() => {
+    if (!info) return null
+    const raw = info.website ?? info?.properties?.website
+    if (typeof raw !== 'string') return null
+    const trimmed = raw.trim()
+    if (!trimmed.length) return null
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    return `https://${trimmed}`
+  }, [info])
+
   useEffect(() => {
     let alive = true
     ;(async () => {
@@ -147,6 +157,20 @@ function InfoCard({ info, onClose }) {
     setShowStampOverlay(false)
   }
 
+  const handleWebsitePress = async () => {
+    if (!websiteUrl) return
+    try {
+      const supported = await Linking.canOpenURL(websiteUrl)
+      if (supported) {
+        await Linking.openURL(websiteUrl)
+      } else {
+        console.warn('Cannot open website URL:', websiteUrl)
+      }
+    } catch (error) {
+      console.error('Error opening website URL:', error)
+    }
+  }
+
   return (
     <>
       <Card mode="elevated" style={[styles.card, { maxHeight: cardMaxHeight }]}>
@@ -176,6 +200,12 @@ function InfoCard({ info, onClose }) {
                                   <Ionicons name="logo-usd" size={25} color="#2cb587ff" />
                                 )}>Pagado</Chip>
               }
+              {websiteUrl ? (
+                <Chip onPress={handleWebsitePress}
+                  icon={() => (
+                    <Ionicons name="globe-outline" size={25} color="#1737f0ff" />
+                  )}>Web</Chip>
+              ) : null}
               <Chip 
                 icon={() => (
                   <Ionicons name="location-outline" size={25} color="#ee2828ff" />
