@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, Linking } from 'react-native'
+import { Alert, Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, Linking } from 'react-native'
 import { Button, Card, Chip, IconButton, Portal, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import { useUser } from '../hooks/useUser'
@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStats } from '../hooks/useStats'
 import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
+import * as Location from 'expo-location'
 
 const pickUri = (candidate) => {
   if (!candidate) return null
@@ -37,6 +38,21 @@ const findUri = (candidates) => {
     if (uri) return uri
   }
   return null
+}
+
+const toRadians = (value) => (value * Math.PI) / 180
+
+const getDistanceMeters = (fromLat, fromLon, toLat, toLon) => {
+  const earthRadius = 6371000
+  const dLat = toRadians(toLat - fromLat)
+  const dLon = toRadians(toLon - fromLon)
+  const lat1 = toRadians(fromLat)
+  const lat2 = toRadians(toLat)
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return earthRadius * c
 }
 
 function InfoCard({ info, onClose }) {
@@ -125,6 +141,34 @@ function InfoCard({ info, onClose }) {
 
   const handleStamp = async () => {
     try {
+      const radius = Number(info?.stampRadius)
+      const pointCoordinate = Array.isArray(info?.pointCoordinate) ? info.pointCoordinate : null
+      const [pointLon, pointLat] = pointCoordinate || []
+
+      if (Number.isFinite(radius) && radius > 0 && Number.isFinite(pointLat) && Number.isFinite(pointLon)) {
+        const { status } = await Location.requestForegroundPermissionsAsync()
+        if (status !== "granted") {
+          Alert.alert("Permiso requerido", "Activa el permiso de ubicación para estampar este punto.")
+          return
+        }
+
+        let pos = await Location.getLastKnownPositionAsync()
+        if (!pos) pos = await Location.getCurrentPositionAsync({})
+        const userLat = pos?.coords?.latitude
+        const userLon = pos?.coords?.longitude
+
+        if (!Number.isFinite(userLat) || !Number.isFinite(userLon)) {
+          Alert.alert("Ubicación no disponible", "No pudimos validar tu ubicación para estampar este punto.")
+          return
+        }
+
+        const distance = getDistanceMeters(userLat, userLon, pointLat, pointLon)
+        if (distance > radius) {
+          Alert.alert("Estás lejos", "Necesitas estar más cerca del punto para estampar tu pasaporte.")
+          return
+        }
+      }
+
       setStamping(true)
       setOverlayDismissible(false)
       await stampVisit(user.$id, info.id)

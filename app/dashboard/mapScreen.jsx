@@ -87,8 +87,11 @@ const mapScreen = () => {
           <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
           <PointsLayer
             onPointPress={(feature) => {
-              const props = feature.properties || {}
-              const [lon, lat] = feature.geometry?.coordinates || []
+              const pointCoordinate = Array.isArray(feature.geometry?.coordinates)
+                ? feature.geometry.coordinates
+                : null
+              const [lon, lat] = pointCoordinate || []
+              const props = { ...(feature.properties || {}), pointCoordinate }
               setPopup({ props, lat, lon })
               setMetroPopup(null)
               cameraRef.current?.setCamera({
