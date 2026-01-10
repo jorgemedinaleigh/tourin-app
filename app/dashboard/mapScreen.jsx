@@ -10,6 +10,8 @@ import mapStyle from '../../constants/positronTourin.json'
 import ThemedView from '../../components/ThemedView'
 import PointsLayer from '../../components/PointsLayer'
 import InfoCard from '../../components/InfoCard'
+import MetroLayer from '../../components/MetroLayer'
+import MetroInfoCard from '../../components/MetroInfoCard'
 
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
@@ -30,11 +32,16 @@ const mapScreen = () => {
   const insets = useSafeAreaInsets()
   const [coord, setCoord] = useState(null)
   const [popup, setPopup] = useState(null)
+  const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
   
   const showModal = () => setVisible(true)
-  const hideModal = () => setVisible(false)
+  const hideModal = () => {
+    setVisible(false)
+    setPopup(null)
+    setMetroPopup(null)
+  }
 
   useEffect(() => {
     (async () => {
@@ -82,9 +89,24 @@ const mapScreen = () => {
             onPointPress={(feature) => {
               const props = feature.properties || {}
               const [lon, lat] = feature.geometry?.coordinates || []
-              setPopup({props, lat, lon})
+              setPopup({ props, lat, lon })
+              setMetroPopup(null)
               cameraRef.current?.setCamera({
                 centerCoordinate: [lon,lat],
+                zoomLevel: 16,
+                animationDuration: 600,
+              })
+              showModal()
+            }}
+          />
+          <MetroLayer
+            onPointPress={(feature) => {
+              const props = feature.properties || {}
+              const [lon, lat] = feature.geometry?.coordinates || []
+              setMetroPopup({ props, lat, lon })
+              setPopup(null)
+              cameraRef.current?.setCamera({
+                centerCoordinate: [lon, lat],
                 zoomLevel: 16,
                 animationDuration: 600,
               })
@@ -105,7 +127,11 @@ const mapScreen = () => {
 
         <Portal>
           <Modal visible={visible} onDismiss={hideModal} style={{ padding: 20 }} >
-            <InfoCard info={popup?.props} onClose={hideModal}/>
+            {metroPopup?.props ? (
+              <MetroInfoCard info={metroPopup.props} onClose={hideModal} />
+            ) : popup?.props ? (
+              <InfoCard info={popup.props} onClose={hideModal} />
+            ) : null}
           </Modal>
         </Portal>
       
