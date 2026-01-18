@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { StyleSheet, View } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
-import { PointAnnotation } from "@maplibre/maplibre-react-native"
+import { ShapeSource, CircleLayer } from "@maplibre/maplibre-react-native"
 import { Query } from "react-native-appwrite"
 import { tables } from "../lib/appwrite"
 
@@ -11,6 +9,7 @@ const PAGE_LIMIT = 500
 
 function MetroLayer({ onPointPress }) {
   const mountedRef = useRef(true)
+  const sourceRef = useRef(null)
   const [geoData, setGeoData] = useState(null)
 
   const fetchAllRows = useCallback(async () => {
@@ -74,32 +73,28 @@ function MetroLayer({ onPointPress }) {
     }
   }, [fetchMetroData])
 
+  const handlePress = useCallback((e) => {
+    const feature = e?.features?.[0]
+    if (!feature) return
+
+    if (onPointPress) onPointPress(feature)
+  }, [onPointPress])
+
   if (!geoData || !geoData.features?.length) return null
 
   return (
-    <>
-      {geoData.features.map((feature, index) => {
-        const coordinates = feature.geometry?.coordinates
-        if (!coordinates?.length) return null
-        const baseId = feature.properties?.id ?? `${feature.properties?.line ?? "line"}-${index}`
-        const markerId = `metro-${baseId}`
-
-        return (
-          <PointAnnotation
-            key={markerId}
-            id={markerId}
-            coordinate={coordinates}
-            onSelected={() => {
-              if (onPointPress) onPointPress(feature)
-            }}
-          >
-            <View >
-              <Ionicons name="subway" size={14} color="#000000ff" />
-            </View>
-          </PointAnnotation>
-        )
-      })}
-    </>
+    <ShapeSource id="metro-source" ref={sourceRef} shape={geoData} onPress={handlePress}>
+      <CircleLayer
+        id="metro-points"
+        style={{
+          circleColor: "#000000ff",
+          circleOpacity: 0.9,
+          circleRadius: 4,
+          circleStrokeColor: "#ffffff",
+          circleStrokeWidth: 1,
+        }}
+      />
+    </ShapeSource>
   )
 }
 

@@ -1,15 +1,14 @@
-import { useCallback, useRef, useState } from "react"
-import { ShapeSource, CircleLayer } from "@maplibre/maplibre-react-native"
+import { useCallback } from "react"
+import { Ionicons } from "@expo/vector-icons"
+import { PointAnnotation } from "@maplibre/maplibre-react-native"
 import { useGeoData } from "../contexts/GeoDataContext"
 
 function PointsLayer({ onPointPress }) {
   const { geoData } = useGeoData()
-  const sourceRef = useRef(null)
 
-  const handlePress = useCallback((e) => {
-    const feature = e?.features?.[0]
+  const handlePress = useCallback((feature) => {
     if (!feature) return
-    
+
     if (onPointPress) onPointPress(feature)
   }, [onPointPress])
 
@@ -17,18 +16,23 @@ function PointsLayer({ onPointPress }) {
 
   return (
     <>
-      <ShapeSource id="heritage-source" ref={sourceRef} shape={geoData} onPress={handlePress}>
-        <CircleLayer
-          id="heritage-points"
-          style={{
-            circleColor: "#10b981",
-            circleOpacity: 0.9,
-            circleRadius: 6,
-            circleStrokeColor: "#ffffff",
-            circleStrokeWidth: 1,
-          }}
-        />
-      </ShapeSource>
+      {geoData.features.map((feature, index) => {
+        const coordinates = feature.geometry?.coordinates
+        if (!coordinates?.length) return null
+        const baseId = feature.properties?.id ?? feature.id ?? `point-${index}`
+        const markerId = `heritage-${baseId}`
+
+        return (
+          <PointAnnotation
+            key={markerId}
+            id={markerId}
+            coordinate={coordinates}
+            onSelected={() => handlePress(feature)}
+          >
+            <Ionicons name="location-sharp" size={16} color="#e03939ff" />
+          </PointAnnotation>
+        )
+      })}
     </>
   )
 }
