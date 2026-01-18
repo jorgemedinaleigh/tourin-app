@@ -1,12 +1,15 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Alert, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Button, useTheme } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
 import { router, useFocusEffect } from 'expo-router'
 import { useCallback } from 'react'
+import { Ionicons } from '@expo/vector-icons'
 import ThemedView from '../../components/ThemedView'
 import Nameplate from '../../components/Nameplate'
 import Badge from '../../components/Badge'
+
+const PASSPORT_LINK = 'https://tourin.app/passport-placeholder'
 
 const profileScreen = () => {
   const { logout, user } = useUser()
@@ -22,6 +25,19 @@ const profileScreen = () => {
       }
     }, [user?.$id])
   )
+
+  const sharePassportLink = useCallback(async () => {
+    try {
+      await Share.share({
+        title: 'Pasaporte TourIn',
+        message: `Mira mi pasaporte TourIn:\n${PASSPORT_LINK}`,
+        url: PASSPORT_LINK,
+      })
+    } catch (error) {
+      console.log('Error al compartir pasaporte:', error)
+      Alert.alert('Error', 'No se pudo compartir el pasaporte.')
+    }
+  }, [])
 
   return (
     <ThemedView style={{ padding: 20 }} safe>
@@ -59,6 +75,17 @@ const profileScreen = () => {
         />
       </View>
 
+      <View style={styles.shareLinkRow}>
+        <TouchableOpacity
+          style={styles.shareLinkButton}
+          onPress={sharePassportLink}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="share-social" size={18} color="#3C3A32" style={styles.shareButtonIcon} />
+          <Text style={styles.shareLinkText}>Compartir</Text>
+        </TouchableOpacity>
+      </View>
+
       <Button 
         mode="contained-tonal" 
         icon={"logout"}
@@ -86,5 +113,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     marginBottom: 16,
+  },
+  shareLinkRow: {
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 6,
+  },
+  shareLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    marginRight: 12,
+  },
+  shareLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3C3A32',
+  },
+  shareButtonIcon: {
+    marginRight: 6,
   },
 })
