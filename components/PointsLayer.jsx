@@ -29,7 +29,7 @@ function PointsLayer({ onPointPress }) {
             coordinate={coordinates}
             onSelected={() => handlePress(feature)}
           >
-            <Ionicons name="location-sharp" size={16} color="#e03939ff" />
+            <Ionicons name="location-sharp" size={20} color="#e03939ff" />
           </PointAnnotation>
         )
       })}

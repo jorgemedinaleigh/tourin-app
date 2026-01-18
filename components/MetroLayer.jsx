@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ShapeSource, CircleLayer } from "@maplibre/maplibre-react-native"
+import { ShapeSource, SymbolLayer, Images } from "@maplibre/maplibre-react-native"
 import { Query } from "react-native-appwrite"
 import { tables } from "../lib/appwrite"
 
 const DATABASE_ID = "68b399490018d7cb309b"
 const TABLE_ID = "metro_stations"
 const PAGE_LIMIT = 500
+const MIN_ZOOM = 14
+const METRO_ICON_ID = "metro-icon"
+// Set a local image when you choose a metro icon, e.g. require("../assets/metro-icon.png").
+const METRO_ICON_ASSET = require("../assets/letter-m.png")
+const METRO_ICON_SIZE = 0.8
 
 function MetroLayer({ onPointPress }) {
   const mountedRef = useRef(true)
   const sourceRef = useRef(null)
   const [geoData, setGeoData] = useState(null)
+  const hasIcon = Boolean(METRO_ICON_ASSET)
 
   const fetchAllRows = useCallback(async () => {
     let all = []
@@ -80,21 +86,46 @@ function MetroLayer({ onPointPress }) {
     if (onPointPress) onPointPress(feature)
   }, [onPointPress])
 
-  if (!geoData || !geoData.features?.length) return null
+  const hasFeatures = Boolean(geoData?.features?.length)
+  if (!hasFeatures && !hasIcon) return null
 
   return (
-    <ShapeSource id="metro-source" ref={sourceRef} shape={geoData} onPress={handlePress}>
-      <CircleLayer
-        id="metro-points"
-        style={{
-          circleColor: "#000000ff",
-          circleOpacity: 0.9,
-          circleRadius: 4,
-          circleStrokeColor: "#ffffff",
-          circleStrokeWidth: 1,
-        }}
-      />
-    </ShapeSource>
+    <>
+      {hasIcon ? (
+        <Images
+          id="metro-images"
+          images={{ [METRO_ICON_ID]: METRO_ICON_ASSET }}
+          onImageMissing={(imageKey) => {
+            console.warn(`MetroLayer: no se encontro el icono "${imageKey}"`)
+          }}
+        />
+      ) : null}
+      {hasFeatures ? (
+        <ShapeSource id="metro-source" ref={sourceRef} shape={geoData} onPress={handlePress}>
+          <SymbolLayer
+            id="metro-points"
+            minZoomLevel={MIN_ZOOM}
+            style={
+              hasIcon
+                ? {
+                    iconImage: METRO_ICON_ID,
+                    iconSize: METRO_ICON_SIZE,
+                    iconAllowOverlap: true,
+                    iconIgnorePlacement: true,
+                    iconAnchor: "center",
+                  }
+                : {
+                    textField: "M",
+                    textSize: 8,
+                    textColor: "#000000",
+                    textAllowOverlap: true,
+                    textAnchor: "center",
+                  }
+            }
+          />
+        </ShapeSource>
+      ) : null}
+    </>
   )
 }
 
