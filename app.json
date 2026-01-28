@@ -39,6 +39,16 @@
       [
         "@maplibre/maplibre-react-native"
       ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://maven.arthenica.com"
+            ]
+          }
+        }
+      ],
       "expo-font",
       "expo-asset"
     ],
