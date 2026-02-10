@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import ThemedView from '../../components/ThemedView'
 
 const profileScreen = () => {
-  const { user } = useUser()
+  const { user, logout } = useUser()
   const { stats, getStats } = useStats(user.$id)
   const theme = useTheme()
 
@@ -28,6 +28,10 @@ const profileScreen = () => {
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join('')
+
+  const handleLogout = async () => {
+    await logout()
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -101,6 +105,15 @@ const profileScreen = () => {
           <Ionicons name="trophy" size={18} color="#6f6f6f" />
         </View>
         <Text style={styles.summaryText}>{stats?.achivementsUnlocked ?? 0} logros</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.logoutButton, styles.raised]}
+        onPress={handleLogout}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="log-out-outline" size={18} color="#ffffff" style={styles.logoutIcon} />
+        <Text style={styles.logoutText}>CERRAR SESIÓN</Text>
       </TouchableOpacity>
     </ThemedView>
   )
@@ -260,5 +273,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2D2D2D',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D94A4A',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#C63F3F',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 6,
+  },
+  logoutIcon: {
+    marginRight: 8,
+  },
+  logoutText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.6,
   },
 })
