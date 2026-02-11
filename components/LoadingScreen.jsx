@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, StyleSheet, View } from 'react-native'
 const LoadingScreen = () => {
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/dolmen-icon.jpeg')} style={styles.logo} />
+      <Image source={require('../assets/tourin_icon.png')} style={styles.logo} />
       <ActivityIndicator size="large" color="#6849a7" />
     </View>
   )

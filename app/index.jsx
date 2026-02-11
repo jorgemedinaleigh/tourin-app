@@ -25,8 +25,9 @@ const Index = () => {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.content}>
+        <Text variant="displaySmall" style={styles.title}>¡Bienvenido a TourIn!</Text>
         <Image source={require('../assets/tourin_icon.png')} style={styles.logo} />
-        <Text variant="displaySmall" style={styles.title}>TourIn</Text>
+        <Text variant="displaySmall" style={styles.body}>La app que te acompañará en tu experiencia turística</Text>
       </View>
       <Button mode="contained" style={styles.button} onPress={handleEnter}>
         Entrar
@@ -49,12 +50,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 180,
-    height: 180,
+    width: 250,
+    height: 250,
     marginBottom: 16,
   },
   title: {
     fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  body: {
+    fontWeight: '200',
+    textAlign: 'center',
     letterSpacing: 0.5,
   },
   button: {
