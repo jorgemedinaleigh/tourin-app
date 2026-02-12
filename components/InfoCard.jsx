@@ -8,6 +8,7 @@ import { useStats } from '../hooks/useStats'
 import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
 import * as Location from 'expo-location'
+import { posthog } from '../lib/posthog'
 
 const pickUri = (candidate) => {
   if (!candidate) return null
@@ -57,7 +58,7 @@ const getDistanceMeters = (fromLat, fromLon, toLat, toLon) => {
 
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
-  const { height } = useWindowDimensions() 
+  const { height } = useWindowDimensions()
   const { user } = useUser()
   const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
   const { addPoints, siteVisited, getStats } = useStats(user.$id)
@@ -149,6 +150,13 @@ function InfoCard({ info, onClose }) {
         const { status } = await Location.requestForegroundPermissionsAsync()
         if (status !== "granted") {
           Alert.alert("Permiso requerido", "Activa el permiso de ubicación para estampar este punto.")
+
+          // Track stamp failure due to location permission
+          posthog.capture('stamp_failed', {
+            site_id: info.id,
+            site_name: info.name,
+            failure_reason: 'location_permission_denied',
+          })
           return
         }
 
@@ -159,12 +167,28 @@ function InfoCard({ info, onClose }) {
 
         if (!Number.isFinite(userLat) || !Number.isFinite(userLon)) {
           Alert.alert("Ubicación no disponible", "No pudimos validar tu ubicación para estampar este punto.")
+
+          // Track stamp failure due to location unavailable
+          posthog.capture('stamp_failed', {
+            site_id: info.id,
+            site_name: info.name,
+            failure_reason: 'location_unavailable',
+          })
           return
         }
 
         const distance = getDistanceMeters(userLat, userLon, pointLat, pointLon)
         if (distance > radius) {
           Alert.alert("Estás lejos", "Necesitas estar más cerca del punto para estampar tu pasaporte.")
+
+          // Track stamp failure due to distance
+          posthog.capture('stamp_failed', {
+            site_id: info.id,
+            site_name: info.name,
+            failure_reason: 'too_far_away',
+            distance_meters: Math.round(distance),
+            required_radius: radius,
+          })
           return
         }
       }
@@ -180,8 +204,44 @@ function InfoCard({ info, onClose }) {
         Image.prefetch(stampUri).catch(() => {})
       }
       setShowStampOverlay(true)
+
+      // Track successful site stamp - key conversion event
+      posthog.capture('site_stamped', {
+        site_id: info.id,
+        site_name: info.name,
+        site_type: info.type,
+        site_subtype: info.subType,
+        is_free: info.isFree,
+        score: info.score,
+        route: info.route,
+      })
     } catch (error) {
       console.error('Error stamping visit:', error)
+
+      // Track stamp failure with error details
+      posthog.capture('stamp_failed', {
+        site_id: info.id,
+        site_name: info.name,
+        failure_reason: 'error',
+        error_message: error.message,
+      })
+
+      // Capture exception for error tracking
+      posthog.capture('$exception', {
+        $exception_list: [
+          {
+            type: error.name || 'StampError',
+            value: error.message,
+            stacktrace: {
+              type: 'raw',
+              frames: error.stack ?? '',
+            },
+          },
+        ],
+        $exception_source: 'react-native',
+        screen: 'InfoCard',
+        site_id: info.id,
+      })
     } finally {
       setStamping(false)
     }
@@ -207,6 +267,13 @@ function InfoCard({ info, onClose }) {
       const supported = await Linking.canOpenURL(websiteUrl)
       if (supported) {
         await Linking.openURL(websiteUrl)
+
+        // Track external website click
+        posthog.capture('external_website_clicked', {
+          site_id: info.id,
+          site_name: info.name,
+          website_url: websiteUrl,
+        })
       } else {
         console.warn('Cannot open website URL:', websiteUrl)
       }
@@ -226,7 +293,7 @@ function InfoCard({ info, onClose }) {
           <Card.Title
             titleStyle={styles.title}
             titleNumberOfLines={3}
-            title={info.name || "Punto"}  
+            title={info.name || "Punto"}
             right={(props) => <IconButton {...props} icon="close" onPress={onClose} />}
           />
           <View style={styles.coverWrapper}>
@@ -250,7 +317,7 @@ function InfoCard({ info, onClose }) {
                     <Ionicons name="globe-outline" size={25} color="#1737f0ff" />
                   )}>Web</Chip>
               ) : null}
-              <Chip 
+              <Chip
                 icon={() => (
                   <Ionicons name="location-outline" size={25} color="#ee2828ff" />
                 )}>{info.subType}</Chip>
@@ -263,25 +330,26 @@ function InfoCard({ info, onClose }) {
             </View>
             {!!info.description && <Text style={styles.description}>{info.description}</Text>}
           </Card.Content>
-            
+
           <Card.Actions >
             {
-              isVisited ? <Button 
-                            icon="check-decagram" 
-                            mode="contained" 
-                            style={{ marginTop: 8 }} 
+              isVisited ? <Button
+                            icon="check-decagram"
+                            mode="contained"
+                            style={{ marginTop: 8 }}
                             buttonColor='#17972fff'
                           >
                             Sitio Visitado
                           </Button>
-                        : <Button 
-                            icon="stamper" 
-                            mode="contained" 
-                            style={{ marginTop: 8 }} 
-                            theme={theme} 
-                            onPress={handleStamp} 
+                        : <Button
+                            icon="stamper"
+                            mode="contained"
+                            style={{ marginTop: 8 }}
+                            theme={theme}
+                            onPress={handleStamp}
                             loading={stamping}
                             disabled={stamping}
+                            testID="stamp-button"
                           >
                             Estampar
                           </Button>
@@ -310,7 +378,7 @@ export default InfoCard
 
 const styles = StyleSheet.create({
   title: {
-    fontSize: 20, 
+    fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center'
   },

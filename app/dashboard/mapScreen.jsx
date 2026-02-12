@@ -12,6 +12,7 @@ import PointsLayer from '../../components/PointsLayer'
 import InfoCard from '../../components/InfoCard'
 import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
+import { posthog } from '../../lib/posthog'
 
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
@@ -35,7 +36,7 @@ const mapScreen = () => {
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
-  
+
   const showModal = () => setVisible(true)
   const hideModal = () => {
     setVisible(false)
@@ -69,13 +70,19 @@ const mapScreen = () => {
       zoomLevel: 16,
       animationDuration: 600,
     })
+
+    // Track location centering action
+    posthog.capture('location_centered', {
+      latitude: userCoord[1],
+      longitude: userCoord[0],
+    })
   }
 
   return (
     <GeoDataProvider>
       <ThemedView style={{ flex: 1 }} >
-        <MapView 
-          style={ StyleSheet.absoluteFillObject } 
+        <MapView
+          style={ StyleSheet.absoluteFillObject }
           mapStyle={mapStyle}
           compassEnabled={true}
           logoEnabled={false}
@@ -99,6 +106,18 @@ const mapScreen = () => {
                 zoomLevel: 16,
                 animationDuration: 600,
               })
+
+              // Track site info viewed event
+              posthog.capture('site_info_viewed', {
+                site_id: props.id,
+                site_name: props.name,
+                site_type: props.type,
+                site_subtype: props.subType,
+                site_location: props.location,
+                is_free: props.isFree,
+                score: props.score,
+              })
+
               showModal()
             }}
           />
@@ -113,19 +132,27 @@ const mapScreen = () => {
                 zoomLevel: 16,
                 animationDuration: 600,
               })
+
+              // Track metro info viewed event
+              posthog.capture('metro_info_viewed', {
+                station_name: props.name,
+                line: props.line,
+              })
+
               showModal()
             }}
           />
         </MapView>
-        
-        <IconButton 
-          mode="contained-tonal" 
-          icon="crosshairs-gps" 
+
+        <IconButton
+          mode="contained-tonal"
+          icon="crosshairs-gps"
           iconColor="#e8e7ef"
           size={30}
           animated={true}
           style={styles.button}
-          onPress={centerOnUser} 
+          onPress={centerOnUser}
+          testID="center-location-button"
         />
 
         <Portal>
@@ -137,9 +164,9 @@ const mapScreen = () => {
             ) : null}
           </Modal>
         </Portal>
-      
+
         <GeoDataStatus />
-        
+
       </ThemedView>
     </GeoDataProvider>
   )

@@ -1,0 +1,56 @@
+export default {
+  expo: {
+    scheme: "tourinapp",
+    name: "tourin-app",
+    slug: "tourin-app",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/tourin_icon.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    splash: {
+      image: "./assets/tourin_icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    ios: {
+      supportsTablet: true,
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription: "Mostramos tu ubicación en el mapa."
+      }
+    },
+    android: {
+      permissions: [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      adaptiveIcon: {
+        foregroundImage: "./assets/tourin_icon.png",
+        backgroundColor: "#ffffff"
+      },
+      edgeToEdgeEnabled: true,
+      package: "com.dolmen.tourinapp"
+    },
+    web: {
+      favicon: "./assets/tourin_icon.png"
+    },
+    plugins: [
+      "expo-router",
+      [
+        "@maplibre/maplibre-react-native"
+      ],
+      "expo-font",
+      "expo-asset",
+      "expo-localization"
+    ],
+    extra: {
+      router: {},
+      eas: {
+        projectId: "d718b8a6-38af-4b2d-b470-1d5b4e4cb5aa"
+      },
+      posthogApiKey: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
+      posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
+    },
+    owner: "jorgemedinaleigh"
+  }
+}

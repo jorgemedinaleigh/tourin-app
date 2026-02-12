@@ -5,6 +5,7 @@ import { Card } from 'react-native-paper'
 import ThemedView from '../../components/ThemedView'
 import { useUser } from '../../hooks/useUser'
 import { useAchievements } from '../../hooks/useAchievements'
+import { posthog } from '../../lib/posthog'
 
 const AchievementsScreen = () => {
   const { user } = useUser()
@@ -12,10 +13,19 @@ const AchievementsScreen = () => {
 
   const [viewerVisible, setViewerVisible] = useState(false)
   const [viewerUri, setViewerUri] = useState(null)
+  const [viewerAchievement, setViewerAchievement] = useState(null)
 
-  const openImage = (uri) => {
-    setViewerUri(uri)
+  const openImage = (item) => {
+    setViewerUri(item.badge)
+    setViewerAchievement(item)
     setViewerVisible(true)
+
+    // Track achievement badge viewed
+    posthog.capture('achievement_viewed', {
+      achievement_id: item.$id,
+      achievement_name: item.name,
+      is_unlocked: !!item.unlockedAt,
+    })
   }
 
   useFocusEffect(
@@ -39,7 +49,7 @@ const AchievementsScreen = () => {
         keyExtractor={(item) => String(item.$id)}
         contentContainerStyle={{ paddingBottom: 24 }}
         renderItem={({ item }) => (
-          <Card style={styles.card} onPress={() => openImage(item.badge)}>
+          <Card style={styles.card} onPress={() => openImage(item)}>
             <View style={styles.row}>
               <Image
                 source={{ uri: item.badge }}

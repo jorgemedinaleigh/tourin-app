@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Query, ID, Permission, Role } from 'react-native-appwrite'
 import { tables } from '../lib/appwrite'
+import { posthog } from '../lib/posthog'
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const ACHIVEMENTS_TABLE_ID  = 'achivements'
@@ -18,8 +19,8 @@ export function useAchievements(userId) {
     setSafe(() => { setLoading(true); setError(null) })
     try {
       const achList = await tables.listRows({
-        databaseId: DATABASE_ID, 
-        tableId: ACHIVEMENTS_TABLE_ID, 
+        databaseId: DATABASE_ID,
+        tableId: ACHIVEMENTS_TABLE_ID,
         queries: [
           Query.limit(200),
           Query.orderAsc('name'),
@@ -29,8 +30,8 @@ export function useAchievements(userId) {
       let userUnlocks = { rows: [] }
       if (userId) {
         userUnlocks = await tables.listRows({
-          databaseId: DATABASE_ID, 
-          tableId: USER_ACHIVEMENTS_TABLE_ID, 
+          databaseId: DATABASE_ID,
+          tableId: USER_ACHIVEMENTS_TABLE_ID,
           queries: [
             Query.equal('userId', [userId]),
             Query.limit(500),
@@ -81,9 +82,20 @@ export function useAchievements(userId) {
       permissions,
     })
 
+    // Get achievement details for tracking
+    const achievement = achievements.find((a) => a.$id === achievementId)
+
+    // Track achievement unlocked event - key engagement event
+    posthog.capture('achievement_unlocked', {
+      achievement_id: achievementId,
+      achievement_name: achievement?.name,
+      achievement_description: achievement?.description,
+      achievement_criteria: achievement?.criteria,
+    })
+
     // Optimistic update
     setAchievements((prev) => prev.map((a) => (a.$id === achievementId ? { ...a, unlockedAt: payload.unlockedAt } : a)))
-  }, [userId, isUnlocked])
+  }, [userId, isUnlocked, achievements])
 
   const refresh = fetchAchievements
   const stop = useCallback(() => { alive.current = false }, [])
