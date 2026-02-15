@@ -17,6 +17,9 @@ const DashboardLayout = () => {
       <Tabs 
         screenOptions={{ 
           headerShown: false, 
+          sceneStyle: {
+            backgroundColor: theme.background,
+          },
           tabBarStyle: {
             backgroundColor: theme.navBackground,
             paddingTop: 10,

@@ -33,11 +33,24 @@ const RootLayout = () => {
       }}
     >
       <UserProvider>
-        <StatusBar barStyle="dark-content" />
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }}/>
-          <Stack.Screen name="dashboard" options={{headerShown: false}}/>
-          <Stack.Screen name="auth" options={{headerShown: false}}/>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor="transparent"
+          translucent
+          animated
+        />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#ffffff' },
+            statusBarStyle: 'dark',
+            statusBarColor: 'transparent',
+            statusBarTranslucent: true,
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="dashboard" />
+          <Stack.Screen name="auth" />
         </Stack>
       </UserProvider>
     </PostHogProvider>

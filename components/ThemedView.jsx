@@ -20,7 +20,9 @@ const ThemedView = ({ children, style, ...props }) => {
       <View 
         style={[
           {
-            paddingTop: insets.top
+            flex: 1,
+            paddingTop: insets.top,
+            backgroundColor: customTheme.colors.background,
           }, 
           style
         ]} 

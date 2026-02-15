@@ -1,6 +1,6 @@
 import * as Location from 'expo-location'
 import { useEffect, useState, useRef } from 'react'
-import { Pressable, StyleSheet, Alert, Text } from 'react-native'
+import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
 import { MapView, Camera, UserLocation } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
@@ -13,6 +13,46 @@ import InfoCard from '../../components/InfoCard'
 import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
 import { posthog } from '../../lib/posthog'
+
+const LAST_KNOWN_MAX_AGE_MS = 20_000
+const LAST_KNOWN_REQUIRED_ACCURACY_M = 80
+const TARGET_ACCURACY_M = 30
+const TRACKING_ACCEPTABLE_ACCURACY_M = 120
+const CURRENT_POSITION_TIMEOUT_MS = 12_000
+
+function toCoordinate(position) {
+  return [position.coords.longitude, position.coords.latitude]
+}
+
+function pickBetterPosition(currentBest, candidate) {
+  if (!currentBest) return candidate
+  if (!candidate) return currentBest
+
+  const currentAccuracy = currentBest.coords?.accuracy ?? Number.POSITIVE_INFINITY
+  const candidateAccuracy = candidate.coords?.accuracy ?? Number.POSITIVE_INFINITY
+  return candidateAccuracy <= currentAccuracy ? candidate : currentBest
+}
+
+async function resolveBestUserPosition() {
+  let best = await Location.getLastKnownPositionAsync({
+    maxAge: LAST_KNOWN_MAX_AGE_MS,
+    requiredAccuracy: LAST_KNOWN_REQUIRED_ACCURACY_M,
+  })
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const current = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.BestForNavigation,
+      maximumAge: 0,
+      timeout: CURRENT_POSITION_TIMEOUT_MS,
+      mayShowUserSettingsDialog: true,
+    })
+    best = pickBetterPosition(best, current)
+
+    if ((best?.coords?.accuracy ?? Number.POSITIVE_INFINITY) <= TARGET_ACCURACY_M) break
+  }
+
+  return best
+}
 
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
@@ -45,13 +85,57 @@ const mapScreen = () => {
   }
 
   useEffect(() => {
+    let isActive = true
+    let subscription
+
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status === "granted") {
-        const last = await Location.getLastKnownPositionAsync()
-        if (last) setCoord([last.coords.longitude, last.coords.latitude])
+      if (status !== "granted") return
+
+      if (Platform.OS === 'android') {
+        await Location.enableNetworkProviderAsync().catch(() => null)
       }
+
+      try {
+        const position = await resolveBestUserPosition()
+        if (isActive && position) setCoord(toCoordinate(position))
+      } catch {
+        const fallback = await Location.getLastKnownPositionAsync()
+        if (isActive && fallback) setCoord(toCoordinate(fallback))
+      }
+
+      let watcher
+      try {
+        watcher = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.BestForNavigation,
+            timeInterval: 2_500,
+            distanceInterval: 2,
+            mayShowUserSettingsDialog: true,
+          },
+          (position) => {
+            const accuracy = position.coords?.accuracy ?? Number.POSITIVE_INFINITY
+            if (accuracy <= TRACKING_ACCEPTABLE_ACCURACY_M) {
+              setCoord(toCoordinate(position))
+            }
+          }
+        )
+      } catch {
+        return
+      }
+
+      if (!isActive) {
+        watcher.remove()
+        return
+      }
+
+      subscription = watcher
     })()
+
+    return () => {
+      isActive = false
+      subscription?.remove?.()
+    }
   }, [])
 
   const centerOnUser = async () => {
@@ -61,9 +145,28 @@ const mapScreen = () => {
       return
     }
 
-    let pos = await Location.getLastKnownPositionAsync()
-    if (!pos) pos = await Location.getCurrentPositionAsync({})
-    const userCoord = [pos.coords.longitude, pos.coords.latitude]
+    if (Platform.OS === 'android') {
+      await Location.enableNetworkProviderAsync().catch(() => null)
+    }
+
+    let pos
+    try {
+      pos = await resolveBestUserPosition()
+    } catch {
+      pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        maximumAge: 0,
+        timeout: CURRENT_POSITION_TIMEOUT_MS,
+      }).catch(() => null)
+    }
+
+    if (!pos) {
+      Alert.alert("Ubicación no disponible", "No se pudo obtener una ubicación precisa en este momento.")
+      return
+    }
+
+    const userCoord = toCoordinate(pos)
+    setCoord(userCoord)
 
     cameraRef.current?.setCamera({
       centerCoordinate: userCoord,
@@ -75,6 +178,7 @@ const mapScreen = () => {
     posthog.capture('location_centered', {
       latitude: userCoord[1],
       longitude: userCoord[0],
+      accuracy_m: pos.coords?.accuracy ?? null,
     })
   }
 
@@ -87,7 +191,7 @@ const mapScreen = () => {
           compassEnabled={true}
           logoEnabled={false}
           attributionEnabled={false}
-          compassViewPosition={3}
+          compassViewPosition={5}
           compassViewMargins={{ x: 15, y: insets.bottom + 40 }}
         >
           <UserLocation visible />
