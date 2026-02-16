@@ -1,7 +1,7 @@
 import * as Location from 'expo-location'
 import { useEffect, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, UserLocation } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, ShapeSource, CircleLayer } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { GeoDataProvider, useGeoData } from '../../contexts/GeoDataContext'
@@ -17,11 +17,24 @@ import { posthog } from '../../lib/posthog'
 const LAST_KNOWN_MAX_AGE_MS = 20_000
 const LAST_KNOWN_REQUIRED_ACCURACY_M = 80
 const TARGET_ACCURACY_M = 30
-const TRACKING_ACCEPTABLE_ACCURACY_M = 120
 const CURRENT_POSITION_TIMEOUT_MS = 12_000
+const QUICK_CENTER_LAST_KNOWN_MAX_AGE_MS = 15_000
+const QUICK_CENTER_REQUIRED_ACCURACY_M = 120
+const QUICK_CENTER_TIMEOUT_MS = 5_000
+const CAMERA_DEFAULT_SETTINGS = Object.freeze({ zoomLevel: 16 })
+const CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS = 1_500
+const CAMERA_USER_INTERACTION_GRACE_MS = 1_200
+const CAMERA_CENTER_EPSILON = 0.00001
+const CAMERA_ZOOM_EPSILON = 0.01
 
 function toCoordinate(position) {
   return [position.coords.longitude, position.coords.latitude]
+}
+
+function isValidCoordinate(position) {
+  const latitude = position?.coords?.latitude
+  const longitude = position?.coords?.longitude
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
 }
 
 function pickBetterPosition(currentBest, candidate) {
@@ -72,16 +85,111 @@ function GeoDataStatus() {
 const mapScreen = () => {
   const insets = useSafeAreaInsets()
   const [coord, setCoord] = useState(null)
+  const [isFollowingUser, setIsFollowingUser] = useState(false)
   const [popup, setPopup] = useState(null)
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
+  const programmaticCameraUntilRef = useRef(Date.now() + 3_000)
+  const lastUserInteractionAtRef = useRef(0)
+  const lastStableViewportRef = useRef(null)
+  const restoringViewportRef = useRef(false)
+  const hasAutoCenteredRef = useRef(false)
 
   const showModal = () => setVisible(true)
   const hideModal = () => {
     setVisible(false)
     setPopup(null)
     setMetroPopup(null)
+  }
+
+  const updateUserCoord = (position) => {
+    if (!isValidCoordinate(position)) return null
+
+    const nextCoord = toCoordinate(position)
+    setCoord(nextCoord)
+    return nextCoord
+  }
+
+  // Only perform programmatic camera moves when explicitly forced or
+  // when the map is following the user. This prevents unexpected
+  // recentring triggered from other asynchronous flows.
+  const setCameraSafely = (config, lockMs = CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS, force = false) => {
+    try {
+      const stack = new Error().stack?.split('\n').slice(2,6).join('\n')
+      console.debug('[mapScreen] setCameraSafely called', { config, at: Date.now(), force, stack })
+    } catch (e) {
+      // ignore
+    }
+
+    if (!force && !isFollowingUser) {
+      console.debug('[mapScreen] setCameraSafely suppressed (not forced and not following user)')
+      return
+    }
+
+    programmaticCameraUntilRef.current = Date.now() + lockMs
+    cameraRef.current?.setCamera(config)
+  }
+
+  const saveViewport = (feature) => {
+    const center = feature?.geometry?.coordinates
+    if (!Array.isArray(center) || center.length !== 2) return
+
+    const zoom = feature?.properties?.zoomLevel
+    lastStableViewportRef.current = {
+      center: [center[0], center[1]],
+      zoom: Number.isFinite(zoom) ? zoom : null,
+    }
+  }
+
+  const handleRegionIsChanging = (feature) => {
+    if (feature?.properties?.isUserInteraction) {
+      lastUserInteractionAtRef.current = Date.now()
+      // Si el usuario interactúa con el mapa, desactivar seguimiento automático
+      setIsFollowingUser(false)
+    }
+  }
+
+  const handleRegionDidChange = (feature) => {
+    const center = feature?.geometry?.coordinates
+    if (!Array.isArray(center) || center.length !== 2) return
+
+    const zoom = feature?.properties?.zoomLevel
+    const isUserInteraction = Boolean(feature?.properties?.isUserInteraction)
+    const now = Date.now()
+
+    if (isUserInteraction) {
+      lastUserInteractionAtRef.current = now
+    }
+
+    if (restoringViewportRef.current) {
+      restoringViewportRef.current = false
+      saveViewport(feature)
+      return
+    }
+
+    const withinProgrammaticWindow = now <= programmaticCameraUntilRef.current
+    const withinUserGrace = now - lastUserInteractionAtRef.current <= CAMERA_USER_INTERACTION_GRACE_MS
+
+    if (isUserInteraction || withinProgrammaticWindow || withinUserGrace || !lastStableViewportRef.current) {
+      saveViewport(feature)
+      return
+    }
+
+    const last = lastStableViewportRef.current
+    const movedCenter =
+      Math.abs(last.center[0] - center[0]) > CAMERA_CENTER_EPSILON ||
+      Math.abs(last.center[1] - center[1]) > CAMERA_CENTER_EPSILON
+    const movedZoom =
+      Number.isFinite(last.zoom) &&
+      Number.isFinite(zoom) &&
+      Math.abs(last.zoom - zoom) > CAMERA_ZOOM_EPSILON
+
+    if (!movedCenter && !movedZoom) return
+    // Evita recentrar automáticamente al mover la cámara desde el cliente.
+    // En vez de forzar un restore, actualizamos el viewport estable para
+    // respetar la interacción del usuario y evitar saltos inesperados.
+    saveViewport(feature)
   }
 
   useEffect(() => {
@@ -98,10 +206,23 @@ const mapScreen = () => {
 
       try {
         const position = await resolveBestUserPosition()
-        if (isActive && position) setCoord(toCoordinate(position))
+        if (isActive) {
+          const userCoord = updateUserCoord(position)
+          // Centrar automáticamente sólo la primera vez que se entra a la pantalla
+          if (userCoord && !hasAutoCenteredRef.current) {
+            setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
+            hasAutoCenteredRef.current = true
+          }
+        }
       } catch {
         const fallback = await Location.getLastKnownPositionAsync()
-        if (isActive && fallback) setCoord(toCoordinate(fallback))
+        if (isActive) {
+          const userCoord = updateUserCoord(fallback)
+          if (userCoord && !hasAutoCenteredRef.current) {
+            setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
+            hasAutoCenteredRef.current = true
+          }
+        }
       }
 
       let watcher
@@ -114,10 +235,7 @@ const mapScreen = () => {
             mayShowUserSettingsDialog: true,
           },
           (position) => {
-            const accuracy = position.coords?.accuracy ?? Number.POSITIVE_INFINITY
-            if (accuracy <= TRACKING_ACCEPTABLE_ACCURACY_M) {
-              setCoord(toCoordinate(position))
-            }
+            updateUserCoord(position)
           }
         )
       } catch {
@@ -138,47 +256,72 @@ const mapScreen = () => {
     }
   }, [])
 
-  const centerOnUser = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync()
-    if (status !== "granted") {
-      Alert.alert("Permiso requerido", "Activa el permiso de ubicación para centrar el mapa.")
+  const centerOnUser = async (followAfterCenter = false) => {
+    const immediateCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
+    if (immediateCoord) {
+      setCameraSafely({
+        centerCoordinate: immediateCoord,
+        animationDuration: 220,
+      }, 700, true)
+    }
+
+    const permission = await Location.getForegroundPermissionsAsync()
+    let permissionStatus = permission.status
+    if (permissionStatus !== "granted") {
+      const requested = await Location.requestForegroundPermissionsAsync()
+      permissionStatus = requested.status
+    }
+
+    if (permissionStatus !== "granted") {
+      if (!immediateCoord) {
+        Alert.alert("Permiso requerido", "Activa el permiso de ubicación para centrar el mapa.")
+      }
       return
     }
 
     if (Platform.OS === 'android') {
-      await Location.enableNetworkProviderAsync().catch(() => null)
+      Location.enableNetworkProviderAsync().catch(() => null)
     }
 
-    let pos
-    try {
-      pos = await resolveBestUserPosition()
-    } catch {
+    let pos = await Location.getLastKnownPositionAsync({
+      maxAge: QUICK_CENTER_LAST_KNOWN_MAX_AGE_MS,
+      requiredAccuracy: QUICK_CENTER_REQUIRED_ACCURACY_M,
+    }).catch(() => null)
+
+    if (!pos) {
       pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
-        maximumAge: 0,
-        timeout: CURRENT_POSITION_TIMEOUT_MS,
+        maximumAge: QUICK_CENTER_LAST_KNOWN_MAX_AGE_MS,
+        timeout: QUICK_CENTER_TIMEOUT_MS,
+        mayShowUserSettingsDialog: true,
       }).catch(() => null)
     }
 
     if (!pos) {
-      Alert.alert("Ubicación no disponible", "No se pudo obtener una ubicación precisa en este momento.")
+      if (!immediateCoord) {
+        Alert.alert("Ubicación no disponible", "No se pudo obtener una ubicación precisa en este momento.")
+      }
       return
     }
 
-    const userCoord = toCoordinate(pos)
-    setCoord(userCoord)
+    const userCoord = updateUserCoord(pos) ?? toCoordinate(pos)
+    if (!immediateCoord) {
+      setCameraSafely({
+        centerCoordinate: userCoord,
+        animationDuration: 350,
+      }, 700, true)
+    }
 
-    cameraRef.current?.setCamera({
-      centerCoordinate: userCoord,
-      zoomLevel: 16,
-      animationDuration: 600,
-    })
+    if (followAfterCenter) {
+      setIsFollowingUser(true)
+    }
 
     // Track location centering action
     posthog.capture('location_centered', {
       latitude: userCoord[1],
       longitude: userCoord[0],
       accuracy_m: pos.coords?.accuracy ?? null,
+      used_cached_coordinate: Boolean(immediateCoord),
     })
   }
 
@@ -193,9 +336,15 @@ const mapScreen = () => {
           attributionEnabled={false}
           compassViewPosition={5}
           compassViewMargins={{ x: 15, y: insets.bottom + 40 }}
+          onRegionIsChanging={handleRegionIsChanging}
+          onRegionDidChange={handleRegionDidChange}
+          regionDidChangeDebounceTime={120}
         >
-          <UserLocation visible />
-          <Camera ref={cameraRef} zoomLevel={16} centerCoordinate={coord} />
+          <Camera
+            ref={cameraRef}
+            defaultSettings={CAMERA_DEFAULT_SETTINGS}
+            followUserLocation={isFollowingUser}
+          />
           <PointsLayer
             onPointPress={(feature) => {
               const pointCoordinate = Array.isArray(feature.geometry?.coordinates)
@@ -205,11 +354,11 @@ const mapScreen = () => {
               const props = { ...(feature.properties || {}), pointCoordinate }
               setPopup({ props, lat, lon })
               setMetroPopup(null)
-              cameraRef.current?.setCamera({
-                centerCoordinate: [lon,lat],
-                zoomLevel: 16,
-                animationDuration: 600,
-              })
+                        setCameraSafely({
+                          centerCoordinate: [lon,lat],
+                          zoomLevel: 16,
+                          animationDuration: 600,
+                        }, undefined, true)
 
               // Track site info viewed event
               posthog.capture('site_info_viewed', {
@@ -231,11 +380,11 @@ const mapScreen = () => {
               const [lon, lat] = feature.geometry?.coordinates || []
               setMetroPopup({ props, lat, lon })
               setPopup(null)
-              cameraRef.current?.setCamera({
+              setCameraSafely({
                 centerCoordinate: [lon, lat],
                 zoomLevel: 16,
                 animationDuration: 600,
-              })
+              }, undefined, true)
 
               // Track metro info viewed event
               posthog.capture('metro_info_viewed', {
@@ -246,19 +395,52 @@ const mapScreen = () => {
               showModal()
             }}
           />
+          {coord ? (
+            <ShapeSource
+              id="user-location-source"
+              shape={{
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: coord },
+                properties: {},
+              }}
+            >
+              <CircleLayer
+                id="user-location-halo"
+                style={{
+                  circleRadius: 16,
+                  circleColor: 'rgba(34, 197, 94, 0.20)',
+                }}
+              />
+              <CircleLayer
+                id="user-location-dot"
+                style={{
+                  circleRadius: 7,
+                  circleColor: '#22c55e',
+                  circleStrokeWidth: 2,
+                  circleStrokeColor: '#ffffff',
+                }}
+              />
+            </ShapeSource>
+          ) : null}
         </MapView>
 
         <IconButton
           mode="contained-tonal"
-          icon="crosshairs-gps"
-          iconColor="#e8e7ef"
-          size={30}
+          icon={isFollowingUser ? "target" : "crosshairs-gps"}
+          iconColor={isFollowingUser ? "#22c55e" : "#e8e7ef"}
+          size={28}
           animated={true}
-          style={styles.button}
-          onPress={centerOnUser}
-          testID="center-location-button"
+          style={styles.buttonFollow}
+          onPress={() => {
+            if (isFollowingUser) {
+              setIsFollowingUser(false)
+            } else {
+              centerOnUser(true)
+            }
+          }}
+          testID="toggle-follow-button"
         />
-
+        
         <Portal>
           <Modal visible={visible} onDismiss={hideModal} style={{ padding: 20 }} >
             {metroPopup?.props ? (
@@ -283,6 +465,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     bottom: 5,
+    backgroundColor: "#000",
+  },
+  buttonFollow: {
+    position: "absolute",
+    right: 10,
+    bottom: 60,
     backgroundColor: "#000",
   },
   toast: {
