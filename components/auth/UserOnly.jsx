@@ -9,9 +9,9 @@ const UserOnly = ({ children }) => {
 
   useEffect(() => {
     if (authChecked && user === null) {
-      router.replace('auth/loginScreen')
+      router.replace('/auth/loginScreen')
     }
-  }, [user, authChecked])
+  }, [user, authChecked, router])
 
   if (!authChecked || !user) {
     return <LoadingScreen />

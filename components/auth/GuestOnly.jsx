@@ -9,9 +9,9 @@ const GuestOnly = ({ children }) => {
 
   useEffect(() => {
     if (authChecked && user !== null) {
-      router.replace('dashboard/mapScreen')
+      router.replace('/dashboard/mapScreen')
     }
-  }, [user, authChecked])
+  }, [user, authChecked, router])
 
   if (!authChecked || user) {
     return <LoadingScreen />
