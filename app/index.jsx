@@ -11,11 +11,11 @@ const Index = () => {
 
   const handleEnter = () => {
     if (user) {
-      router.replace('dashboard/mapScreen')
+      router.replace('/dashboard/mapScreen')
       return
     }
 
-    router.replace('auth/loginScreen')
+    router.replace('/auth/loginScreen')
   }
 
   if (!authChecked) {
