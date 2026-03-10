@@ -7,11 +7,17 @@ const TABLE_ID = 'user_stats'
 
 function normalizeRow(row) {
   if (!row) return null
+
+  const achievementsUnlockedRaw = typeof row.achievementsUnlocked === 'number'
+    ? row.achievementsUnlocked
+    : row.achivementsUnlocked
+
   return {
     ...row,
     score: typeof row.score === 'number' ? row.score : 0,
     sitesVisited: typeof row.sitesVisited === 'number' ? row.sitesVisited : 0,
     eventsAttended: typeof row.eventsAttended === 'number' ? row.eventsAttended : 0,
+    achievementsUnlocked: typeof achievementsUnlockedRaw === 'number' ? achievementsUnlockedRaw : 0,
   }
 }
 
@@ -48,6 +54,7 @@ export function useStats(userId) {
             score: 0,
             sitesVisited: 0,
             eventsAttended: 0,
+            achievementsUnlocked: 0,
           }
         })
         const normalized = normalizeRow(created)

@@ -104,7 +104,7 @@ const profileScreen = () => {
         <View style={styles.summaryIcon}>
           <Ionicons name="trophy" size={18} color="#6f6f6f" />
         </View>
-        <Text style={styles.summaryText}>{stats?.achivementsUnlocked ?? 0} logros</Text>
+        <Text style={styles.summaryText}>{stats?.achievementsUnlocked ?? 0} logros</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
