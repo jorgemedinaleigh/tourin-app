@@ -1,63 +1,53 @@
-# Tourin App
+# Tourin Monorepo
 
-Aplicación móvil construida con **Expo + React Native** para explorar puntos de interés, gestionar logros y consultar estadísticas de usuario dentro de una experiencia gamificada.
+Tourin is an Expo + React Native mobile app with a new AWS-backed backend in the same repository. The mobile app stays at the repository root. The backend and infrastructure live in dedicated top-level folders so the app can migrate away from Appwrite without splitting the codebase.
 
-## 🚀 Stack principal
-
-- Expo SDK 53
-- React Native 0.79 + React 19
-- Expo Router (navegación por archivos)
-- MapLibre (mapas)
-- Appwrite (autenticación, base de datos y storage)
-- PostHog (analítica y screen tracking)
-
-## 📱 Funcionalidades
-
-- Flujo de autenticación (`/auth`): inicio de sesión y registro.
-- Dashboard con pantallas de:
-  - Mapa
-  - Pasaporte
-  - Logros
-  - Perfil
-- Capas y componentes de mapa personalizados.
-- Contextos para usuario y datos geográficos.
-- Instrumentación de analítica con PostHog (tracking manual de pantallas con Expo Router).
-
-## 📂 Estructura del proyecto
+## Repo layout
 
 ```text
-app/
-  _layout.jsx            # Layout raíz y configuración de navegación
-  index.jsx              # Entrada principal
-  auth/                  # Pantallas de autenticación
-  dashboard/             # Pantallas principales de la app
-components/              # Componentes reutilizables de UI y mapa
-contexts/                # Providers globales (usuario, geodatos)
-hooks/                   # Hooks de dominio (achievements, stats, leaderboard...)
-lib/                     # Clientes externos (Appwrite, PostHog)
-constants/               # Colores y datos estáticos
-assets/                  # Íconos e imágenes
+app/                   Expo Router screens
+assets/                Images and icons
+components/            Reusable UI and map components
+constants/             Static data and colors
+contexts/              Global React providers
+hooks/                 Domain hooks used by the app
+lib/                   Appwrite, PostHog, and AWS client helpers
+utils/                 Shared frontend utilities
+backend/               ASP.NET Core API, application logic, domain, infrastructure, tests
+infra/                 AWS CDK infrastructure for Cognito, API Gateway, Lambda, Aurora, RDS Proxy, S3, CloudFront
 ```
 
-## ✅ Requisitos
+## Current architecture
 
-- Node.js 18+
-- npm 9+
-- Expo CLI (vía `npx expo`)
+- Mobile client: Expo SDK 53, React Native 0.79, React 19, Expo Router
+- Legacy backend: Appwrite remains available as a fallback while migration is in progress
+- New backend: ASP.NET Core Minimal API on AWS Lambda
+- Auth target: Amazon Cognito User Pools
+- Data target: Aurora PostgreSQL Serverless v2 plus RDS Proxy
+- Media target: Amazon S3 plus CloudFront
 
-## ⚙️ Instalación
+## Prerequisites
+
+- Node.js 20+
+- npm 10+
+- .NET SDK 9.0.306
+- Docker for `infra/` synth and deploy on Windows
+
+## Mobile app
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-## ▶️ Ejecución en desarrollo
+Run the app:
 
 ```bash
 npm run start
 ```
 
-También puedes abrir directamente por plataforma:
+Platform-specific commands:
 
 ```bash
 npm run android
@@ -65,46 +55,112 @@ npm run ios
 npm run web
 ```
 
-## 🔐 Variables de entorno
+### Mobile environment variables
 
-Crea un archivo `.env` en la raíz del proyecto (si no existe):
+The app keeps using Appwrite unless all AWS values are configured and `EXPO_PUBLIC_AUTH_PROVIDER=cognito`.
+
+Copy the values you need into `.env`:
 
 ```env
+EXPO_PUBLIC_AUTH_PROVIDER=appwrite
+EXPO_PUBLIC_API_BASE_URL=
+EXPO_PUBLIC_AWS_REGION=
+EXPO_PUBLIC_COGNITO_USER_POOL_ID=
+EXPO_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=
 EXPO_PUBLIC_POSTHOG_API_KEY=phc_xxxxxxxxxxxxxxxxx
 EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
-> La app deshabilita PostHog automáticamente si `EXPO_PUBLIC_POSTHOG_API_KEY` no está configurada.
+## Backend
 
-## 🧭 Configuración de servicios
+The backend solution lives under [backend/Tourin.Backend.sln](/c:/Jorge/tourin-app/backend/Tourin.Backend.sln).
 
-### Appwrite
+Build it:
 
-La configuración del cliente Appwrite se encuentra en `lib/appwrite.js` e incluye:
+```bash
+dotnet build backend/Tourin.Backend.sln
+```
 
-- Endpoint
-- Project ID
-- Platform/package identifier
+Run tests:
 
-Si necesitas cambiar entorno (dev/staging/prod), actualiza esos valores o centralízalos en variables de entorno.
+```bash
+dotnet test backend/Tourin.Backend.sln
+```
 
-### PostHog
+Run the API locally:
 
-La inicialización está en `lib/posthog.js` y usa valores cargados desde `app.config.js` (`expo.extra`).
+```bash
+dotnet run --project backend/src/Tourin.Api/Tourin.Api.csproj
+```
 
-## 📦 Scripts disponibles
+The local API defaults to the in-memory data store and development header authentication. Cognito and PostgreSQL are enabled through configuration when you deploy to AWS.
 
-- `npm run start` — Inicia Expo en modo desarrollo.
-- `npm run android` — Abre en Android.
-- `npm run ios` — Abre en iOS.
-- `npm run web` — Abre en web.
+### Backend endpoints
 
-## 🛠️ Notas de desarrollo
+- `GET /v1/me`
+- `GET /v1/achievements`
+- `GET /v1/passport`
+- `GET /v1/leaderboard`
+- `GET /v1/map/sites`
+- `GET /v1/metro/stations`
+- `POST /v1/visits/stamp`
+- `POST /v1/profile/avatar/upload-url`
+- `POST /v1/profile/avatar/complete`
 
-- El tracking de pantallas está implementado de forma manual en `app/_layout.jsx` usando `usePathname` de Expo Router.
-- La app solicita permisos de ubicación en iOS/Android desde `app.config.js`.
-- La configuración EAS se encuentra en `eas.json`.
+## Infrastructure
 
-## 📄 Licencia
+The CDK app lives under [infra/src/Tourin.Infrastructure/Program.cs](/c:/Jorge/tourin-app/infra/src/Tourin.Infrastructure/Program.cs).
 
-Actualmente este repositorio no declara una licencia explícita.
+Synth the stack:
+
+```bash
+cd infra
+dotnet run --project ./src/Tourin.Infrastructure/Tourin.Infrastructure.csproj
+```
+
+The stack creates:
+
+- Cognito User Pool and app client
+- API Gateway HTTP API with JWT authorizer
+- Lambda function for the ASP.NET Core API
+- Aurora PostgreSQL Serverless v2 cluster
+- RDS Proxy
+- Private S3 bucket for avatar uploads
+- CloudFront distribution for public avatar delivery
+- CloudWatch alarms for Lambda and API Gateway errors
+
+### Infrastructure configuration
+
+`infra/cdk.json` contains default values. Override them with CDK context or environment variables:
+
+```bash
+$env:TOURIN_ENVIRONMENT_NAME="dev"
+$env:TOURIN_AWS_ACCOUNT="123456789012"
+$env:TOURIN_AWS_REGION="us-east-1"
+dotnet run --project ./src/Tourin.Infrastructure/Tourin.Infrastructure.csproj
+```
+
+### Deploy
+
+Install the CDK CLI if needed:
+
+```bash
+npm install -g aws-cdk
+```
+
+Deploy from the `infra/` directory:
+
+```bash
+cd infra
+cdk deploy --all --require-approval never
+```
+
+## CI
+
+The repo uses separate GitHub Actions workflows for:
+
+- Mobile validation
+- Backend build and tests
+- Infrastructure synth and manual deploy
+
+Path filters keep mobile-only changes from triggering backend CI and keep the infrastructure flow isolated from the Expo workflow.

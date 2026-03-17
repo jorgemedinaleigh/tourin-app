@@ -61,7 +61,7 @@ function InfoCard({ info, onClose }) {
   const { height } = useWindowDimensions()
   const { user } = useUser()
   const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
-  const { addPoints, siteVisited, getStats } = useStats(user.$id)
+  const { getStats } = useStats(user.$id)
   const router = useRouter()
 
   const [isVisited, setIsVisited] = useState(false)
@@ -145,6 +145,8 @@ function InfoCard({ info, onClose }) {
       const radius = Number(info?.stampRadius)
       const pointCoordinate = Array.isArray(info?.pointCoordinate) ? info.pointCoordinate : null
       const [pointLon, pointLat] = pointCoordinate || []
+      let userLat = null
+      let userLon = null
 
       if (Number.isFinite(radius) && radius > 0 && Number.isFinite(pointLat) && Number.isFinite(pointLon)) {
         const { status } = await Location.requestForegroundPermissionsAsync()
@@ -162,8 +164,8 @@ function InfoCard({ info, onClose }) {
 
         let pos = await Location.getLastKnownPositionAsync()
         if (!pos) pos = await Location.getCurrentPositionAsync({})
-        const userLat = pos?.coords?.latitude
-        const userLon = pos?.coords?.longitude
+        userLat = pos?.coords?.latitude
+        userLon = pos?.coords?.longitude
 
         if (!Number.isFinite(userLat) || !Number.isFinite(userLon)) {
           Alert.alert("Ubicación no disponible", "No pudimos validar tu ubicación para estampar este punto.")
@@ -195,9 +197,16 @@ function InfoCard({ info, onClose }) {
 
       setStamping(true)
       setOverlayDismissible(false)
-      await stampVisit(user.$id, info.id)
-      await addPoints(info.score)
-      await siteVisited()
+      const stampResult = await stampVisit({
+        userId: user.$id,
+        siteId: info.id,
+        latitude: Number.isFinite(userLat) ? userLat : null,
+        longitude: Number.isFinite(userLon) ? userLon : null,
+        capturedAt: new Date().toISOString(),
+      })
+      if (!stampResult) {
+        throw new Error('No se pudo registrar la visita.')
+      }
       await Promise.all([getStats(), fetchVisits(user.$id)])
       setIsVisited(true)
       if (stampUri) {

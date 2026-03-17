@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { Query, ID, Permission, Role } from 'react-native-appwrite'
 import { tables } from '../lib/appwrite'
 import { posthog } from '../lib/posthog'
+import { backendMode, fetchAchievements as fetchAwsAchievements } from '../lib/backend'
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const ACHIVEMENTS_TABLE_ID  = 'achivements'
@@ -18,6 +19,21 @@ export function useAchievements(userId) {
   const fetchAchievements = useCallback(async () => {
     setSafe(() => { setLoading(true); setError(null) })
     try {
+      if (backendMode === 'aws') {
+        const response = await fetchAwsAchievements()
+        const mapped = (response ?? []).map((item) => ({
+          $id: item.id,
+          name: item.name,
+          description: item.description,
+          criteria: item.criteria,
+          badge: item.badgeUrl,
+          unlockedAt: item.unlockedAt || null,
+        }))
+
+        setSafe(() => setAchievements(mapped))
+        return
+      }
+
       const achList = await tables.listRows({
         databaseId: DATABASE_ID,
         tableId: ACHIVEMENTS_TABLE_ID,
@@ -68,6 +84,10 @@ export function useAchievements(userId) {
   )
 
   const unlockAchievement = useCallback(async (achievementId) => {
+    if (backendMode === 'aws') {
+      return null
+    }
+
     if (!userId) throw new Error('unlockAchievement: userId es requerido')
     if (isUnlocked(achievementId)) return
 

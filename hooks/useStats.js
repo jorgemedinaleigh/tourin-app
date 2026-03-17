@@ -1,6 +1,7 @@
 import { Query, ID } from 'react-native-appwrite'
 import { useEffect, useState } from 'react'
 import { tables } from '../lib/appwrite'
+import { backendMode, fetchCurrentProfile } from '../lib/backend'
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const TABLE_ID = 'user_stats'
@@ -29,6 +30,20 @@ export function useStats(userId) {
       setStats(null)
       return null
     }
+
+    if (backendMode === 'aws') {
+      try {
+        const profile = await fetchCurrentProfile()
+        const normalized = normalizeRow(profile?.stats)
+        setStats(normalized)
+        return normalized
+      } catch (error) {
+        console.error('Error fetching AWS stats:', error)
+        setStats(null)
+        return null
+      }
+    }
+
     try {
       const response = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -69,6 +84,10 @@ export function useStats(userId) {
   }
 
   async function addPoints(points) {
+    if (backendMode === 'aws') {
+      return getStats()
+    }
+
     if (!userId) return null
     try {
       const row = stats ?? (await getStats())
@@ -94,6 +113,10 @@ export function useStats(userId) {
   }
 
   async function siteVisited() {
+    if (backendMode === 'aws') {
+      return getStats()
+    }
+
     if (!userId) return null
     try {
       const row = stats ?? (await getStats())
@@ -118,6 +141,10 @@ export function useStats(userId) {
   }
 
   async function eventAttended() {
+    if (backendMode === 'aws') {
+      return getStats()
+    }
+
     if (!userId) return null
     try {
       const row = stats ?? (await getStats())

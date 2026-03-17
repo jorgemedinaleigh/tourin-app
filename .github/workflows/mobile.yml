@@ -1,0 +1,57 @@
+name: Mobile CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - app/**
+      - assets/**
+      - components/**
+      - constants/**
+      - contexts/**
+      - hooks/**
+      - lib/**
+      - utils/**
+      - app.config.js
+      - package.json
+      - package-lock.json
+      - .env.example
+      - eas.json
+      - .github/workflows/mobile.yml
+  pull_request:
+    paths:
+      - app/**
+      - assets/**
+      - components/**
+      - constants/**
+      - contexts/**
+      - hooks/**
+      - lib/**
+      - utils/**
+      - app.config.js
+      - package.json
+      - package-lock.json
+      - .env.example
+      - eas.json
+      - .github/workflows/mobile.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Expo config
+        run: npx expo config --type public

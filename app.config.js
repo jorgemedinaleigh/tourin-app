@@ -48,6 +48,11 @@ export default {
       eas: {
         projectId: "d718b8a6-38af-4b2d-b470-1d5b4e4cb5aa"
       },
+      authProvider: process.env.EXPO_PUBLIC_AUTH_PROVIDER || "appwrite",
+      apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || "",
+      awsRegion: process.env.EXPO_PUBLIC_AWS_REGION || "",
+      cognitoUserPoolId: process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID || "",
+      cognitoUserPoolClientId: process.env.EXPO_PUBLIC_COGNITO_USER_POOL_CLIENT_ID || "",
       posthogApiKey: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
       posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com"
     },

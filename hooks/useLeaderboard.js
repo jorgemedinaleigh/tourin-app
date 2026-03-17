@@ -1,6 +1,7 @@
 import { Query } from 'react-native-appwrite'
 import { useState } from 'react'
 import { tables } from '../lib/appwrite'
+import { backendMode, fetchLeaderboard as fetchAwsLeaderboard } from '../lib/backend'
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const TABLE_ID = 'user_stats'
@@ -17,6 +18,12 @@ export function useLeaderboard() {
     setLoading(true)
     setError(null)
     try {
+      if (backendMode === 'aws') {
+        const rows = await fetchAwsLeaderboard(field)
+        setLeaderboard(rows ?? [])
+        return rows ?? []
+      }
+
       const response = await tables.listRows({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,

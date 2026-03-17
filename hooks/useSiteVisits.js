@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Query, ID } from 'react-native-appwrite'
 import { tables } from '../lib/appwrite'
+import { backendMode, fetchPassport, stampSiteVisit } from '../lib/backend'
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const VISITS_TABLE_ID  = 'site_visits'
@@ -11,16 +12,55 @@ export function useSiteVisits(userId, siteId) {
   const [visits, setVisits] = useState([])
   const [sitesVisited, setSitesVisited] = useState([])
 
-  async function stampVisit(userId, siteId) {
-    if (!userId || !siteId) return null
+  function mapPassportEntries(entries = []) {
+    const mappedVisits = entries.map((entry) => ({
+      $id: entry.visitId,
+      siteId: entry.siteId,
+      $createdAt: entry.capturedAt,
+    }))
+
+    const mappedSites = entries.map((entry) => ({
+      $id: entry.siteId,
+      name: entry.siteName,
+      stamp: entry.stampUrl,
+      coverPhoto: entry.coverPhotoUrl,
+    }))
+
+    return { mappedVisits, mappedSites }
+  }
+
+  async function stampVisit(userIdOrPayload, siteId) {
+    const payload = typeof userIdOrPayload === 'object' && userIdOrPayload !== null
+      ? userIdOrPayload
+      : { userId: userIdOrPayload, siteId }
+
+    if (!payload?.siteId) return null
+
+    if (backendMode === 'aws') {
+      try {
+        return await stampSiteVisit({
+          siteId: payload.siteId,
+          latitude: payload.latitude ?? null,
+          longitude: payload.longitude ?? null,
+          capturedAt: payload.capturedAt ?? new Date().toISOString(),
+        })
+      } catch (error) {
+        console.error('Error stamping AWS visit:', error)
+        return null
+      }
+    }
+
+    const resolvedUserId = payload.userId ?? userId
+    if (!resolvedUserId) return null
+
     try {
       await tables.createRow({
         databaseId: DATABASE_ID,
         tableId: VISITS_TABLE_ID,
         rowId: ID.unique(),
         data: { 
-          userId: userId, 
-          siteId: siteId 
+          userId: resolvedUserId, 
+          siteId: payload.siteId 
         }
       })
       return true
@@ -32,6 +72,22 @@ export function useSiteVisits(userId, siteId) {
   
   async function getVisit(userId, siteId) {
     if (!userId || !siteId) return false
+
+    if (backendMode === 'aws') {
+      const cached = visits.some((visit) => visit.siteId === siteId)
+      if (cached) {
+        return true
+      }
+
+      try {
+        const response = await fetchPassport(siteId)
+        return (response?.visits?.length ?? 0) > 0
+      } catch (error) {
+        console.error('Error fetching AWS visit info:', error)
+        return false
+      }
+    }
+
     try {
       const response = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -76,6 +132,23 @@ export function useSiteVisits(userId, siteId) {
       setSitesVisited([])
       return []
     }
+
+    if (backendMode === 'aws') {
+      try {
+        const response = await fetchPassport()
+        const entries = response?.visits ?? []
+        const { mappedVisits, mappedSites } = mapPassportEntries(entries)
+        setVisits(mappedVisits)
+        setSitesVisited(mappedSites)
+        return mappedVisits
+      } catch (error) {
+        console.error('Error fetching AWS passport:', error)
+        setVisits([])
+        setSitesVisited([])
+        return []
+      }
+    }
+
     try {
       const stampedSites = await listAllRows(VISITS_TABLE_ID, [Query.equal('userId', [userId])])
       setVisits(stampedSites)

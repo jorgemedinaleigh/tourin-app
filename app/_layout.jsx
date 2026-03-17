@@ -1,3 +1,6 @@
+import 'react-native-get-random-values'
+import 'react-native-url-polyfill/auto'
+
 import { Stack, usePathname, useGlobalSearchParams } from 'expo-router'
 import { useEffect, useRef } from 'react'
 import { StatusBar } from 'react-native'

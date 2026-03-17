@@ -1,0 +1,83 @@
+name: Infrastructure CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - infra/**
+      - backend/**
+      - global.json
+      - .github/workflows/infra.yml
+  pull_request:
+    paths:
+      - infra/**
+      - backend/**
+      - global.json
+      - .github/workflows/infra.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment name.
+        required: true
+        default: dev
+
+jobs:
+  synth:
+    runs-on: ubuntu-latest
+    env:
+      TOURIN_ENVIRONMENT_NAME: ${{ github.event.inputs.environment || 'dev' }}
+      TOURIN_AWS_ACCOUNT: 123456789012
+      TOURIN_AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Synth stack
+        working-directory: infra
+        run: dotnet run --project ./src/Tourin.Infrastructure/Tourin.Infrastructure.csproj
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: synth
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TOURIN_ENVIRONMENT_NAME: ${{ github.event.inputs.environment }}
+      TOURIN_AWS_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+      TOURIN_AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.TOURIN_AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: Deploy
+        working-directory: infra
+        run: cdk deploy --all --require-approval never

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Keyboard, StyleSheet, TouchableWithoutFeedback } from 'react-native'
 import { Button, Text, TextInput, HelperText } from 'react-native-paper'
-import { Link } from 'expo-router'
+import { Link, router } from 'expo-router'
 import { useUser } from '../../hooks/useUser'
-import { appwriteErrorToMessage } from '../../utils/appwriteErrorToMessage'
+import { authErrorToMessage } from '../../utils/authErrorToMessage'
 import ThemedView from '../../components/ThemedView'
 import { posthog } from '../../lib/posthog'
 
@@ -39,10 +39,17 @@ const registerScreen = () => {
     }
 
     try {
-      await register(emailText, passwordText, nameText)
+      const result = await register(emailText, passwordText, nameText)
+
+      if (result?.requiresConfirmation) {
+        router.push({
+          pathname: '/auth/confirmSignUpScreen',
+          params: { email: result.email },
+        })
+      }
     }
     catch (err) {
-      const errorMessage = appwriteErrorToMessage(err)
+      const errorMessage = authErrorToMessage(err)
       setError(errorMessage)
 
       // Track signup failure with error details

@@ -1,0 +1,13 @@
+{
+  "app": "dotnet run --project ./src/Tourin.Infrastructure/Tourin.Infrastructure.csproj",
+  "context": {
+    "tourin:projectName": "tourin",
+    "tourin:environmentName": "dev",
+    "tourin:databaseName": "tourin",
+    "tourin:lambdaArchitecture": "x86_64",
+    "tourin:serverlessMinCapacity": "0.5",
+    "tourin:serverlessMaxCapacity": "2",
+    "tourin:createCloudFrontDistribution": "true",
+    "tourin:allowedAvatarCorsOrigins": "*"
+  }
+}
