@@ -60,8 +60,6 @@ export function GeoDataProvider({ children }) {
             name: row.name,
             description: row.description,
             isFree: row.isFree,
-            price: row.price,
-            score: row.score,
             stamp: row.stamp,
             coverPhoto: row.coverPhoto,
             type: row.type,

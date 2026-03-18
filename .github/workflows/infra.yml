@@ -26,9 +26,11 @@ jobs:
   synth:
     runs-on: ubuntu-latest
     env:
+      TOURIN_PROJECT_NAME: tourin
       TOURIN_ENVIRONMENT_NAME: ${{ github.event.inputs.environment || 'dev' }}
       TOURIN_AWS_ACCOUNT: 123456789012
       TOURIN_AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TOURIN_LAMBDA_ASSET_PATH: .artifacts/tourin-api
 
     steps:
       - name: Checkout
@@ -38,6 +40,17 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+
+      - name: Publish Lambda artifact
+        run: |
+          dotnet publish ./backend/src/Tourin.Api/Tourin.Api.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -o ./.artifacts/tourin-api
+          cp "$(find ~/.nuget/packages/microsoft.netcore.app.runtime.linux-x64 -path '*/runtimes/linux-x64/lib/net8.0/System.Text.Json.dll' | sort | tail -n1)" ./.artifacts/tourin-api/System.Text.Json.dll
+          printf '#!/bin/sh\nset -e\n./Tourin.Api\n' > ./.artifacts/tourin-api/bootstrap
+          chmod +x ./.artifacts/tourin-api/bootstrap ./.artifacts/tourin-api/Tourin.Api
 
       - name: Synth stack
         working-directory: infra
@@ -51,9 +64,11 @@ jobs:
       id-token: write
       contents: read
     env:
+      TOURIN_PROJECT_NAME: tourin
       TOURIN_ENVIRONMENT_NAME: ${{ github.event.inputs.environment }}
       TOURIN_AWS_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
       TOURIN_AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TOURIN_LAMBDA_ASSET_PATH: .artifacts/tourin-api
 
     steps:
       - name: Checkout
@@ -63,6 +78,17 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+
+      - name: Publish Lambda artifact
+        run: |
+          dotnet publish ./backend/src/Tourin.Api/Tourin.Api.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -o ./.artifacts/tourin-api
+          cp "$(find ~/.nuget/packages/microsoft.netcore.app.runtime.linux-x64 -path '*/runtimes/linux-x64/lib/net8.0/System.Text.Json.dll' | sort | tail -n1)" ./.artifacts/tourin-api/System.Text.Json.dll
+          printf '#!/bin/sh\nset -e\n./Tourin.Api\n' > ./.artifacts/tourin-api/bootstrap
+          chmod +x ./.artifacts/tourin-api/bootstrap ./.artifacts/tourin-api/Tourin.Api
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -81,3 +107,10 @@ jobs:
       - name: Deploy
         working-directory: infra
         run: cdk deploy --all --require-approval never
+
+      - name: Show stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "${TOURIN_PROJECT_NAME}-${TOURIN_ENVIRONMENT_NAME}" \
+            --query 'Stacks[0].Outputs[*].[OutputKey,OutputValue]' \
+            --output table | tee -a "$GITHUB_STEP_SUMMARY"

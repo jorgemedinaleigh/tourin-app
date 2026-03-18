@@ -147,11 +147,13 @@ internal sealed class TourinInfrastructureStack : Stack
 
     databaseSecurityGroup.AddIngressRule(proxySecurityGroup, Port.Tcp(5432), "Allow proxy access to Aurora.");
     proxySecurityGroup.AddIngressRule(lambdaSecurityGroup, Port.Tcp(5432), "Allow Lambda access to the proxy.");
+    databaseSecurityGroup.AddIngressRule(lambdaSecurityGroup, Port.Tcp(5432), "Allow Lambda direct access to Aurora.");
 
     var database = new DatabaseCluster(this, "Database", new DatabaseClusterProps
     {
       ClusterIdentifier = $"{prefix}-aurora",
       DefaultDatabaseName = databaseName,
+      EnableDataApi = true,
       Engine = DatabaseClusterEngine.AuroraPostgres(new AuroraPostgresClusterEngineProps
       {
         Version = AuroraPostgresEngineVersion.VER_16_6,
@@ -239,21 +241,18 @@ internal sealed class TourinInfrastructureStack : Stack
 
     avatarBucket.GrantReadWrite(lambdaRole);
     databaseSecret.GrantRead(lambdaRole);
-    databaseProxy.GrantConnect(lambdaRole, "tourin_app");
-
     var connectionString = Fn.Sub(
       "Host=${host};Port=5432;Database=${database};Username=${username};Password=${password};SSL Mode=Require;Trust Server Certificate=true",
       new Dictionary<string, string>
       {
-        ["host"] = databaseProxy.Endpoint,
+        ["host"] = database.ClusterEndpoint.Hostname,
         ["database"] = databaseName,
         ["username"] = databaseSecret.SecretValueFromJson("username").ToString(),
         ["password"] = databaseSecret.SecretValueFromJson("password").ToString(),
       });
 
     var lambdaBuild = configuration.ResolveLambdaBuild();
-    var apiProjectDirectory = Path.GetDirectoryName(configuration.BackendProjectPath)
-      ?? throw new InvalidOperationException("The backend project directory could not be determined.");
+    var apiCode = ResolveApiCode(configuration, lambdaBuild);
 
     var apiFunction = new LambdaFunction(this, "ApiFunction", new LambdaFunctionProps
     {
@@ -262,27 +261,7 @@ internal sealed class TourinInfrastructureStack : Stack
       Runtime = Runtime.PROVIDED_AL2023,
       Handler = "bootstrap",
       Architecture = lambdaBuild.Architecture,
-      Code = Code.FromAsset(apiProjectDirectory, new Amazon.CDK.AWS.S3.Assets.AssetOptions
-      {
-        Bundling = new BundlingOptions
-        {
-          Local = new DotNetLambdaBundling(configuration.BackendProjectPath, lambdaBuild.RuntimeIdentifier),
-          Image = DockerImage.FromRegistry("mcr.microsoft.com/dotnet/sdk:9.0"),
-          User = "root",
-          OutputType = BundlingOutput.NOT_ARCHIVED,
-          Command = new[]
-          {
-            "bash",
-            "-lc",
-            string.Join(" && ", new[]
-            {
-              $"dotnet publish /asset-input/{Path.GetFileName(configuration.BackendProjectPath)} -c Release -r {lambdaBuild.RuntimeIdentifier} --self-contained true -p:PublishSingleFile=true -o /asset-output",
-              "printf '#!/bin/sh\\nset -e\\n./Tourin.Api\\n' > /asset-output/bootstrap",
-              "chmod +x /asset-output/bootstrap /asset-output/Tourin.Api",
-            }),
-          },
-        },
-      }),
+      Code = apiCode,
       MemorySize = 1024,
       Timeout = Duration.Seconds(30),
       Tracing = Tracing.ACTIVE,
@@ -296,6 +275,7 @@ internal sealed class TourinInfrastructureStack : Stack
       Environment = new Dictionary<string, string>
       {
         ["ASPNETCORE_ENVIRONMENT"] = "Production",
+        ["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1",
         ["Database__Provider"] = "postgres",
         ["Database__ConnectionString"] = connectionString,
         ["Auth__Region"] = Region,
@@ -411,6 +391,24 @@ internal sealed class TourinInfrastructureStack : Stack
       Description = "RDS Proxy endpoint used by the Lambda function.",
     });
 
+    _ = new CfnOutput(this, "DatabaseClusterArn", new CfnOutputProps
+    {
+      Value = database.ClusterArn,
+      Description = "Aurora cluster ARN for Data API operations.",
+    });
+
+    _ = new CfnOutput(this, "DatabaseSecretArn", new CfnOutputProps
+    {
+      Value = databaseSecret.SecretArn,
+      Description = "Secrets Manager ARN for Data API operations.",
+    });
+
+    _ = new CfnOutput(this, "DatabaseName", new CfnOutputProps
+    {
+      Value = databaseName,
+      Description = "Aurora database name.",
+    });
+
     _ = new CfnOutput(this, "MobileEnvSnippet", new CfnOutputProps
     {
       Value = string.Join(System.Environment.NewLine, new[]
@@ -446,6 +444,67 @@ internal sealed class TourinInfrastructureStack : Stack
 
     api.AddRoutes(options);
   }
+
+  private static Code ResolveApiCode(TourinInfrastructureConfig configuration, LambdaBuildConfiguration lambdaBuild)
+  {
+    if (!string.IsNullOrWhiteSpace(configuration.PrebuiltLambdaAssetPath))
+    {
+      if (!Directory.Exists(configuration.PrebuiltLambdaAssetPath))
+      {
+        throw new InvalidOperationException(
+          $"The prebuilt Lambda asset directory does not exist: {configuration.PrebuiltLambdaAssetPath}");
+      }
+
+      return Code.FromAsset(configuration.PrebuiltLambdaAssetPath);
+    }
+
+    var apiProjectDirectory = Path.GetDirectoryName(configuration.BackendProjectPath)
+      ?? throw new InvalidOperationException("The backend project directory could not be determined.");
+    var backendRootDirectory = FindBackendRoot(apiProjectDirectory);
+    var backendProjectPathInAsset = Path
+      .GetRelativePath(backendRootDirectory, configuration.BackendProjectPath)
+      .Replace('\\', '/');
+
+    return Code.FromAsset(backendRootDirectory, new Amazon.CDK.AWS.S3.Assets.AssetOptions
+    {
+      Bundling = new BundlingOptions
+      {
+        Local = new DotNetLambdaBundling(configuration.BackendProjectPath, lambdaBuild.RuntimeIdentifier),
+        Image = DockerImage.FromRegistry("mcr.microsoft.com/dotnet/sdk:9.0"),
+        User = "root",
+        OutputType = BundlingOutput.NOT_ARCHIVED,
+        Command = new[]
+          {
+            "bash",
+            "-lc",
+            string.Join(" && ", new[]
+            {
+              $"dotnet publish /asset-input/{backendProjectPathInAsset} -c Release -r {lambdaBuild.RuntimeIdentifier} --self-contained true -o /asset-output",
+              "cp \"$(find /root/.nuget/packages/microsoft.netcore.app.runtime.linux-x64 -path '*/runtimes/linux-x64/lib/net8.0/System.Text.Json.dll' | sort | tail -n1)\" /asset-output/System.Text.Json.dll",
+              "printf '#!/bin/sh\\nset -e\\n./Tourin.Api\\n' > /asset-output/bootstrap",
+              "chmod +x /asset-output/bootstrap /asset-output/Tourin.Api",
+            }),
+        },
+      },
+    });
+  }
+
+  private static string FindBackendRoot(string apiProjectDirectory)
+  {
+    var directory = new DirectoryInfo(apiProjectDirectory);
+
+    while (directory is not null)
+    {
+      if (string.Equals(directory.Name, "backend", StringComparison.OrdinalIgnoreCase))
+      {
+        return directory.FullName;
+      }
+
+      directory = directory.Parent;
+    }
+
+    throw new InvalidOperationException("Could not determine the backend root directory.");
+  }
 }
 
 internal sealed record LambdaBuildConfiguration(Architecture Architecture, string RuntimeIdentifier);
@@ -463,6 +522,7 @@ internal sealed class TourinInfrastructureConfig
   public required string DatabaseName { get; init; }
   public required string BackendProjectPath { get; init; }
   public required string LambdaArchitectureName { get; init; }
+  public string? PrebuiltLambdaAssetPath { get; init; }
   public required double ServerlessMinCapacity { get; init; }
   public required double ServerlessMaxCapacity { get; init; }
   public required bool CreateCloudFrontDistribution { get; init; }
@@ -517,6 +577,7 @@ internal sealed class TourinInfrastructureConfig
     var databaseName = Resolve("tourin:databaseName", "TOURIN_DATABASE_NAME", "tourin");
     var backendProject = Resolve("tourin:backendProjectPath", "TOURIN_BACKEND_PROJECT_PATH", "backend/src/Tourin.Api/Tourin.Api.csproj");
     var lambdaArchitecture = Resolve("tourin:lambdaArchitecture", "TOURIN_LAMBDA_ARCHITECTURE", "x86_64");
+    var lambdaAssetPath = Resolve("tourin:lambdaAssetPath", "TOURIN_LAMBDA_ASSET_PATH", string.Empty);
     var minCapacity = ParseDouble(Resolve("tourin:serverlessMinCapacity", "TOURIN_SERVERLESS_MIN_CAPACITY", "0.5"), 0.5);
     var maxCapacity = ParseDouble(Resolve("tourin:serverlessMaxCapacity", "TOURIN_SERVERLESS_MAX_CAPACITY", "2"), 2);
     var createCloudFront = ParseBoolean(Resolve("tourin:createCloudFrontDistribution", "TOURIN_CREATE_CLOUDFRONT_DISTRIBUTION", "true"), true);
@@ -533,6 +594,9 @@ internal sealed class TourinInfrastructureConfig
       DatabaseName = databaseName,
       BackendProjectPath = Path.GetFullPath(Path.Combine(repositoryRoot, backendProject)),
       LambdaArchitectureName = lambdaArchitecture,
+      PrebuiltLambdaAssetPath = string.IsNullOrWhiteSpace(lambdaAssetPath)
+        ? null
+        : Path.GetFullPath(Path.Combine(repositoryRoot, lambdaAssetPath)),
       ServerlessMinCapacity = minCapacity,
       ServerlessMaxCapacity = maxCapacity,
       CreateCloudFrontDistribution = createCloudFront,

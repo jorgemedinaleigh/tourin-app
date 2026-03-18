@@ -51,8 +51,6 @@ public sealed record HeritageSiteDto(
   string Name,
   string? Description,
   bool IsFree,
-  decimal? Price,
-  int Score,
   string? Stamp,
   string? CoverPhoto,
   string? Type,

@@ -221,7 +221,6 @@ function InfoCard({ info, onClose }) {
         site_type: info.type,
         site_subtype: info.subType,
         is_free: info.isFree,
-        score: info.score,
         route: info.route,
       })
     } catch (error) {

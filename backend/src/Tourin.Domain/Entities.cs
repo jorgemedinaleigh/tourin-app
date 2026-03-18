@@ -128,7 +128,6 @@ public sealed class HeritageSite
     string? description,
     double latitude,
     double longitude,
-    int score,
     int stampRadiusMeters)
   {
     Id = id;
@@ -136,7 +135,6 @@ public sealed class HeritageSite
     Description = description;
     Latitude = latitude;
     Longitude = longitude;
-    Score = score;
     StampRadiusMeters = stampRadiusMeters;
   }
 
@@ -144,8 +142,6 @@ public sealed class HeritageSite
   public string Name { get; private set; } = string.Empty;
   public string? Description { get; private set; }
   public bool IsFree { get; private set; }
-  public decimal? Price { get; private set; }
-  public int Score { get; private set; }
   public string? StampUrl { get; private set; }
   public string? CoverPhotoUrl { get; private set; }
   public string? Type { get; private set; }
@@ -161,6 +157,47 @@ public sealed class HeritageSite
   public double Longitude { get; private set; }
 
   public ICollection<Visit> Visits { get; } = new List<Visit>();
+
+  public void UpdateCatalogDetails(
+    string name,
+    string? description,
+    double latitude,
+    double longitude,
+    int stampRadiusMeters,
+    bool isFree,
+    string? stampUrl,
+    string? coverPhotoUrl,
+    string? type,
+    string? subType,
+    string? location,
+    string? legalStatus,
+    string? comuna,
+    string? region,
+    string? route,
+    string? website)
+  {
+    Name = name.Trim();
+    Description = NormalizeOptionalText(description);
+    Latitude = latitude;
+    Longitude = longitude;
+    StampRadiusMeters = Math.Max(0, stampRadiusMeters);
+    IsFree = isFree;
+    StampUrl = NormalizeOptionalText(stampUrl);
+    CoverPhotoUrl = NormalizeOptionalText(coverPhotoUrl);
+    Type = NormalizeOptionalText(type);
+    SubType = NormalizeOptionalText(subType);
+    Location = NormalizeOptionalText(location);
+    LegalStatus = NormalizeOptionalText(legalStatus);
+    Comuna = NormalizeOptionalText(comuna);
+    Region = NormalizeOptionalText(region);
+    Route = NormalizeOptionalText(route);
+    Website = NormalizeOptionalText(website);
+  }
+
+  private static string? NormalizeOptionalText(string? value)
+  {
+    return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+  }
 }
 
 public sealed class MetroStation

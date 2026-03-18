@@ -368,7 +368,6 @@ const mapScreen = () => {
                 site_subtype: props.subType,
                 site_location: props.location,
                 is_free: props.isFree,
-                score: props.score,
               })
 
               showModal()

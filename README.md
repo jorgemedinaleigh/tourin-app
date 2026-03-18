@@ -155,6 +155,76 @@ cd infra
 cdk deploy --all --require-approval never
 ```
 
+### AWS bootstrap helpers
+
+The repo includes helper scripts for the first AWS dev rollout:
+
+- [Setup-GitHubOidc.ps1](/c:/Jorge/tourin-app/infra/scripts/Setup-GitHubOidc.ps1)
+- [Bootstrap-DevEnvironment.ps1](/c:/Jorge/tourin-app/infra/scripts/Bootstrap-DevEnvironment.ps1)
+- [Get-StackOutputs.ps1](/c:/Jorge/tourin-app/infra/scripts/Get-StackOutputs.ps1)
+
+Typical sequence:
+
+```powershell
+pwsh ./infra/scripts/Setup-GitHubOidc.ps1
+pwsh ./infra/scripts/Bootstrap-DevEnvironment.ps1 -EnvironmentName dev -Region us-east-1
+pwsh ./infra/scripts/Get-StackOutputs.ps1 -EnvironmentName dev
+```
+
+After `Setup-GitHubOidc.ps1` finishes, add the printed values to GitHub:
+
+- Secret `AWS_ROLE_TO_ASSUME`
+- Secret `AWS_ACCOUNT_ID`
+- Variable `AWS_REGION=us-east-1`
+
+## Heritage site import
+
+The first AWS rollout requires importing `heritage_sites` from Appwrite into Aurora PostgreSQL before enabling Cognito/AWS mode in the app.
+
+The importer lives under [Tourin.HeritageSiteImporter.csproj](/c:/Jorge/tourin-app/backend/tools/Tourin.HeritageSiteImporter/Tourin.HeritageSiteImporter.csproj).
+
+Supported input formats:
+
+- JSON array
+- JSON object with `rows`, `documents`, `items`, or `data`
+- CSV with matching headers
+
+Expected fields:
+
+- `$id`
+- `name`
+- `description`
+- `latitude`
+- `longitude`
+- `stampRadius`
+- `isFree`
+- `stamp`
+- `coverPhoto`
+- `type`
+- `subType`
+- `location`
+- `legalStatus`
+- `comuna`
+- `region`
+- `route`
+- `website`
+
+Run a dry run:
+
+```bash
+dotnet run --project backend/tools/Tourin.HeritageSiteImporter/Tourin.HeritageSiteImporter.csproj -- --input C:\path\heritage_sites.json --dry-run
+```
+
+The dry run can validate the file structure without a database connection.
+
+Run the import:
+
+```bash
+dotnet run --project backend/tools/Tourin.HeritageSiteImporter/Tourin.HeritageSiteImporter.csproj -- --input C:\path\heritage_sites.json --connection-string "Host=...;Port=5432;Database=tourin;Username=...;Password=..."
+```
+
+The importer applies EF migrations automatically before loading data and upserts by site ID, so repeated imports are safe for the dev rollout.
+
 ## CI
 
 The repo uses separate GitHub Actions workflows for:

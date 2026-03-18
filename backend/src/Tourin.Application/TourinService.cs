@@ -10,6 +10,7 @@ public sealed class SystemClock : ISystemClock
 
 public sealed class TourinService
 {
+  private const int SiteStampAwardScore = 25;
   private readonly ITourinDataAccess _dataAccess;
   private readonly ICurrentUserAccessor _currentUserAccessor;
   private readonly IAvatarStorageService _avatarStorageService;
@@ -175,10 +176,10 @@ public sealed class TourinService
       now,
       request.Latitude ?? site.Latitude,
       request.Longitude ?? site.Longitude,
-      site.Score);
+      SiteStampAwardScore);
 
     await _dataAccess.AddVisitAsync(visit, cancellationToken);
-    user.Stats.ApplySiteStamped(site.Score, now);
+    user.Stats.ApplySiteStamped(SiteStampAwardScore, now);
 
     var achievements = await _dataAccess.ListAchievementsAsync(cancellationToken);
     var unlockedAchievements = await _dataAccess.ListUserAchievementsAsync(user.Id, cancellationToken);
@@ -307,8 +308,6 @@ public sealed class TourinService
       site.Name,
       site.Description,
       site.IsFree,
-      site.Price,
-      site.Score,
       site.StampUrl,
       site.CoverPhotoUrl,
       site.Type,

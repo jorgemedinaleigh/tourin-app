@@ -18,25 +18,41 @@ internal sealed class DotNetLambdaBundling : ILocalBundling
 
   public bool TryBundle(string outputDir, IBundlingOptions options)
   {
-    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-    {
-      return false;
-    }
-
     Directory.CreateDirectory(outputDir);
 
     RunProcess(
       "dotnet",
-      $"publish \"{_projectFilePath}\" -c Release -r {_runtimeIdentifier} --self-contained true -p:PublishSingleFile=true -o \"{outputDir}\"");
+      $"publish \"{_projectFilePath}\" -c Release -r {_runtimeIdentifier} --self-contained true -o \"{outputDir}\"");
+
+    var systemTextJsonSource = ResolveSystemTextJsonPath();
+    File.Copy(systemTextJsonSource, Path.Combine(outputDir, "System.Text.Json.dll"), overwrite: true);
 
     var bootstrapPath = Path.Combine(outputDir, "bootstrap");
     File.WriteAllText(
       bootstrapPath,
-      $"#!/bin/sh{System.Environment.NewLine}set -e{System.Environment.NewLine}./{_executableName}{System.Environment.NewLine}");
+      "#!/bin/sh\nset -e\n./" + _executableName + "\n");
 
-    RunProcess("chmod", $"+x \"{bootstrapPath}\" \"{Path.Combine(outputDir, _executableName)}\"");
+    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+    {
+      RunProcess("chmod", $"+x \"{bootstrapPath}\" \"{Path.Combine(outputDir, _executableName)}\"");
+    }
 
     return true;
+  }
+
+  private static string ResolveSystemTextJsonPath()
+  {
+    var homeDirectory = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+    var runtimePackRoot = Path.Combine(homeDirectory, ".nuget", "packages", "microsoft.netcore.app.runtime.linux-x64");
+
+    var systemTextJsonPath = Directory
+      .EnumerateDirectories(runtimePackRoot)
+      .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+      .Select(path => Path.Combine(path, "runtimes", "linux-x64", "lib", "net8.0", "System.Text.Json.dll"))
+      .FirstOrDefault(File.Exists);
+
+    return systemTextJsonPath
+      ?? throw new InvalidOperationException($"System.Text.Json.dll was not found under '{runtimePackRoot}'.");
   }
 
   private static void RunProcess(string fileName, string arguments)

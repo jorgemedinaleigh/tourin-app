@@ -49,6 +49,7 @@ global.json.user
 # CDK / AWS
 cdk.out/
 .cdk.staging/
+.artifacts/
 
 # IDE
 .vs/

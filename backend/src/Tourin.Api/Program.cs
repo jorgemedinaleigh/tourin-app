@@ -12,7 +12,6 @@ using Tourin.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
-builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
@@ -100,11 +99,6 @@ app.UseExceptionHandler(errorApp =>
     });
   });
 });
-
-if (app.Environment.IsDevelopment())
-{
-  app.MapOpenApi();
-}
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

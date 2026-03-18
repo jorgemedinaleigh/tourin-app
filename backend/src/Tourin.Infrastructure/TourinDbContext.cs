@@ -62,7 +62,6 @@ public sealed class TourinDbContext : DbContext
       entity.Property(item => item.Region).HasMaxLength(100);
       entity.Property(item => item.Route).HasMaxLength(100);
       entity.Property(item => item.Website).HasMaxLength(500);
-      entity.Property(item => item.Price).HasColumnType("numeric(10,2)");
     });
 
     modelBuilder.Entity<MetroStation>(entity =>

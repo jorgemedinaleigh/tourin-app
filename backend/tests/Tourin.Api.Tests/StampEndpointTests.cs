@@ -19,7 +19,6 @@ public sealed class StampEndpointTests
         "Test heritage site",
         -33.4391,
         -70.6413,
-        25,
         250));
 
       await Task.CompletedTask;
@@ -57,7 +56,6 @@ public sealed class StampEndpointTests
         "Test heritage site",
         -33.4391,
         -70.6413,
-        25,
         250));
 
       dbContext.Users.Add(new UserProfile("user-1", "user-1@tourin.app", "User One", DateTimeOffset.UtcNow));
@@ -100,7 +98,6 @@ public sealed class StampEndpointTests
         "Test heritage site",
         -33.4391,
         -70.6413,
-        25,
         50));
 
       await Task.CompletedTask;

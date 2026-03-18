@@ -1,0 +1,21 @@
+[
+  {
+    "id": "site-1",
+    "name": "Museo Test",
+    "description": "Registro de prueba",
+    "latitude": -33.4489,
+    "longitude": -70.6693,
+    "stampRadius": 100,
+    "isFree": true,
+    "stamp": "https://example.com/stamp.png",
+    "coverPhoto": "https://example.com/cover.jpg",
+    "type": "museum",
+    "subType": "history",
+    "location": "Santiago",
+    "legalStatus": "protected",
+    "comuna": "Santiago",
+    "region": "RM",
+    "route": "centro",
+    "website": "https://example.com"
+  }
+]

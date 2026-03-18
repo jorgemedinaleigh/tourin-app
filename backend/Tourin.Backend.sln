@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tourin.Infrastructure", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tourin.Api.Tests", "tests\Tourin.Api.Tests\Tourin.Api.Tests.csproj", "{7F19760B-1476-40F0-83DE-2EE657F74303}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tourin.HeritageSiteImporter", "tools\Tourin.HeritageSiteImporter\Tourin.HeritageSiteImporter.csproj", "{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,6 +89,18 @@ Global
 		{7F19760B-1476-40F0-83DE-2EE657F74303}.Release|x64.Build.0 = Release|Any CPU
 		{7F19760B-1476-40F0-83DE-2EE657F74303}.Release|x86.ActiveCfg = Release|Any CPU
 		{7F19760B-1476-40F0-83DE-2EE657F74303}.Release|x86.Build.0 = Release|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Debug|x64.Build.0 = Debug|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Debug|x86.Build.0 = Debug|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Release|x64.ActiveCfg = Release|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Release|x64.Build.0 = Release|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Release|x86.ActiveCfg = Release|Any CPU
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -95,5 +111,6 @@ Global
 		{3202F8FF-1FE7-42F2-9A44-02A9F20448E4} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{40686346-4D7E-44D3-96FD-CBA500D10BAC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{7F19760B-1476-40F0-83DE-2EE657F74303} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{F2985939-234E-4FE5-A7C0-CD8BFC1E7607} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 	EndGlobalSection
 EndGlobal
