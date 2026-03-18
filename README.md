@@ -57,9 +57,9 @@ npm run web
 
 ### Mobile environment variables
 
-The app keeps using Appwrite unless all AWS values are configured and `EXPO_PUBLIC_AUTH_PROVIDER=cognito`.
+`.env.example` defaults to `EXPO_PUBLIC_AUTH_PROVIDER=appwrite` and leaves the AWS migration values blank so the app stays on the documented Appwrite fallback until you intentionally populate every AWS setting and switch the provider to Cognito in your local `.env`.
 
-Copy the values you need into `.env`:
+Copy `.env.example` to `.env`, then fill in only the values you need:
 
 ```env
 EXPO_PUBLIC_AUTH_PROVIDER=appwrite
