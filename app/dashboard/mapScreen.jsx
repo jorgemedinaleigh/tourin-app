@@ -1,7 +1,6 @@
-import * as Location from 'expo-location'
 import { useEffect, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, ShapeSource, CircleLayer } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, UserLocation, requestAndroidLocationPermissions } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { GeoDataProvider, useGeoData } from '../../contexts/GeoDataContext'
@@ -14,18 +13,12 @@ import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
 import { posthog } from '../../lib/posthog'
 
-const LAST_KNOWN_MAX_AGE_MS = 20_000
-const LAST_KNOWN_REQUIRED_ACCURACY_M = 80
-const TARGET_ACCURACY_M = 30
-const CURRENT_POSITION_TIMEOUT_MS = 12_000
-const QUICK_CENTER_LAST_KNOWN_MAX_AGE_MS = 15_000
-const QUICK_CENTER_REQUIRED_ACCURACY_M = 120
-const QUICK_CENTER_TIMEOUT_MS = 5_000
 const CAMERA_DEFAULT_SETTINGS = Object.freeze({ zoomLevel: 16 })
 const CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS = 1_500
 const CAMERA_USER_INTERACTION_GRACE_MS = 1_200
 const CAMERA_CENTER_EPSILON = 0.00001
 const CAMERA_ZOOM_EPSILON = 0.01
+const USER_LOCATION_MIN_DISPLACEMENT_M = 2
 
 function toCoordinate(position) {
   return [position.coords.longitude, position.coords.latitude]
@@ -35,36 +28,6 @@ function isValidCoordinate(position) {
   const latitude = position?.coords?.latitude
   const longitude = position?.coords?.longitude
   return Number.isFinite(latitude) && Number.isFinite(longitude)
-}
-
-function pickBetterPosition(currentBest, candidate) {
-  if (!currentBest) return candidate
-  if (!candidate) return currentBest
-
-  const currentAccuracy = currentBest.coords?.accuracy ?? Number.POSITIVE_INFINITY
-  const candidateAccuracy = candidate.coords?.accuracy ?? Number.POSITIVE_INFINITY
-  return candidateAccuracy <= currentAccuracy ? candidate : currentBest
-}
-
-async function resolveBestUserPosition() {
-  let best = await Location.getLastKnownPositionAsync({
-    maxAge: LAST_KNOWN_MAX_AGE_MS,
-    requiredAccuracy: LAST_KNOWN_REQUIRED_ACCURACY_M,
-  })
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const current = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.BestForNavigation,
-      maximumAge: 0,
-      timeout: CURRENT_POSITION_TIMEOUT_MS,
-      mayShowUserSettingsDialog: true,
-    })
-    best = pickBetterPosition(best, current)
-
-    if ((best?.coords?.accuracy ?? Number.POSITIVE_INFINITY) <= TARGET_ACCURACY_M) break
-  }
-
-  return best
 }
 
 function GeoDataStatus() {
@@ -82,18 +45,19 @@ function GeoDataStatus() {
   )
 }
 
-const mapScreen = () => {
+const MapScreen = () => {
   const insets = useSafeAreaInsets()
   const [coord, setCoord] = useState(null)
+  const [hasLocationPermission, setHasLocationPermission] = useState(Platform.OS !== 'android')
   const [isFollowingUser, setIsFollowingUser] = useState(false)
   const [popup, setPopup] = useState(null)
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
+  const latestUserLocationRef = useRef(null)
   const programmaticCameraUntilRef = useRef(Date.now() + 3_000)
   const lastUserInteractionAtRef = useRef(0)
   const lastStableViewportRef = useRef(null)
-  const restoringViewportRef = useRef(false)
   const hasAutoCenteredRef = useRef(false)
 
   const showModal = () => setVisible(true)
@@ -115,17 +79,7 @@ const mapScreen = () => {
   // when the map is following the user. This prevents unexpected
   // recentring triggered from other asynchronous flows.
   const setCameraSafely = (config, lockMs = CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS, force = false) => {
-    try {
-      const stack = new Error().stack?.split('\n').slice(2,6).join('\n')
-      console.debug('[mapScreen] setCameraSafely called', { config, at: Date.now(), force, stack })
-    } catch (e) {
-      // ignore
-    }
-
-    if (!force && !isFollowingUser) {
-      console.debug('[mapScreen] setCameraSafely suppressed (not forced and not following user)')
-      return
-    }
+    if (!force && !isFollowingUser) return
 
     programmaticCameraUntilRef.current = Date.now() + lockMs
     cameraRef.current?.setCamera(config)
@@ -162,12 +116,6 @@ const mapScreen = () => {
       lastUserInteractionAtRef.current = now
     }
 
-    if (restoringViewportRef.current) {
-      restoringViewportRef.current = false
-      saveViewport(feature)
-      return
-    }
-
     const withinProgrammaticWindow = now <= programmaticCameraUntilRef.current
     const withinUserGrace = now - lastUserInteractionAtRef.current <= CAMERA_USER_INTERACTION_GRACE_MS
 
@@ -193,137 +141,73 @@ const mapScreen = () => {
   }
 
   useEffect(() => {
+    if (Platform.OS !== 'android') return undefined
+
     let isActive = true
-    let subscription
 
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== "granted") return
-
-      if (Platform.OS === 'android') {
-        await Location.enableNetworkProviderAsync().catch(() => null)
+    const requestPermission = async () => {
+      const granted = await requestAndroidLocationPermissions().catch(() => false)
+      if (isActive) {
+        setHasLocationPermission(granted)
       }
+    }
 
-      try {
-        const position = await resolveBestUserPosition()
-        if (isActive) {
-          const userCoord = updateUserCoord(position)
-          // Centrar automáticamente sólo la primera vez que se entra a la pantalla
-          if (userCoord && !hasAutoCenteredRef.current) {
-            setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
-            hasAutoCenteredRef.current = true
-          }
-        }
-      } catch {
-        const fallback = await Location.getLastKnownPositionAsync()
-        if (isActive) {
-          const userCoord = updateUserCoord(fallback)
-          if (userCoord && !hasAutoCenteredRef.current) {
-            setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
-            hasAutoCenteredRef.current = true
-          }
-        }
-      }
-
-      let watcher
-      try {
-        watcher = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.BestForNavigation,
-            timeInterval: 2_500,
-            distanceInterval: 2,
-            mayShowUserSettingsDialog: true,
-          },
-          (position) => {
-            updateUserCoord(position)
-          }
-        )
-      } catch {
-        return
-      }
-
-      if (!isActive) {
-        watcher.remove()
-        return
-      }
-
-      subscription = watcher
-    })()
+    requestPermission()
 
     return () => {
       isActive = false
-      subscription?.remove?.()
     }
   }, [])
 
+  const ensureLocationPermission = async () => {
+    if (Platform.OS !== 'android') return true
+
+    const granted = await requestAndroidLocationPermissions().catch(() => false)
+    setHasLocationPermission(granted)
+    return granted
+  }
+
+  const handleUserLocationUpdate = (position) => {
+    latestUserLocationRef.current = position
+
+    const userCoord = updateUserCoord(position)
+    if (!userCoord || hasAutoCenteredRef.current) return
+
+    setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
+    hasAutoCenteredRef.current = true
+  }
+
   const centerOnUser = async (followAfterCenter = false) => {
-    const immediateCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
-    if (immediateCoord) {
-      setCameraSafely({
-        centerCoordinate: immediateCoord,
-        animationDuration: 220,
-      }, 700, true)
-    }
-
-    const permission = await Location.getForegroundPermissionsAsync()
-    let permissionStatus = permission.status
-    if (permissionStatus !== "granted") {
-      const requested = await Location.requestForegroundPermissionsAsync()
-      permissionStatus = requested.status
-    }
-
-    if (permissionStatus !== "granted") {
-      if (!immediateCoord) {
-        Alert.alert("Permiso requerido", "Activa el permiso de ubicación para centrar el mapa.")
-      }
+    const hasPermission = await ensureLocationPermission()
+    if (!hasPermission) {
+      Alert.alert("Permiso requerido", "Activa el permiso de ubicación para centrar el mapa.")
       return
-    }
-
-    if (Platform.OS === 'android') {
-      Location.enableNetworkProviderAsync().catch(() => null)
-    }
-
-    let pos = await Location.getLastKnownPositionAsync({
-      maxAge: QUICK_CENTER_LAST_KNOWN_MAX_AGE_MS,
-      requiredAccuracy: QUICK_CENTER_REQUIRED_ACCURACY_M,
-    }).catch(() => null)
-
-    if (!pos) {
-      pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        maximumAge: QUICK_CENTER_LAST_KNOWN_MAX_AGE_MS,
-        timeout: QUICK_CENTER_TIMEOUT_MS,
-        mayShowUserSettingsDialog: true,
-      }).catch(() => null)
-    }
-
-    if (!pos) {
-      if (!immediateCoord) {
-        Alert.alert("Ubicación no disponible", "No se pudo obtener una ubicación precisa en este momento.")
-      }
-      return
-    }
-
-    const userCoord = updateUserCoord(pos) ?? toCoordinate(pos)
-    if (!immediateCoord) {
-      setCameraSafely({
-        centerCoordinate: userCoord,
-        animationDuration: 350,
-      }, 700, true)
     }
 
     if (followAfterCenter) {
       setIsFollowingUser(true)
     }
 
-    // Track location centering action
+    const currentCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
+    if (!currentCoord) {
+      Alert.alert("Buscando ubicación", "Estamos obteniendo tu ubicación actual.")
+      return
+    }
+
+    setCameraSafely({
+      centerCoordinate: currentCoord,
+      animationDuration: 220,
+    }, 700, true)
+
     posthog.capture('location_centered', {
-      latitude: userCoord[1],
-      longitude: userCoord[0],
-      accuracy_m: pos.coords?.accuracy ?? null,
-      used_cached_coordinate: Boolean(immediateCoord),
+      latitude: currentCoord[1],
+      longitude: currentCoord[0],
+      accuracy_m: latestUserLocationRef.current?.coords?.accuracy ?? null,
+      used_cached_coordinate: false,
     })
   }
+
+  const shouldRenderUserLocation = Platform.OS !== 'android' || hasLocationPermission
 
   return (
     <GeoDataProvider>
@@ -354,11 +238,11 @@ const mapScreen = () => {
               const props = { ...(feature.properties || {}), pointCoordinate }
               setPopup({ props, lat, lon })
               setMetroPopup(null)
-                        setCameraSafely({
-                          centerCoordinate: [lon,lat],
-                          zoomLevel: 16,
-                          animationDuration: 600,
-                        }, undefined, true)
+              setCameraSafely({
+                centerCoordinate: [lon, lat],
+                zoomLevel: 16,
+                animationDuration: 600,
+              }, undefined, true)
 
               // Track site info viewed event
               posthog.capture('site_info_viewed', {
@@ -395,32 +279,14 @@ const mapScreen = () => {
               showModal()
             }}
           />
-          {coord ? (
-            <ShapeSource
-              id="user-location-source"
-              shape={{
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: coord },
-                properties: {},
-              }}
-            >
-              <CircleLayer
-                id="user-location-halo"
-                style={{
-                  circleRadius: 16,
-                  circleColor: 'rgba(34, 197, 94, 0.20)',
-                }}
-              />
-              <CircleLayer
-                id="user-location-dot"
-                style={{
-                  circleRadius: 7,
-                  circleColor: '#22c55e',
-                  circleStrokeWidth: 2,
-                  circleStrokeColor: '#ffffff',
-                }}
-              />
-            </ShapeSource>
+          {shouldRenderUserLocation ? (
+            <UserLocation
+              renderMode="native"
+              androidRenderMode="compass"
+              showsUserHeadingIndicator={true}
+              minDisplacement={USER_LOCATION_MIN_DISPLACEMENT_M}
+              onUpdate={handleUserLocationUpdate}
+            />
           ) : null}
         </MapView>
 
@@ -458,15 +324,9 @@ const mapScreen = () => {
   )
 }
 
-export default mapScreen
+export default MapScreen
 
 const styles = StyleSheet.create({
-  button: {
-    position: "absolute",
-    right: 10,
-    bottom: 5,
-    backgroundColor: "#000",
-  },
   buttonFollow: {
     position: "absolute",
     right: 10,
