@@ -195,7 +195,19 @@ function InfoCard({ info, onClose }) {
 
       setStamping(true)
       setOverlayDismissible(false)
-      await stampVisit(user.$id, info.id)
+      const stampResult = await stampVisit(user.$id, info.id)
+
+      if (!stampResult?.created) {
+        if (stampResult?.alreadyVisited) {
+          setIsVisited(true)
+          Alert.alert('Sitio ya visitado', 'Este punto ya estaba estampado en tu pasaporte.')
+          await fetchVisits(user.$id)
+          return
+        }
+
+        throw new Error('No se pudo registrar la visita.')
+      }
+
       await addPoints(info.score)
       await siteVisited()
       await Promise.all([getStats(), fetchVisits(user.$id)])
