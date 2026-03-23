@@ -12,21 +12,26 @@ export function useSiteVisits(userId, siteId) {
   const [sitesVisited, setSitesVisited] = useState([])
 
   async function stampVisit(userId, siteId) {
-    if (!userId || !siteId) return null
+    if (!userId || !siteId) return { created: false, alreadyVisited: false }
     try {
-      await tables.createRow({
+      const existingVisit = await getVisit(userId, siteId)
+      if (existingVisit) {
+        return { created: false, alreadyVisited: true }
+      }
+
+      const createdVisit = await tables.createRow({
         databaseId: DATABASE_ID,
         tableId: VISITS_TABLE_ID,
         rowId: ID.unique(),
-        data: { 
-          userId: userId, 
-          siteId: siteId 
+        data: {
+          userId: userId,
+          siteId: siteId,
         }
       })
-      return true
-    }catch (error) {
-      console.error('Error fetching info:', error)
-      return null
+      return { created: !!createdVisit, alreadyVisited: false }
+    } catch (error) {
+      console.error('Error stamping visit:', error)
+      return { created: false, alreadyVisited: false }
     }
   }
   
