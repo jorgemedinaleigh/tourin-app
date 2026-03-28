@@ -336,7 +336,7 @@ function InfoCard({ info, onClose }) {
               {
                 info.route ? <Chip
                                 icon={() => (
-                                  <Ionicons name="git-branch-outline" size={25} color="#6c4a00ff" />
+                                  <Ionicons name="map" size={25} color="#6c4a00ff" />
                                 )}>Ruta: {info.route}</Chip> : null
               }
             </View>

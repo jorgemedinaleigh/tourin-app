@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity } from 'react-native'
 import { Card } from 'react-native-paper'
@@ -20,7 +20,6 @@ const AchievementsScreen = () => {
     setViewerAchievement(item)
     setViewerVisible(true)
 
-    // Track achievement badge viewed
     posthog.capture('achievement_viewed', {
       achievement_id: item.$id,
       achievement_name: item.name,
@@ -31,7 +30,7 @@ const AchievementsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchAchievements()
-    }, [user?.$id])
+    }, [fetchAchievements])
   )
 
   const achievementsById = useMemo(() => {
@@ -75,7 +74,6 @@ const AchievementsScreen = () => {
         )}
       />
 
-      {/* Full-screen image viewer */}
       <Modal visible={viewerVisible} transparent onRequestClose={() => setViewerVisible(false)}>
         <View style={styles.modalContainer}>
           <TouchableOpacity style={styles.modalBackdrop} onPress={() => setViewerVisible(false)} />

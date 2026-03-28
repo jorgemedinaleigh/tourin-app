@@ -57,18 +57,30 @@ const DashboardLayout = () => {
             )
           }} 
         />
-        <Tabs.Screen 
-          name="achievementsScreen" 
-          options={{ 
-            title: 'Logros',
+        <Tabs.Screen
+          name="suggestedRoutesScreen"
+          options={{
+            title: 'Rutas',
             tabBarIcon: ({ focused }) => (
-              <Ionicons 
-                size={24} 
-                name={focused ? "trophy" : "trophy-outline"} 
+              <Ionicons
+                size={24}
+                name={focused ? "map" : "map-outline"}
                 color={focused ? theme.iconColorFocused : theme.iconColor}
               />
             )
-          }} 
+          }}
+        />
+        <Tabs.Screen
+          name="achievementsScreen"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="routeDetails"
+          options={{
+            href: null,
+          }}
         />
         <Tabs.Screen 
           name="profileScreen" 
