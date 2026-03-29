@@ -1,119 +1,151 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
-import { useTheme } from 'react-native-paper'
+import { ActivityIndicator, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import ThemedView from '../../components/ThemedView'
-import { suggestedRoutes } from '../../constants/suggestedRoutes'
+import { useSuggestedRoutes } from '../../hooks/useSuggestedRoutes'
 
 const SuggestedRoutesScreen = () => {
   const theme = useTheme()
+  const { routes, loading, error, refresh } = useSuggestedRoutes()
   const surfaceVariant = theme.colors.surfaceVariant || '#F1EEE8'
   const outlineVariant = theme.colors.outlineVariant || '#D8D1C5'
   const onSurfaceVariant = theme.colors.onSurfaceVariant || '#5E584F'
   const surface = theme.colors.surface || '#FFFFFF'
+  const hasRoutes = routes.length > 0
 
   return (
     <ThemedView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.heroCard, { backgroundColor: '#1F4D5C' }]}>
-          <Text style={styles.eyebrow}>Dashboard</Text>
-          <Text style={styles.heroTitle}>Rutas sugeridas</Text>
-          <Text style={styles.heroCopy}>
-            Una seleccion rapida para cuando quieras abrir TourIn y salir a recorrer sin planear desde cero.
-          </Text>
-
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
-              <Ionicons name="map-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.heroStatText}>{suggestedRoutes.length} rutas listas</Text>
-            </View>
-            <View style={styles.heroStat}>
-              <Ionicons name="walk-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.heroStatText}>pensadas a pie</Text>
-            </View>
-          </View>
+        <Text style={styles.heroTitle}>Rutas sugeridas</Text>
+        <Text style={styles.heroCopy}>
+          Una seleccion rapida para cuando quieras abrir TourIn y salir a recorrer sin planear desde cero.
+        </Text>
+        <View style={styles.heroStat}>
+          <Ionicons name="map-outline" size={16} color="#000000" />
+          <Text style={styles.heroStatText}>{routes.length} rutas</Text>
         </View>
 
-        {suggestedRoutes.map((route, index) => (
-          <Pressable
-            key={route.id}
-            onPress={() =>
-              router.push({
-                pathname: '/dashboard/routeDetails',
-                params: { routeId: route.id },
-              })
-            }
-            style={({ pressed }) => [
-              styles.routeCard,
-              {
-                backgroundColor: surface,
-                borderColor: outlineVariant,
-              },
-              pressed && styles.routeCardPressed,
-            ]}
-          >
-            <View style={styles.routeHeader}>
-              <View style={styles.routeTitleBlock}>
-                <View style={styles.routeLabelRow}>
-                  <Text style={[styles.routeIndex, { color: route.color }]}>
-                    Ruta {index + 1}
-                  </Text>
-                  <View style={[styles.routeIconBadge, { backgroundColor: route.color }]}>
-                    <Ionicons name={route.icon} size={16} color="#FFFFFF" />
+        {loading && !hasRoutes ? (
+          <View style={[styles.stateCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
+            <ActivityIndicator size="small" color="#1F4D5C" />
+            <Text style={styles.stateTitle}>Cargando rutas</Text>
+            <Text style={[styles.stateCopy, { color: onSurfaceVariant }]}>
+              Estamos obteniendo las rutas sugeridas desde Appwrite.
+            </Text>
+          </View>
+        ) : null}
+
+        {error && !hasRoutes ? (
+          <View style={[styles.stateCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
+            <Ionicons name="warning-outline" size={24} color="#1F4D5C" />
+            <Text style={styles.stateTitle}>No pudimos cargar las rutas</Text>
+            <Text style={[styles.stateCopy, { color: onSurfaceVariant }]}>
+              Revisa tu conexion e intenta de nuevo para ver las rutas sugeridas.
+            </Text>
+            <Pressable onPress={refresh} style={[styles.primaryButton, { backgroundColor: '#1F4D5C' }]}>
+              <Text style={styles.primaryButtonText}>Reintentar</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {!loading && !error && !hasRoutes ? (
+          <View style={[styles.stateCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
+            <Ionicons name="trail-sign-outline" size={24} color="#1F4D5C" />
+            <Text style={styles.stateTitle}>No hay rutas disponibles</Text>
+            <Text style={[styles.stateCopy, { color: onSurfaceVariant }]}>
+              Cuando agregues rutas en Appwrite apareceran aqui con sus paradas asociadas.
+            </Text>
+          </View>
+        ) : null}
+
+        {hasRoutes
+          ? routes.map((route, index) => (
+              <Pressable
+                key={route.id}
+                onPress={() =>
+                  router.push({
+                    pathname: '/dashboard/routeDetails',
+                    params: { routeId: route.id },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.routeCard,
+                  {
+                    backgroundColor: surface,
+                    borderColor: outlineVariant,
+                  },
+                  pressed && styles.routeCardPressed,
+                ]}
+              >
+                <View style={styles.routeHeader}>
+                  <View style={styles.routeTitleBlock}>
+                    <View style={styles.routeLabelRow}>
+                      <Text style={styles.routeTitle}>{route.title}</Text>
+                      <View style={[styles.routeIconBadge, { backgroundColor: route.accentColor }]}>
+                        <Ionicons name={route.icon} size={16} color="#FFFFFF" />
+                      </View>
+                    </View>
                   </View>
                 </View>
-                <Text style={styles.routeTitle}>{route.title}</Text>
-                <Text style={[styles.routeSubtitle, { color: onSurfaceVariant }]}>
-                  {route.subtitle}
-                </Text>
-              </View>
-            </View>
 
-            <View style={styles.metaRow}>
-              <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
-                <Ionicons name="time-outline" size={14} color={route.color} />
-                <Text style={styles.metaText}>{route.duration}</Text>
-              </View>
-              <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
-                <Ionicons name="navigate-outline" size={14} color={route.color} />
-                <Text style={styles.metaText}>{route.distance}</Text>
-              </View>
-              <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
-                <Ionicons name="star-outline" size={14} color={route.color} />
-                <Text style={styles.metaText}>{route.bestFor}</Text>
-              </View>
-            </View>
-
-            <Text style={[styles.routeDescription, { color: onSurfaceVariant }]}>
-              {route.description}
-            </Text>
-
-            <View style={styles.stopsSection}>
-              <Text style={styles.stopsTitle}>Paradas sugeridas</Text>
-              <View style={styles.stopsRow}>
-                {route.stops.map((stop) => (
-                  <View
-                    key={`${route.id}-${stop}`}
-                    style={[
-                      styles.stopChip,
-                      {
-                        borderColor: route.color,
-                        backgroundColor: `${route.color}12`,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.stopText, { color: route.color }]}>{stop}</Text>
+                <View style={styles.metaRow}>
+                  <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
+                    <Ionicons name="hourglass-outline" size={14} color={route.accentColor} />
+                    <Text style={styles.metaText}>{route.duration}</Text>
                   </View>
-                ))}
-              </View>
-            </View>
+                  <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
+                    <Ionicons name="footsteps-outline" size={14} color={route.accentColor} />
+                    <Text style={styles.metaText}>{route.distance}</Text>
+                  </View>
+                  <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
+                    <Ionicons name="walk-outline" size={14} color={route.accentColor} />
+                    <Text style={styles.metaText}>{route.intensity || 'Sin definir'}</Text>
+                  </View>
+                  <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
+                    <Ionicons name="location-outline" size={14} color={route.accentColor} />
+                    <Text style={styles.metaText}>
+                      {route.stopCount} {route.stopCount === 1 ? 'lugar' : 'lugares'}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={styles.ctaRow}>
-              <Text style={[styles.ctaText, { color: route.color }]}>Ver informacion de la ruta</Text>
-              <Ionicons name="chevron-forward" size={18} color={route.color} />
-            </View>
-          </Pressable>
-        ))}
+                <Text style={[styles.routeDescription, { color: onSurfaceVariant }]}>
+                  {route.description || 'Esta ruta no tiene descripcion disponible todavia.'}
+                </Text>
+
+                <View style={styles.stopsSection}>
+                  {route.tags.length ? (
+                    <View style={styles.stopsRow}>
+                      {route.tags.map((tag) => (
+                        <View
+                          key={`${route.id}-${tag}`}
+                          style={[
+                            styles.stopChip,
+                            {
+                              borderColor: route.accentColor,
+                              backgroundColor: `${route.accentColor}12`,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.stopText, { color: route.accentColor }]}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={[styles.emptyInlineText, { color: onSurfaceVariant }]}>
+                      Sin etiquetas todavia.
+                    </Text>
+                  )}
+                </View>
+
+                <View style={styles.ctaRow}>
+                  <Text style={[styles.ctaText, { color: route.accentColor }]}>Ver informacion de la ruta</Text>
+                  <Ionicons name="chevron-forward" size={18} color={route.accentColor} />
+                </View>
+              </Pressable>
+            ))
+          : null}
 
         <View style={[styles.footerCard, { backgroundColor: surfaceVariant }]}>
           <Ionicons name="compass-outline" size={20} color="#1F4D5C" />
@@ -153,13 +185,12 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 10,
+    color: '#000000',
   },
   heroCopy: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#E5F0F3',
+    color: '#000000',
   },
   heroStats: {
     flexDirection: 'row',
@@ -168,18 +199,38 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   heroStat: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(169, 169, 169, 0.34)',
   },
   heroStatText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
+  },
+  stateCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 20,
+    alignItems: 'center',
+    gap: 10,
+  },
+  stateTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E1E1E',
+    textAlign: 'center',
+  },
+  stateCopy: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    maxWidth: 320,
   },
   routeCard: {
     borderWidth: 1,
@@ -271,6 +322,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  emptyInlineText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   ctaRow: {
     marginTop: 16,
     flexDirection: 'row',
@@ -292,5 +347,16 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+  },
+  primaryButton: {
+    marginTop: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+  },
+  primaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 })

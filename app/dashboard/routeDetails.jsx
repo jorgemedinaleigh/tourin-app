@@ -1,20 +1,67 @@
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { useTheme } from 'react-native-paper'
+import { ActivityIndicator, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import ThemedView from '../../components/ThemedView'
-import { getSuggestedRouteById } from '../../constants/suggestedRoutes'
+import { useSuggestedRoutes } from '../../hooks/useSuggestedRoutes'
+
+const DESCRIPTION_COLLAPSED_LINES = 3
+
+const CollapsibleText = ({ buttonColor, collapsedLines = DESCRIPTION_COLLAPSED_LINES, text, textStyle }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [hasMeasured, setHasMeasured] = useState(false)
+  const [measuredLineCount, setMeasuredLineCount] = useState(0)
+
+  useEffect(() => {
+    setIsExpanded(false)
+    setHasMeasured(false)
+    setMeasuredLineCount(0)
+  }, [collapsedLines, text])
+
+  const handleTextLayout = useCallback(
+    (event) => {
+      const nextLineCount = event?.nativeEvent?.lines?.length ?? 0
+      setHasMeasured(true)
+      setMeasuredLineCount((current) => (nextLineCount > current ? nextLineCount : current))
+    },
+    []
+  )
+
+  if (!text) return null
+
+  const isCollapsible = measuredLineCount > collapsedLines
+  const numberOfLines = hasMeasured && isCollapsible && !isExpanded ? collapsedLines : undefined
+
+  return (
+    <View style={styles.collapsibleTextBlock}>
+      <Text numberOfLines={numberOfLines} onTextLayout={handleTextLayout} style={textStyle}>
+        {text}
+      </Text>
+
+      {hasMeasured && isCollapsible ? (
+        <Pressable onPress={() => setIsExpanded((current) => !current)} style={styles.expandButton}>
+          <Text style={[styles.expandButtonText, { color: buttonColor }]}>
+            {isExpanded ? 'Ver menos' : 'Ver mas'}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
 
 const RouteDetailsScreen = () => {
   const theme = useTheme()
   const { routeId } = useLocalSearchParams()
-  const route = getSuggestedRouteById(routeId)
+  const { loading, error, refresh, getRouteById } = useSuggestedRoutes()
+  const route = getRouteById(routeId)
   const surface = theme.colors.surface || '#FFFFFF'
   const surfaceVariant = theme.colors.surfaceVariant || '#F1EEE8'
   const outlineVariant = theme.colors.outlineVariant || '#D8D1C5'
   const onSurfaceVariant = theme.colors.onSurfaceVariant || '#5E584F'
   const goToSuggestedRoutes = () => router.replace('/dashboard/suggestedRoutesScreen')
+
+  const getStopKey = (stop) => `${route?.id || 'route'}-${stop.id || stop.name}`
 
   useFocusEffect(
     useCallback(() => {
@@ -26,6 +73,43 @@ const RouteDetailsScreen = () => {
       return () => subscription.remove()
     }, [])
   )
+
+  if (loading && !route) {
+    return (
+      <ThemedView style={styles.screen}>
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="small" color="#1F4D5C" />
+          <Text style={styles.emptyTitle}>Cargando ruta</Text>
+          <Text style={[styles.emptyCopy, { color: onSurfaceVariant }]}>
+            Estamos obteniendo la informacion de esta ruta desde Appwrite.
+          </Text>
+        </View>
+      </ThemedView>
+    )
+  }
+
+  if (error && !route) {
+    return (
+      <ThemedView style={styles.screen}>
+        <View style={styles.emptyState}>
+          <Ionicons name="warning-outline" size={28} color="#1F4D5C" />
+          <Text style={styles.emptyTitle}>No pudimos cargar la ruta</Text>
+          <Text style={[styles.emptyCopy, { color: onSurfaceVariant }]}>
+            Revisa tu conexion e intenta de nuevo para volver a cargar esta ruta.
+          </Text>
+          <Pressable onPress={refresh} style={[styles.primaryButton, { backgroundColor: '#1F4D5C' }]}>
+            <Text style={styles.primaryButtonText}>Reintentar</Text>
+          </Pressable>
+          <Pressable
+            onPress={goToSuggestedRoutes}
+            style={[styles.secondaryButton, { backgroundColor: surfaceVariant }]}
+          >
+            <Text style={styles.secondaryButtonText}>Volver a rutas</Text>
+          </Pressable>
+        </View>
+      </ThemedView>
+    )
+  }
 
   if (!route) {
     return (
@@ -58,93 +142,106 @@ const RouteDetailsScreen = () => {
           <Text style={styles.backButtonText}>Volver</Text>
         </Pressable>
 
-        <View style={[styles.heroCard, { backgroundColor: route.color }]}>
+        <View style={[styles.heroCard, { backgroundColor: route.accentColor }]}>
           <View style={styles.heroTopRow}>
-            <Text style={styles.heroLabel}>Ruta sugerida</Text>
+            <Text style={styles.heroTitle}>{route.title}</Text>  
             <View style={styles.heroIconBadge}>
-              <Ionicons name={route.icon} size={18} color={route.color} />
+              <Ionicons name={route.icon} size={18} color={route.accentColor} />
             </View>
           </View>
-          <Text style={styles.heroTitle}>{route.title}</Text>
-          <Text style={styles.heroSubtitle}>{route.subtitle}</Text>
 
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
-              <Ionicons name="time-outline" size={15} color="#FFFFFF" />
+              <Ionicons name="hourglass-outline" size={15} color="#FFFFFF" />
               <Text style={styles.heroStatText}>{route.duration}</Text>
             </View>
             <View style={styles.heroStat}>
-              <Ionicons name="navigate-outline" size={15} color="#FFFFFF" />
+              <Ionicons name="footsteps-outline" size={15} color="#FFFFFF" />
               <Text style={styles.heroStatText}>{route.distance}</Text>
             </View>
             <View style={styles.heroStat}>
               <Ionicons name="walk-outline" size={15} color="#FFFFFF" />
-              <Text style={styles.heroStatText}>{route.pace}</Text>
+              <Text style={styles.heroStatText}>{route.intensity || 'Sin definir'}</Text>
+            </View>
+            <View style={styles.heroStat}>
+              <Ionicons name="location-outline" size={15} color="#FFFFFF" />
+              <Text style={styles.heroStatText}>
+                {route.stopCount} {route.stopCount === 1 ? 'lugar' : 'lugares'}
+              </Text>
+            </View>
+            <View style={styles.heroStat}>
+              <Ionicons name="time-outline" size={15} color="#FFFFFF" />
+              <Text style={styles.heroStatText}>{route.bestTime || 'Sin definir'}</Text>
             </View>
           </View>
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
           <Text style={styles.sectionTitle}>Resumen</Text>
-          <Text style={[styles.sectionCopy, { color: onSurfaceVariant }]}>{route.description}</Text>
-
-          <View style={styles.infoGrid}>
-            <View style={[styles.infoChip, { backgroundColor: surfaceVariant }]}>
-              <Text style={styles.infoLabel}>Ideal para</Text>
-              <Text style={styles.infoValue}>{route.bestFor}</Text>
-            </View>
-            <View style={[styles.infoChip, { backgroundColor: surfaceVariant }]}>
-              <Text style={styles.infoLabel}>Mejor momento</Text>
-              <Text style={styles.infoValue}>{route.bestMoment}</Text>
-            </View>
-          </View>
+          <CollapsibleText
+            buttonColor={route.accentColor}
+            text={route.description || 'Esta ruta no tiene descripcion disponible todavia.'}
+            textStyle={[styles.sectionCopy, { color: onSurfaceVariant }]}
+          />
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
-          <Text style={styles.sectionTitle}>Lo mejor de esta ruta</Text>
-          <View style={styles.highlightsRow}>
-            {route.highlights.map((highlight) => (
-              <View
-                key={`${route.id}-${highlight}`}
-                style={[
-                  styles.highlightChip,
-                  {
-                    borderColor: route.color,
-                    backgroundColor: `${route.color}12`,
-                  },
-                ]}
-              >
-                <Text style={[styles.highlightText, { color: route.color }]}>{highlight}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.sectionTitle}>Lugares que Visitarás</Text>
+          {route.stops.length ? (
+            <View style={styles.stopList}>
+              {route.stops.map((stop, index) => {
+                const stopKey = getStopKey(stop)
+
+                return (
+                  <View key={stopKey} style={styles.stopRow}>
+                    <View style={[styles.stopNumber, { backgroundColor: route.accentColor }]}>
+                      <Text style={styles.stopNumberText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.stopCopyBlock}>
+                      <Text style={styles.stopName}>{stop.name}</Text>
+                      {stop.description ? (
+                        <CollapsibleText
+                          buttonColor={route.accentColor}
+                          text={stop.description}
+                          textStyle={[styles.stopDescription, { color: onSurfaceVariant }]}
+                        />
+                      ) : null}
+                    </View>
+                  </View>
+                )
+              })}
+            </View>
+          ) : (
+            <Text style={[styles.sectionCopy, { color: onSurfaceVariant }]}>
+              Esta ruta aun no tiene paradas asociadas en la tabla heritage_sites.
+            </Text>
+          )}
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
-          <Text style={styles.sectionTitle}>Paradas sugeridas</Text>
-          <View style={styles.stopList}>
-            {route.itinerary.map((stop, index) => (
-              <View key={`${route.id}-${stop.name}`} style={styles.stopRow}>
-                <View style={[styles.stopNumber, { backgroundColor: route.color }]}>
-                  <Text style={styles.stopNumberText}>{index + 1}</Text>
+          <Text style={styles.sectionTitle}>Etiquetas</Text>
+          {route.tags.length ? (
+            <View style={styles.highlightsRow}>
+              {route.tags.map((tag) => (
+                <View
+                  key={`${route.id}-${tag}`}
+                  style={[
+                    styles.highlightChip,
+                    {
+                      borderColor: route.accentColor,
+                      backgroundColor: `${route.accentColor}12`,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.highlightText, { color: route.accentColor }]}>{tag}</Text>
                 </View>
-                <View style={styles.stopCopyBlock}>
-                  <Text style={styles.stopName}>{stop.name}</Text>
-                  <Text style={[styles.stopDescription, { color: onSurfaceVariant }]}>
-                    {stop.description}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={[styles.tipCard, { backgroundColor: surfaceVariant }]}>
-          <Ionicons name="bulb-outline" size={20} color={route.color} />
-          <View style={styles.tipCopy}>
-            <Text style={styles.tipTitle}>Consejo rapido</Text>
-            <Text style={[styles.tipText, { color: onSurfaceVariant }]}>{route.tip}</Text>
-          </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.sectionCopy, { color: onSurfaceVariant }]}>
+              Esta ruta no tiene etiquetas destacadas todavia.
+            </Text>
+          )}
         </View>
       </ScrollView>
     </ThemedView>
@@ -247,6 +344,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
+  collapsibleTextBlock: {
+    gap: 4,
+  },
   infoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -319,25 +419,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    borderRadius: 18,
-    padding: 16,
+  expandButton: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
-  tipCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1E1E1E',
-  },
-  tipText: {
-    fontSize: 14,
-    lineHeight: 20,
+  expandButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   emptyState: {
     flex: 1,
@@ -350,6 +438,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     color: '#1E1E1E',
+    textAlign: 'center',
   },
   emptyCopy: {
     fontSize: 14,
@@ -367,5 +456,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  secondaryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F4D5C',
   },
 })
