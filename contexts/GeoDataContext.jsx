@@ -90,7 +90,6 @@ export function GeoDataProvider({ children }) {
 
   useEffect(() => {
     fetchGeoData()
-    console.log(geoData)
   }, [fetchGeoData])
 
   const value = useMemo(() => (

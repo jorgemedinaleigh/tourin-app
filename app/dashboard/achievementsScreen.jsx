@@ -29,7 +29,9 @@ const AchievementsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAchievements()
+      const abortController = new AbortController()
+      fetchAchievements({ signal: abortController.signal })
+      return () => abortController.abort()
     }, [fetchAchievements])
   )
 

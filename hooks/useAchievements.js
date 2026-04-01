@@ -12,11 +12,10 @@ export function useAchievements(userId) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const alive = useRef(true)
-  const setSafe = useCallback((fn) => { if (alive.current) fn() }, [])
-
-  const fetchAchievements = useCallback(async () => {
-    setSafe(() => { setLoading(true); setError(null) })
+  const fetchAchievements = useCallback(async (options) => {
+    const signal = options?.signal
+    
+    setLoading(true); setError(null)
     try {
       const achList = await tables.listRows({
         databaseId: DATABASE_ID,
@@ -39,6 +38,8 @@ export function useAchievements(userId) {
         })
       }
 
+      if (signal?.aborted) return
+
       const unlockedByAchId = Object.create(null)
       for (const u of userUnlocks.rows || []) {
         if (u?.achivementId) unlockedByAchId[u.achivementId] = u
@@ -53,12 +54,16 @@ export function useAchievements(userId) {
         unlockedAt: unlockedByAchId[row.$id]?.unlockedAt || null,
       }))
 
-      setSafe(() => setAchievements(merged))
+      setAchievements(merged)
     } catch (err) {
+      if (signal?.aborted) return
+
       console.error('[useAchievements] fetch error', err)
-      setSafe(() => setError(err))
+      setError(err)
     } finally {
-      setSafe(() => setLoading(false))
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [userId])
 
@@ -98,11 +103,10 @@ export function useAchievements(userId) {
   }, [userId, isUnlocked, achievements])
 
   const refresh = fetchAchievements
-  const stop = useCallback(() => { alive.current = false }, [])
 
   return useMemo(() => ({
-    achievements, loading, error, fetchAchievements, refresh, isUnlocked, unlockAchievement, stop
-  }), [achievements, loading, error, fetchAchievements, refresh, isUnlocked, unlockAchievement, stop])
+    achievements, loading, error, fetchAchievements, refresh, isUnlocked, unlockAchievement
+  }), [achievements, loading, error, fetchAchievements, refresh, isUnlocked, unlockAchievement])
 }
 
 export default useAchievements

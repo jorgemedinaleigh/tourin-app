@@ -91,16 +91,11 @@ export function useSuggestedRoutes() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const alive = useRef(true)
-  const setSafe = useCallback((callback) => {
-    if (alive.current) callback()
-  }, [])
+  const fetchRoutes = useCallback(async (options) => {
+    const signal = options?.signal
 
-  const fetchRoutes = useCallback(async () => {
-    setSafe(() => {
-      setLoading(true)
-      setError(null)
-    })
+    setLoading(true)
+    setError(null)
 
     try {
       const [routeRows, siteRows] = await Promise.all([
@@ -108,29 +103,33 @@ export function useSuggestedRoutes() {
         listAllRows(SITES_TABLE_ID, [Query.isNotNull('route'), Query.orderAsc('name')]),
       ])
 
+      if (signal?.aborted) return
+
       const stopsByRouteName = buildStopsByRoute(siteRows)
       const normalizedRoutes = routeRows.map((row) => normalizeRoute(row, stopsByRouteName))
 
-      setSafe(() => setRoutes(normalizedRoutes))
+      setRoutes(normalizedRoutes)
       return normalizedRoutes
     } catch (err) {
+      if (signal?.aborted) return
+
       console.error('[useSuggestedRoutes] fetch error', err)
-      setSafe(() => {
-        setError(err)
-        setRoutes([])
-      })
+      setError(err)
+      setRoutes([])
       return []
     } finally {
-      setSafe(() => setLoading(false))
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
-  }, [setSafe])
+  }, [])
 
   useEffect(() => {
-    alive.current = true
-    fetchRoutes()
+    const abortController = new AbortController()
+    fetchRoutes({ signal: abortController.signal })
 
     return () => {
-      alive.current = false
+      abortController.abort()
     }
   }, [fetchRoutes])
 
