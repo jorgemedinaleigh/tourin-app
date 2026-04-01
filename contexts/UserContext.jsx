@@ -50,11 +50,16 @@ export function UserProvider({ children }){
     // Capture logout event before resetting PostHog
     posthog.capture('user_logged_out')
 
-    await account.deleteSession('current')
-    setUser(null)
-
-    // Reset PostHog to unlink future events from this user
-    posthog.reset()
+    try {
+      await account.deleteSession('current')
+    } catch (error) {
+      console.warn('Backend session deletion failed', error)
+    } finally {
+      setUser(null)
+  
+      // Reset PostHog to unlink future events from this user
+      posthog.reset()
+    }
   }
   async function getInitialUserValue() {
     try {
