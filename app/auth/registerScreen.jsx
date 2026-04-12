@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Keyboard, StyleSheet, TouchableWithoutFeedback } from 'react-native'
 import { Button, Text, TextInput, HelperText } from 'react-native-paper'
 import { Link } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { useUser } from '../../hooks/useUser'
 import { appwriteErrorToMessage } from '../../utils/appwriteErrorToMessage'
 import ThemedView from '../../components/ThemedView'
@@ -16,12 +17,13 @@ const registerScreen = () => {
   const [error, setError] = useState(null)
 
   const { register } = useUser()
+  const { t } = useTranslation('auth')
 
   const handleSubmit = async () => {
     setError(null)
 
     if (!emailText.trim() || !passwordText || !nameText.trim()) {
-      setError('Completa todos los campos para poder registrarte.');
+      setError(t('register.missingFields'));
       posthog.capture('signup_failed', {
         error_type: 'validation',
         error_message: 'Missing required fields',
@@ -30,7 +32,7 @@ const registerScreen = () => {
     }
     if (passwordText !== confirmPasswordText)
     {
-      setError('La contraseña no coincide.');
+      setError(t('register.passwordMismatch'));
       posthog.capture('signup_failed', {
         error_type: 'validation',
         error_message: 'Password mismatch',
@@ -72,17 +74,17 @@ const registerScreen = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ThemedView style={styles.container} >
-        <Text variant='headlineLarge' style={styles.title} >Registra tu Cuenta</Text>
+        <Text variant='headlineLarge' style={styles.title} >{t('register.title')}</Text>
 
         <TextInput
-          label="Nombre"
+          label={t('nameLabel')}
           mode="outlined"
           returnKeyType="next"
           value={nameText}
           onChangeText={setNameText}
         />
         <TextInput
-          label="e-mail"
+          label={t('emailLabel')}
           mode="outlined"
           autoCapitalize="none"
           keyboardType="email-address"
@@ -91,7 +93,7 @@ const registerScreen = () => {
           onChangeText={setEmailText}
         />
         <TextInput
-          label="Contraseña"
+          label={t('passwordLabel')}
           mode="outlined"
           autoCapitalize="none"
           returnKeyType="next"
@@ -107,7 +109,7 @@ const registerScreen = () => {
           onChangeText={setPasswordText}
         />
         <TextInput
-          label="Confirmar Contraseña"
+          label={t('repeatPasswordLabel')}
           mode="outlined"
           autoCapitalize="none"
           secureTextEntry={!passwordVisible}
@@ -125,10 +127,10 @@ const registerScreen = () => {
           {error}
         </HelperText>
 
-        <Button mode="contained" style={{ marginTop: 8 }} onPress={handleSubmit} testID="register-button" >Registrar</Button>
+        <Button mode="contained" style={{ marginTop: 8 }} onPress={handleSubmit} testID="register-button" >{t('register.submit')}</Button>
 
         <Link href="auth/loginScreen" style={{ marginTop: 40}} >
-          <Text variant="bodyMedium" >¿Ya tienes una cuenta? Ingresa aquí</Text>
+          <Text variant="bodyMedium" >{t('haveAccount')}</Text>
         </Link>
 
       </ThemedView>

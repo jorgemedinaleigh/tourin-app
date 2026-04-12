@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { Avatar, useTheme } from 'react-native-paper'
+import { useTranslation } from 'react-i18next'
 
 const Nameplate = ({
   name,
@@ -11,10 +12,11 @@ const Nameplate = ({
   rightSlot,
 }) => {
   const theme = useTheme()
+  const { t } = useTranslation('common')
   const bg = backgroundColor || theme.colors?.primary || '#3f51b5'
   const onPrimary = theme.colors?.onPrimary || '#fff'
 
-  const initials = (name || 'Usuario')
+  const initials = (name || t('fallbacks.genericUser'))
     .split(/\s+/)
     .map(n => n[0])
     .filter(Boolean)
@@ -42,7 +44,7 @@ const Nameplate = ({
           numberOfLines={1}
           style={[styles.name, { color: onPrimary }]}
         >
-          {name || 'Usuario'}
+          {name || t('fallbacks.genericUser')}
         </Text>
         {!!subtitle && (
           <Text

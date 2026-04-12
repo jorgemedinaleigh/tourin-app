@@ -3,12 +3,14 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { ActivityIndicator, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import { useSuggestedRoutes } from '../../hooks/useSuggestedRoutes'
 
 const DESCRIPTION_COLLAPSED_LINES = 3
 
 const CollapsibleText = ({ buttonColor, collapsedLines = DESCRIPTION_COLLAPSED_LINES, text, textStyle }) => {
+  const { t } = useTranslation('common')
   const [isExpanded, setIsExpanded] = useState(false)
   const [hasMeasured, setHasMeasured] = useState(false)
   const [measuredLineCount, setMeasuredLineCount] = useState(0)
@@ -42,7 +44,7 @@ const CollapsibleText = ({ buttonColor, collapsedLines = DESCRIPTION_COLLAPSED_L
       {hasMeasured && isCollapsible ? (
         <Pressable onPress={() => setIsExpanded((current) => !current)} style={styles.expandButton}>
           <Text style={[styles.expandButtonText, { color: buttonColor }]}>
-            {isExpanded ? 'Ver menos' : 'Ver mas'}
+            {isExpanded ? t('actions.viewLess') : t('actions.viewMore')}
           </Text>
         </Pressable>
       ) : null}
@@ -52,6 +54,7 @@ const CollapsibleText = ({ buttonColor, collapsedLines = DESCRIPTION_COLLAPSED_L
 
 const RouteDetailsScreen = () => {
   const theme = useTheme()
+  const { t } = useTranslation(['common', 'routes'])
   const { routeId } = useLocalSearchParams()
   const { loading, error, refresh, getRouteById } = useSuggestedRoutes()
   const route = getRouteById(routeId)
@@ -79,9 +82,9 @@ const RouteDetailsScreen = () => {
       <ThemedView style={styles.screen}>
         <View style={styles.emptyState}>
           <ActivityIndicator size="small" color="#1F4D5C" />
-          <Text style={styles.emptyTitle}>Cargando ruta</Text>
+          <Text style={styles.emptyTitle}>{t('routes:details.loadingTitle')}</Text>
           <Text style={[styles.emptyCopy, { color: onSurfaceVariant }]}>
-            Estamos obteniendo la informacion de esta ruta desde Appwrite.
+            {t('routes:details.loadingCopy')}
           </Text>
         </View>
       </ThemedView>
@@ -93,18 +96,18 @@ const RouteDetailsScreen = () => {
       <ThemedView style={styles.screen}>
         <View style={styles.emptyState}>
           <Ionicons name="warning-outline" size={28} color="#1F4D5C" />
-          <Text style={styles.emptyTitle}>No pudimos cargar la ruta</Text>
+          <Text style={styles.emptyTitle}>{t('routes:details.retryTitle')}</Text>
           <Text style={[styles.emptyCopy, { color: onSurfaceVariant }]}>
-            Revisa tu conexion e intenta de nuevo para volver a cargar esta ruta.
+            {t('routes:details.retryCopy')}
           </Text>
           <Pressable onPress={refresh} style={[styles.primaryButton, { backgroundColor: '#1F4D5C' }]}>
-            <Text style={styles.primaryButtonText}>Reintentar</Text>
+            <Text style={styles.primaryButtonText}>{t('common:actions.retry')}</Text>
           </Pressable>
           <Pressable
             onPress={goToSuggestedRoutes}
             style={[styles.secondaryButton, { backgroundColor: surfaceVariant }]}
           >
-            <Text style={styles.secondaryButtonText}>Volver a rutas</Text>
+            <Text style={styles.secondaryButtonText}>{t('common:actions.back')}</Text>
           </Pressable>
         </View>
       </ThemedView>
@@ -116,15 +119,15 @@ const RouteDetailsScreen = () => {
       <ThemedView style={styles.screen}>
         <View style={styles.emptyState}>
           <Ionicons name="map-outline" size={28} color="#1F4D5C" />
-          <Text style={styles.emptyTitle}>Ruta no encontrada</Text>
+          <Text style={styles.emptyTitle}>{t('routes:details.notFoundTitle')}</Text>
           <Text style={[styles.emptyCopy, { color: onSurfaceVariant }]}>
-            No pudimos cargar la informacion de esta ruta. Vuelve a la lista para intentar de nuevo.
+            {t('routes:details.notFoundCopy')}
           </Text>
           <Pressable
             onPress={goToSuggestedRoutes}
             style={[styles.primaryButton, { backgroundColor: '#1F4D5C' }]}
           >
-            <Text style={styles.primaryButtonText}>Volver a rutas</Text>
+            <Text style={styles.primaryButtonText}>{t('common:actions.back')}</Text>
           </Pressable>
         </View>
       </ThemedView>
@@ -139,7 +142,7 @@ const RouteDetailsScreen = () => {
           style={[styles.backButton, { backgroundColor: surfaceVariant }]}
         >
           <Ionicons name="chevron-back" size={18} color="#1F4D5C" />
-          <Text style={styles.backButtonText}>Volver</Text>
+          <Text style={styles.backButtonText}>{t('common:actions.back')}</Text>
         </Pressable>
 
         <View style={[styles.heroCard, { backgroundColor: route.accentColor }]}>
@@ -161,32 +164,32 @@ const RouteDetailsScreen = () => {
             </View>
             <View style={styles.heroStat}>
               <Ionicons name="walk-outline" size={15} color="#FFFFFF" />
-              <Text style={styles.heroStatText}>{route.intensity || 'Sin definir'}</Text>
+              <Text style={styles.heroStatText}>{route.intensity || t('common:fallbacks.undefined')}</Text>
             </View>
             <View style={styles.heroStat}>
               <Ionicons name="location-outline" size={15} color="#FFFFFF" />
               <Text style={styles.heroStatText}>
-                {route.stopCount} {route.stopCount === 1 ? 'lugar' : 'lugares'}
+                {t('common:counts.places', { count: route.stopCount })}
               </Text>
             </View>
             <View style={styles.heroStat}>
               <Ionicons name="time-outline" size={15} color="#FFFFFF" />
-              <Text style={styles.heroStatText}>{route.bestTime || 'Sin definir'}</Text>
+              <Text style={styles.heroStatText}>{route.bestTime || t('common:fallbacks.undefined')}</Text>
             </View>
           </View>
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
-          <Text style={styles.sectionTitle}>Resumen</Text>
+          <Text style={styles.sectionTitle}>{t('routes:details.summaryTitle')}</Text>
           <CollapsibleText
             buttonColor={route.accentColor}
-            text={route.description || 'Esta ruta no tiene descripcion disponible todavia.'}
+            text={route.description || t('routes:fallbackDescription')}
             textStyle={[styles.sectionCopy, { color: onSurfaceVariant }]}
           />
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
-          <Text style={styles.sectionTitle}>Lugares que Visitarás</Text>
+          <Text style={styles.sectionTitle}>{t('routes:details.stopsTitle')}</Text>
           {route.stops.length ? (
             <View style={styles.stopList}>
               {route.stops.map((stop, index) => {
@@ -213,13 +216,13 @@ const RouteDetailsScreen = () => {
             </View>
           ) : (
             <Text style={[styles.sectionCopy, { color: onSurfaceVariant }]}>
-              Esta ruta aun no tiene paradas asociadas en la tabla heritage_sites.
+              {t('routes:details.emptyStops')}
             </Text>
           )}
         </View>
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
-          <Text style={styles.sectionTitle}>Etiquetas</Text>
+          <Text style={styles.sectionTitle}>{t('routes:details.tagsTitle')}</Text>
           {route.tags.length ? (
             <View style={styles.highlightsRow}>
               {route.tags.map((tag) => (
@@ -239,7 +242,7 @@ const RouteDetailsScreen = () => {
             </View>
           ) : (
             <Text style={[styles.sectionCopy, { color: onSurfaceVariant }]}>
-              Esta ruta no tiene etiquetas destacadas todavia.
+              {t('routes:noTags')}
             </Text>
           )}
         </View>

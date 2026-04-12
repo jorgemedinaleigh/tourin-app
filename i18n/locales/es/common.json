@@ -1,0 +1,40 @@
+{
+  "actions": {
+    "back": "Volver",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "save": "Guardar",
+    "share": "Compartir",
+    "viewLess": "Ver menos",
+    "viewMore": "Ver más"
+  },
+  "counts": {
+    "achievements_one": "{{count}} logro",
+    "achievements_other": "{{count}} logros",
+    "events_one": "{{count}} evento",
+    "events_other": "{{count}} eventos",
+    "places_one": "{{count}} lugar",
+    "places_other": "{{count}} lugares",
+    "routes_one": "{{count}} ruta",
+    "routes_other": "{{count}} rutas",
+    "sites_one": "{{count}} sitio",
+    "sites_other": "{{count}} sitios"
+  },
+  "fallbacks": {
+    "genericUser": "Usuario",
+    "handle": "usuario",
+    "noDate": "Sin fecha",
+    "undefined": "Por definir"
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Español"
+  },
+  "tabs": {
+    "map": "Mapa",
+    "passport": "Pasaporte",
+    "profile": "Perfil",
+    "routes": "Rutas"
+  }
+}

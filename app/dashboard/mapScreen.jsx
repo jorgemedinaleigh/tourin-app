@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
 import { MapView, Camera, UserLocation, requestAndroidLocationPermissions } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
+import { useTranslation } from 'react-i18next'
 import { GeoDataProvider, useGeoData } from '../../contexts/GeoDataContext'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import mapStyle from '../../constants/positronTourin.json'
@@ -32,6 +33,7 @@ function isValidCoordinate(position) {
 
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
+  const { t } = useTranslation('map')
 
   if (!loading && !error) return null
 
@@ -40,12 +42,13 @@ function GeoDataStatus() {
   return (
     <Pressable onPress={refresh} style={styles.toast}>
       <Ionicons name="warning" size={16} color="#fff" />
-      <Text style={{ color: "#fff" }}>Reintentar</Text>
+      <Text style={{ color: "#fff" }}>{t('geoStatus.retry')}</Text>
     </Pressable>
   )
 }
 
 const MapScreen = () => {
+  const { t } = useTranslation('map')
   const insets = useSafeAreaInsets()
   const [coord, setCoord] = useState(null)
   const [hasLocationPermission, setHasLocationPermission] = useState(Platform.OS !== 'android')
@@ -180,7 +183,7 @@ const MapScreen = () => {
   const centerOnUser = async (followAfterCenter = false) => {
     const hasPermission = await ensureLocationPermission()
     if (!hasPermission) {
-      Alert.alert("Permiso requerido", "Activa el permiso de ubicación para centrar el mapa.")
+      Alert.alert(t('centerLocation.permissionTitle'), t('centerLocation.permissionBody'))
       return
     }
 
@@ -190,7 +193,7 @@ const MapScreen = () => {
 
     const currentCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
     if (!currentCoord) {
-      Alert.alert("Buscando ubicación", "Estamos obteniendo tu ubicación actual.")
+      Alert.alert(t('centerLocation.locatingTitle'), t('centerLocation.locatingBody'))
       return
     }
 

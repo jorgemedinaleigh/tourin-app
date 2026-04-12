@@ -2,22 +2,25 @@ import { useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity } from 'react-native'
 import { Card } from 'react-native-paper'
+import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
+import { useI18n } from '../../contexts/I18nContext'
 import { useUser } from '../../hooks/useUser'
 import { useAchievements } from '../../hooks/useAchievements'
+import { formatDate } from '../../i18n/formatters'
 import { posthog } from '../../lib/posthog'
 
 const AchievementsScreen = () => {
   const { user } = useUser()
   const { achievements, fetchAchievements } = useAchievements(user?.$id)
+  const { locale } = useI18n()
+  const { t } = useTranslation('achievements')
 
   const [viewerVisible, setViewerVisible] = useState(false)
   const [viewerUri, setViewerUri] = useState(null)
-  const [viewerAchievement, setViewerAchievement] = useState(null)
 
   const openImage = (item) => {
     setViewerUri(item.badge)
-    setViewerAchievement(item)
     setViewerVisible(true)
 
     posthog.capture('achievement_viewed', {
@@ -43,7 +46,7 @@ const AchievementsScreen = () => {
 
   return (
     <ThemedView style={{ padding: 20 }} safe>
-      <Text style={styles.title}>Logros</Text>
+      <Text style={styles.title}>{t('title')}</Text>
 
       <FlatList
         data={achievements}
@@ -64,11 +67,12 @@ const AchievementsScreen = () => {
                 </Text>
                 {achievementsById[item.$id]?.unlockedAt ? (
                   <Text style={styles.date}>
-                    Desbloqueado el{' '}
-                    {new Date(achievementsById[item.$id].unlockedAt).toLocaleDateString()}
+                    {t('unlockedAt', {
+                      date: formatDate(achievementsById[item.$id].unlockedAt, locale),
+                    })}
                   </Text>
                 ) : (
-                  <Text style={styles.date}>Bloqueado</Text>
+                  <Text style={styles.date}>{t('locked')}</Text>
                 )}
               </View>
             </View>

@@ -1,0 +1,11 @@
+{
+  "pageNumber": "Página {{page}}",
+  "role": "Explorador Principiante",
+  "shareDialogTitle": "Estampa TourIn",
+  "sharePrepareErrorBody": "No se pudo preparar la estampa para compartir.",
+  "sharePrepareErrorTitle": "Error",
+  "shareUnavailableBody": "No es posible compartir imágenes en este dispositivo.",
+  "shareUnavailableTitle": "Compartir no disponible",
+  "shareUploadErrorBody": "No se pudo compartir la estampa.",
+  "shareUploadErrorTitle": "Error"
+}

@@ -1,0 +1,13 @@
+{
+  "addFriends": "AGREGA AMIGOS",
+  "handle": "@{{handle}} desde {{date}}",
+  "language": {
+    "description": "Elige el idioma que quieres usar en la app.",
+    "label": "Idioma",
+    "title": "Selecciona un idioma"
+  },
+  "logout": "CERRAR SESIÓN",
+  "memberSinceFallback": "Enero 2026",
+  "role": "Explorador Principiante",
+  "summaryTitle": "Resumen"
+}

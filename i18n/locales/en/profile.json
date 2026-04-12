@@ -1,0 +1,13 @@
+{
+  "addFriends": "ADD FRIENDS",
+  "handle": "@{{handle}} since {{date}}",
+  "language": {
+    "description": "Choose the language you want to use in the app.",
+    "label": "Language",
+    "title": "Select a language"
+  },
+  "logout": "SIGN OUT",
+  "memberSinceFallback": "January 2026",
+  "role": "Beginner Explorer",
+  "summaryTitle": "Summary"
+}

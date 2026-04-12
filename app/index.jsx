@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import { Image, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
+import { useTranslation } from 'react-i18next'
 import { useUser } from '../hooks/useUser'
 import LoadingScreen from '../components/LoadingScreen'
 import ThemedView from '../components/ThemedView'
@@ -8,6 +9,7 @@ import ThemedView from '../components/ThemedView'
 const Index = () => {
   const { user, authChecked } = useUser()
   const router = useRouter()
+  const { t } = useTranslation('home')
 
   const handleEnter = () => {
     if (user) {
@@ -25,12 +27,12 @@ const Index = () => {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.content}>
-        <Text variant="displaySmall" style={styles.title}>¡Bienvenido a TourIn!</Text>
+        <Text variant="displaySmall" style={styles.title}>{t('title')}</Text>
         <Image source={require('../assets/tourin_icon.png')} style={styles.logo} />
-        <Text variant="displaySmall" style={styles.body}>La app que te acompañará en tu experiencia turística</Text>
+        <Text variant="displaySmall" style={styles.body}>{t('body')}</Text>
       </View>
       <Button mode="contained" style={styles.button} onPress={handleEnter}>
-        Entrar
+        {t('enter')}
       </Button>
     </ThemedView>
   )

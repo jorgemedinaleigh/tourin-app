@@ -9,6 +9,7 @@ import {
   View,
   Text,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 
 const TOTAL_MS = 1200
 const DROP_MS = 520
@@ -28,6 +29,7 @@ function StampImpactOverlay({
   onFinish,
   onImpact,
 }) {
+  const { t } = useTranslation(['common', 'stampOverlay'])
   const { height } = useWindowDimensions()
 
   const dropY = useRef(new Animated.Value(-height * 0.85)).current
@@ -165,7 +167,7 @@ function StampImpactOverlay({
           onPress={onDismiss}
           activeOpacity={0.85}
         >
-          <Text style={styles.ctaText}>Ver pasaporte</Text>
+          <Text style={styles.ctaText}>{t('stampOverlay:viewPassport')}</Text>
         </TouchableOpacity>
         </>
       ) : null}

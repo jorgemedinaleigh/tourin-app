@@ -1,0 +1,21 @@
+{
+  "chips": {
+    "free": "Free",
+    "paid": "Paid",
+    "route": "Route: {{route}}",
+    "website": "Web"
+  },
+  "fallbackPointTitle": "Point",
+  "location": {
+    "alreadyVisitedBody": "This place was already stamped in your passport.",
+    "alreadyVisitedTitle": "Site already visited",
+    "permissionBody": "Enable location permission to stamp this place.",
+    "permissionTitle": "Permission required",
+    "tooFarBody": "You need to be closer to this place to stamp your passport.",
+    "tooFarTitle": "You're too far away",
+    "unavailableBody": "We couldn't validate your location to stamp this place.",
+    "unavailableTitle": "Location unavailable"
+  },
+  "stampButton": "Stamp",
+  "visitedButton": "Visited site"
+}

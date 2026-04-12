@@ -1,6 +1,7 @@
 import { Alert, Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, Linking } from 'react-native'
 import { Button, Card, Chip, IconButton, Portal, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { useUser } from '../hooks/useUser'
 import { useSiteVisits } from '../hooks/useSiteVisits'
 import { useEffect, useMemo, useState } from 'react'
@@ -59,6 +60,7 @@ const getDistanceMeters = (fromLat, fromLon, toLat, toLon) => {
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
   const { height } = useWindowDimensions()
+  const { t } = useTranslation(['common', 'infoCard'])
   const { user } = useUser()
   const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
   const { addPoints, siteVisited, getStats } = useStats(user.$id)
@@ -149,7 +151,7 @@ function InfoCard({ info, onClose }) {
       if (Number.isFinite(radius) && radius > 0 && Number.isFinite(pointLat) && Number.isFinite(pointLon)) {
         const { status } = await Location.requestForegroundPermissionsAsync()
         if (status !== "granted") {
-          Alert.alert("Permiso requerido", "Activa el permiso de ubicación para estampar este punto.")
+          Alert.alert(t('infoCard:location.permissionTitle'), t('infoCard:location.permissionBody'))
 
           // Track stamp failure due to location permission
           posthog.capture('stamp_failed', {
@@ -166,7 +168,7 @@ function InfoCard({ info, onClose }) {
         const userLon = pos?.coords?.longitude
 
         if (!Number.isFinite(userLat) || !Number.isFinite(userLon)) {
-          Alert.alert("Ubicación no disponible", "No pudimos validar tu ubicación para estampar este punto.")
+          Alert.alert(t('infoCard:location.unavailableTitle'), t('infoCard:location.unavailableBody'))
 
           // Track stamp failure due to location unavailable
           posthog.capture('stamp_failed', {
@@ -179,7 +181,7 @@ function InfoCard({ info, onClose }) {
 
         const distance = getDistanceMeters(userLat, userLon, pointLat, pointLon)
         if (distance > radius) {
-          Alert.alert("Estás lejos", "Necesitas estar más cerca del punto para estampar tu pasaporte.")
+          Alert.alert(t('infoCard:location.tooFarTitle'), t('infoCard:location.tooFarBody'))
 
           // Track stamp failure due to distance
           posthog.capture('stamp_failed', {
@@ -200,7 +202,7 @@ function InfoCard({ info, onClose }) {
       if (!stampResult?.created) {
         if (stampResult?.alreadyVisited) {
           setIsVisited(true)
-          Alert.alert('Sitio ya visitado', 'Este punto ya estaba estampado en tu pasaporte.')
+          Alert.alert(t('infoCard:location.alreadyVisitedTitle'), t('infoCard:location.alreadyVisitedBody'))
           await fetchVisits(user.$id)
           return
         }
@@ -305,7 +307,7 @@ function InfoCard({ info, onClose }) {
           <Card.Title
             titleStyle={styles.title}
             titleNumberOfLines={3}
-            title={info.name || "Punto"}
+            title={info.name || t('infoCard:fallbackPointTitle')}
             right={(props) => <IconButton {...props} icon="close" onPress={onClose} />}
           />
           <View style={styles.coverWrapper}>
@@ -317,17 +319,17 @@ function InfoCard({ info, onClose }) {
                 info.isFree ? <Chip
                                 icon={() => (
                                   <Ionicons name="logo-usd" size={25} color="#9a9a9aff" />
-                                )}>Gratis</Chip>
+                                )}>{t('infoCard:chips.free')}</Chip>
                             : <Chip
                                 icon={() => (
                                   <Ionicons name="logo-usd" size={25} color="#2cb587ff" />
-                                )}>Pagado</Chip>
+                                )}>{t('infoCard:chips.paid')}</Chip>
               }
               {websiteUrl ? (
                 <Chip onPress={handleWebsitePress}
                   icon={() => (
                     <Ionicons name="globe-outline" size={25} color="#1737f0ff" />
-                  )}>Web</Chip>
+                  )}>{t('infoCard:chips.website')}</Chip>
               ) : null}
               <Chip
                 icon={() => (
@@ -337,7 +339,7 @@ function InfoCard({ info, onClose }) {
                 info.route ? <Chip
                                 icon={() => (
                                   <Ionicons name="map" size={25} color="#6c4a00ff" />
-                                )}>Ruta: {info.route}</Chip> : null
+                                )}>{t('infoCard:chips.route', { route: info.route })}</Chip> : null
               }
             </View>
             {!!info.description && <Text style={styles.description}>{info.description}</Text>}
@@ -351,7 +353,7 @@ function InfoCard({ info, onClose }) {
                             style={{ marginTop: 8 }}
                             buttonColor='#17972fff'
                           >
-                            Sitio Visitado
+                            {t('infoCard:visitedButton')}
                           </Button>
                         : <Button
                             icon="stamper"
@@ -363,7 +365,7 @@ function InfoCard({ info, onClose }) {
                             disabled={stamping}
                             testID="stamp-button"
                           >
-                            Estampar
+                            {t('infoCard:stampButton')}
                           </Button>
             }
           </Card.Actions>

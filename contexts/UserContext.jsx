@@ -61,6 +61,22 @@ export function UserProvider({ children }){
       posthog.reset()
     }
   }
+  async function updatePrefs(patch) {
+    if (!user) return null
+
+    try {
+      const response = await account.updatePrefs({
+        prefs: {
+          ...(user?.prefs || {}),
+          ...patch,
+        },
+      })
+      setUser(response)
+      return response
+    } catch (error) {
+      throw Error(error.message)
+    }
+  }
   async function getInitialUserValue() {
     try {
       const response = await account.get()
@@ -85,7 +101,7 @@ export function UserProvider({ children }){
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, login, register, logout, authChecked }} >
+    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs }} >
       {children}
     </UserContext.Provider>
   )

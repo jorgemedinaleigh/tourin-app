@@ -1,6 +1,8 @@
 import { createContext, useContext, useCallback, useMemo, useState, useEffect } from "react"
 import { Query } from "react-native-appwrite"
 import { tables } from "../lib/appwrite"
+import { useI18n } from "./I18nContext"
+import getLocalizedField from "../i18n/getLocalizedField"
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const TABLE_ID = 'heritage_sites'
@@ -14,7 +16,8 @@ export const GeoDataContext = createContext({
 })
 
 export function GeoDataProvider({ children }) {
-  const [geoData, setGeoData] = useState([])
+  const { locale } = useI18n()
+  const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -44,43 +47,11 @@ export function GeoDataProvider({ children }) {
       setError(null)
 
       const rows = await fetchAllRows()
-      const features = rows.map((row) => {
-        const lat = Number(row.latitude)
-        const lon = Number(row.longitude)
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
-
-        return {
-          type: "Feature",
-          geometry: { 
-            type: "Point",
-            coordinates: [lon, lat]
-          },
-          properties: {
-            id: row.$id,
-            name: row.name,
-            description: row.description,
-            isFree: row.isFree,
-            price: row.price,
-            score: row.score,
-            stamp: row.stamp,
-            coverPhoto: row.coverPhoto,
-            type: row.type,
-            subType: row.subType,
-            location: row.location,
-            legalStatus: row.legalStatus,
-            comuna: row.comuna,
-            region: row.region,
-            stampRadius: row.stampRadius,
-            route: row.route,
-            website: row.website,
-          }
-        }
-      }).filter(Boolean)
-      setGeoData({ type: "FeatureCollection", features })
+      setRows(rows)
     }
     catch (err) {
       if (err?.name === "AbortError") return
-      setError(err?.message ?? "Error cargando datos")
+      setError(err?.message ?? "Error loading data")
       console.error(err.message)
     }
     finally {
@@ -92,8 +63,46 @@ export function GeoDataProvider({ children }) {
     fetchGeoData()
   }, [fetchGeoData])
 
-  const value = useMemo(() => (
-    {geoData, loading, error, refresh: fetchGeoData}),
+  const geoData = useMemo(() => {
+    const features = rows.map((row) => {
+      const lat = Number(row.latitude)
+      const lon = Number(row.longitude)
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+
+      return {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [lon, lat]
+        },
+        properties: {
+          id: row.$id,
+          name: getLocalizedField(row, 'name', locale, { defaultValue: row.name }),
+          description: getLocalizedField(row, 'description', locale, { defaultValue: row.description }),
+          isFree: row.isFree,
+          price: row.price,
+          score: row.score,
+          stamp: row.stamp,
+          coverPhoto: row.coverPhoto,
+          type: row.type,
+          subType: getLocalizedField(row, 'subType', locale, { defaultValue: row.subType }),
+          location: row.location,
+          legalStatus: row.legalStatus,
+          comuna: row.comuna,
+          region: row.region,
+          stampRadius: row.stampRadius,
+          routeId: row.routeId || null,
+          route: getLocalizedField(row, 'route', locale, { defaultValue: row.route }),
+          website: row.website,
+        }
+      }
+    }).filter(Boolean)
+
+    return { type: "FeatureCollection", features }
+  }, [rows, locale])
+
+  const value = useMemo(
+    () => ({ geoData, loading, error, refresh: fetchGeoData }),
     [geoData, loading, error, fetchGeoData]
   )
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Keyboard, StyleSheet, TouchableWithoutFeedback } from 'react-native'
 import { Button, Text, TextInput, HelperText } from 'react-native-paper'
 import { Link } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { useUser } from '../../hooks/useUser'
 import { appwriteErrorToMessage } from '../../utils/appwriteErrorToMessage'
 import ThemedView from '../../components/ThemedView'
@@ -14,12 +15,13 @@ const loginScreen = () => {
   const [error, setError] = useState(null)
 
   const { login } = useUser()
+  const { t } = useTranslation('auth')
 
    const handleSubmit = async () => {
     setError(null)
 
     if (!mailText.trim() || !passwordText) {
-      setError('Ingresa tu correo y contraseña.');
+      setError(t('login.missingCredentials'));
       posthog.capture('login_failed', {
         error_type: 'validation',
         error_message: 'Missing email or password',
@@ -61,10 +63,10 @@ const loginScreen = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ThemedView style={styles.container} >
-        <Text variant='headlineLarge' style={styles.title} >Ingresa a tu cuenta</Text>
+        <Text variant='headlineLarge' style={styles.title} >{t('login.title')}</Text>
 
         <TextInput
-          label="e-mail"
+          label={t('emailLabel')}
           mode="outlined"
           autoCapitalize="none"
           keyboardType="email-address"
@@ -73,7 +75,7 @@ const loginScreen = () => {
           onChangeText={setMailText}
         />
         <TextInput
-          label="Contraseña"
+          label={t('passwordLabel')}
           mode="outlined"
           secureTextEntry={!passwordVisible}
           right={
@@ -90,10 +92,10 @@ const loginScreen = () => {
           {error}
         </HelperText>
 
-        <Button mode="contained" style={{ marginTop: 8 }} onPress={handleSubmit} testID="login-button" >Ingresar</Button>
+        <Button mode="contained" style={{ marginTop: 8 }} onPress={handleSubmit} testID="login-button" >{t('login.submit')}</Button>
 
         <Link href="auth/registerScreen" style={{ marginTop: 40}} >
-          <Text variant="bodyMedium" >¿No tienes una cuenta? Regístrate aquí</Text>
+          <Text variant="bodyMedium" >{t('noAccount')}</Text>
         </Link>
 
       </ThemedView>

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { StatusBar } from 'react-native'
 import { PostHogProvider } from 'posthog-react-native'
 import { UserProvider } from '../contexts/UserContext'
+import { I18nProvider } from '../contexts/I18nContext'
 import { posthog } from '../lib/posthog'
 
 const RootLayout = () => {
@@ -33,25 +34,27 @@ const RootLayout = () => {
       }}
     >
       <UserProvider>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor="transparent"
-          translucent
-          animated
-        />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#ffffff' },
-            statusBarStyle: 'dark',
-            statusBarColor: 'transparent',
-            statusBarTranslucent: true,
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="dashboard" />
-          <Stack.Screen name="auth" />
-        </Stack>
+        <I18nProvider>
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor="transparent"
+            translucent
+            animated
+          />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: '#ffffff' },
+              statusBarStyle: 'dark',
+              statusBarColor: 'transparent',
+              statusBarTranslucent: true,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="dashboard" />
+            <Stack.Screen name="auth" />
+          </Stack>
+        </I18nProvider>
       </UserProvider>
     </PostHogProvider>
   )

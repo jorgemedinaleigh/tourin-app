@@ -2,11 +2,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { ActivityIndicator, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import { useSuggestedRoutes } from '../../hooks/useSuggestedRoutes'
 
 const SuggestedRoutesScreen = () => {
   const theme = useTheme()
+  const { t } = useTranslation(['common', 'routes'])
   const { routes, loading, error, refresh } = useSuggestedRoutes()
   const surfaceVariant = theme.colors.surfaceVariant || '#F1EEE8'
   const outlineVariant = theme.colors.outlineVariant || '#D8D1C5'
@@ -17,21 +19,21 @@ const SuggestedRoutesScreen = () => {
   return (
     <ThemedView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.heroTitle}>Rutas sugeridas</Text>
+        <Text style={styles.heroTitle}>{t('routes:heroTitle')}</Text>
         <Text style={styles.heroCopy}>
-          Una seleccion rapida para cuando quieras abrir TourIn y salir a recorrer sin planear desde cero.
+          {t('routes:heroCopy')}
         </Text>
         <View style={styles.heroStat}>
           <Ionicons name="map-outline" size={16} color="#000000" />
-          <Text style={styles.heroStatText}>{routes.length} rutas</Text>
+          <Text style={styles.heroStatText}>{t('common:counts.routes', { count: routes.length })}</Text>
         </View>
 
         {loading && !hasRoutes ? (
           <View style={[styles.stateCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
             <ActivityIndicator size="small" color="#1F4D5C" />
-            <Text style={styles.stateTitle}>Cargando rutas</Text>
+            <Text style={styles.stateTitle}>{t('routes:list.loadingTitle')}</Text>
             <Text style={[styles.stateCopy, { color: onSurfaceVariant }]}>
-              Estamos obteniendo las rutas sugeridas desde Appwrite.
+              {t('routes:list.loadingCopy')}
             </Text>
           </View>
         ) : null}
@@ -39,12 +41,12 @@ const SuggestedRoutesScreen = () => {
         {error && !hasRoutes ? (
           <View style={[styles.stateCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
             <Ionicons name="warning-outline" size={24} color="#1F4D5C" />
-            <Text style={styles.stateTitle}>No pudimos cargar las rutas</Text>
+            <Text style={styles.stateTitle}>{t('routes:list.retryTitle')}</Text>
             <Text style={[styles.stateCopy, { color: onSurfaceVariant }]}>
-              Revisa tu conexion e intenta de nuevo para ver las rutas sugeridas.
+              {t('routes:list.retryCopy')}
             </Text>
             <Pressable onPress={refresh} style={[styles.primaryButton, { backgroundColor: '#1F4D5C' }]}>
-              <Text style={styles.primaryButtonText}>Reintentar</Text>
+              <Text style={styles.primaryButtonText}>{t('common:actions.retry')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -52,9 +54,9 @@ const SuggestedRoutesScreen = () => {
         {!loading && !error && !hasRoutes ? (
           <View style={[styles.stateCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
             <Ionicons name="trail-sign-outline" size={24} color="#1F4D5C" />
-            <Text style={styles.stateTitle}>No hay rutas disponibles</Text>
+            <Text style={styles.stateTitle}>{t('routes:list.emptyTitle')}</Text>
             <Text style={[styles.stateCopy, { color: onSurfaceVariant }]}>
-              Cuando agregues rutas en Appwrite apareceran aqui con sus paradas asociadas.
+              {t('routes:list.emptyCopy')}
             </Text>
           </View>
         ) : null}
@@ -100,18 +102,18 @@ const SuggestedRoutesScreen = () => {
                   </View>
                   <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
                     <Ionicons name="walk-outline" size={14} color={route.accentColor} />
-                    <Text style={styles.metaText}>{route.intensity || 'Sin definir'}</Text>
+                    <Text style={styles.metaText}>{route.intensity || t('common:fallbacks.undefined')}</Text>
                   </View>
                   <View style={[styles.metaChip, { backgroundColor: surfaceVariant }]}>
                     <Ionicons name="location-outline" size={14} color={route.accentColor} />
                     <Text style={styles.metaText}>
-                      {route.stopCount} {route.stopCount === 1 ? 'lugar' : 'lugares'}
+                      {t('common:counts.places', { count: route.stopCount })}
                     </Text>
                   </View>
                 </View>
 
                 <Text style={[styles.routeDescription, { color: onSurfaceVariant }]}>
-                  {route.description || 'Esta ruta no tiene descripcion disponible todavia.'}
+                  {route.description || t('routes:fallbackDescription')}
                 </Text>
 
                 <View style={styles.stopsSection}>
@@ -134,13 +136,13 @@ const SuggestedRoutesScreen = () => {
                     </View>
                   ) : (
                     <Text style={[styles.emptyInlineText, { color: onSurfaceVariant }]}>
-                      Sin etiquetas todavia.
+                      {t('routes:emptyTags')}
                     </Text>
                   )}
                 </View>
 
                 <View style={styles.ctaRow}>
-                  <Text style={[styles.ctaText, { color: route.accentColor }]}>Ver informacion de la ruta</Text>
+                  <Text style={[styles.ctaText, { color: route.accentColor }]}>{t('routes:viewRoute')}</Text>
                   <Ionicons name="chevron-forward" size={18} color={route.accentColor} />
                 </View>
               </Pressable>
@@ -150,8 +152,7 @@ const SuggestedRoutesScreen = () => {
         <View style={[styles.footerCard, { backgroundColor: surfaceVariant }]}>
           <Ionicons name="compass-outline" size={20} color="#1F4D5C" />
           <Text style={[styles.footerText, { color: onSurfaceVariant }]}>
-            Estas rutas son una guia inicial. Puedes usarlas como punto de partida y adaptarlas con lo
-            que veas en el mapa.
+            {t('routes:footerCopy')}
           </Text>
         </View>
       </ScrollView>

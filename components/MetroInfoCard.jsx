@@ -1,11 +1,13 @@
 import { StyleSheet, Text, View } from "react-native"
 import { Card, IconButton } from "react-native-paper"
+import { useTranslation } from 'react-i18next'
 
 function MetroInfoCard({ info, onClose }) {
+  const { t } = useTranslation('map')
   if (!info) return null
 
-  const stationName = info.stationName || info.name || "Estacion"
-  const line = info.line || "Sin linea"
+  const stationName = info.stationName || info.name || t('metro.stationFallback')
+  const line = info.line || t('metro.undefinedLine')
 
   return (
     <Card mode="elevated" style={styles.card}>
@@ -17,7 +19,7 @@ function MetroInfoCard({ info, onClose }) {
       />
       <Card.Content>
         <View style={styles.row}>
-          <Text style={styles.label}>Linea</Text>
+          <Text style={styles.label}>{t('metro.lineLabel')}</Text>
           <Text style={styles.value}>{line}</Text>
         </View>
       </Card.Content>

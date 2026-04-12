@@ -1,0 +1,40 @@
+{
+  "actions": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Retry",
+    "save": "Save",
+    "share": "Share",
+    "viewLess": "View less",
+    "viewMore": "View more"
+  },
+  "counts": {
+    "achievements_one": "{{count}} achievement",
+    "achievements_other": "{{count}} achievements",
+    "events_one": "{{count}} event",
+    "events_other": "{{count}} events",
+    "places_one": "{{count}} place",
+    "places_other": "{{count}} places",
+    "routes_one": "{{count}} route",
+    "routes_other": "{{count}} routes",
+    "sites_one": "{{count}} site",
+    "sites_other": "{{count}} sites"
+  },
+  "fallbacks": {
+    "genericUser": "User",
+    "handle": "user",
+    "noDate": "No date",
+    "undefined": "TBD"
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Spanish"
+  },
+  "tabs": {
+    "map": "Map",
+    "passport": "Passport",
+    "profile": "Profile",
+    "routes": "Routes"
+  }
+}

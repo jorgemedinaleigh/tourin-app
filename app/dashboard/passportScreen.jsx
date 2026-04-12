@@ -17,9 +17,13 @@ import {
 } from 'react-native'
 import { Avatar } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
+import { useI18n } from '../../contexts/I18nContext'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
+import getLocalizedField from '../../i18n/getLocalizedField'
+import { formatDate } from '../../i18n/formatters'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PAGE_SIZE = 6
@@ -27,6 +31,8 @@ const PASSPORT_BG = '#F9F1DE'
 const SHARE_CANVAS_SIZE = 1400
 
 const PassportScreen = () => {
+  const { t } = useTranslation(['common', 'passport'])
+  const { locale } = useI18n()
   const { user } = useUser()
   const { visits, sitesVisited, fetchVisits } = useSiteVisits(user.$id)
   const [viewerVisible, setViewerVisible] = useState(false)
@@ -39,7 +45,7 @@ const PassportScreen = () => {
   const stampCacheRef = useRef({})
   const viewShotRef = useRef(null)
 
-  const displayName = user?.name || 'Usuario'
+  const displayName = user?.name || t('common:fallbacks.genericUser')
 
   useFocusEffect(
     useCallback(() => {
@@ -76,9 +82,13 @@ const PassportScreen = () => {
   const openImage = (site) => {
     if (!site?.stamp) return
     const dateLabel = visitsBySite[site.$id]?.$createdAt
-      ? new Date(visitsBySite[site.$id].$createdAt).toLocaleDateString()
-      : 'Sin fecha'
-    const nameLabel = site?.name || site?.title || site?.label || ''
+      ? formatDate(visitsBySite[site.$id].$createdAt, locale)
+      : t('common:fallbacks.noDate')
+    const nameLabel =
+      getLocalizedField(site, 'name', locale, { defaultValue: '' }) ||
+      site?.title ||
+      site?.label ||
+      ''
     setViewerUri(site.stamp)
     setViewerTitle(nameLabel)
     setViewerDate(dateLabel)
@@ -183,7 +193,7 @@ const PassportScreen = () => {
     try {
       const available = sharingAvailable ?? (await Sharing.isAvailableAsync())
       if (!available) {
-        Alert.alert('Compartir no disponible', 'No es posible compartir imagenes en este dispositivo.')
+        Alert.alert(t('passport:shareUnavailableTitle'), t('passport:shareUnavailableBody'))
         return
       }
 
@@ -211,7 +221,7 @@ const PassportScreen = () => {
       }
 
       if (!uriToShare) {
-        Alert.alert('Error', 'No se pudo preparar la estampa para compartir.')
+        Alert.alert(t('passport:sharePrepareErrorTitle'), t('passport:sharePrepareErrorBody'))
         return
       }
 
@@ -220,11 +230,11 @@ const PassportScreen = () => {
 
       await Sharing.shareAsync(uriToShare, {
         mimeType,
-        dialogTitle: viewerTitle || 'Estampa TourIn',
+        dialogTitle: viewerTitle || t('passport:shareDialogTitle'),
       })
     } catch (error) {
       console.log('Error al compartir estampa:', error)
-      Alert.alert('Error', 'No se pudo compartir la estampa.')
+      Alert.alert(t('passport:shareUploadErrorTitle'), t('passport:shareUploadErrorBody'))
     }
   }, [
     viewerUri,
@@ -233,6 +243,7 @@ const PassportScreen = () => {
     preparedStampPath,
     precacheStampForSharing,
     sharingAvailable,
+    t,
   ])
 
   const pages = useMemo(() => {
@@ -243,17 +254,7 @@ const PassportScreen = () => {
     return out
   }, [sortedSites])
 
-  const formatAppwriteDate = (isoDate) => {
-    const date = new Date(isoDate)
-    const day = date.getDate().toString().padStart(2, '0')
-    const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
-    const month = monthNames[date.getMonth()]
-    const year = date.getFullYear()
-
-    return `${day}-${month}-${year}`
-  }
-
-  const initials = (user?.name || 'Usuario')
+  const initials = (user?.name || t('common:fallbacks.genericUser'))
     .split(/\s+/)
     .map((n) => n[0])
     .filter(Boolean)
@@ -278,9 +279,9 @@ const PassportScreen = () => {
 
           <View style={styles.userInfoText}>
             <Text style={styles.userName} numberOfLines={1}>
-              {user?.name || 'Usuario'} 🇨🇱
+              {displayName} 🇨🇱
             </Text>
-            <Text>Explorador Principiante</Text>
+            <Text>{t('passport:role')}</Text>
           </View>
         </View>
       </View>
@@ -323,7 +324,7 @@ const PassportScreen = () => {
 
               {/* Footer con numero de pagina */}
               <View style={styles.pageFooter}>
-                <Text style={styles.pageNumber}>Pagina {index + 1}</Text>
+                <Text style={styles.pageNumber}>{t('passport:pageNumber', { page: index + 1 })}</Text>
               </View>
             </View>
           </View>
@@ -378,7 +379,7 @@ const PassportScreen = () => {
                   color="#fff"
                   style={styles.shareButtonIcon}
                 />
-                <Text style={styles.modalShareText}>Compartir</Text>
+                <Text style={styles.modalShareText}>{t('common:actions.share')}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -386,12 +387,12 @@ const PassportScreen = () => {
 
         <TouchableOpacity
           accessibilityRole="button"
-          accessibilityLabel="Cerrar"
+          accessibilityLabel={t('common:actions.close')}
           style={styles.closeBtn}
           onPress={closeImage}
           activeOpacity={0.1}
         >
-          <Text style={styles.closeText}>Cerrar</Text>
+          <Text style={styles.closeText}>{t('common:actions.close')}</Text>
         </TouchableOpacity>
       </Modal>
     </ThemedView>

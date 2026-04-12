@@ -1,0 +1,32 @@
+{
+  "bestTimeLabel": "Best time: {{bestTime}}",
+  "details": {
+    "emptyStops": "This route doesn't have linked stops in the heritage_sites table yet.",
+    "loadingCopy": "We're loading this route from Appwrite.",
+    "loadingTitle": "Loading route",
+    "notFoundCopy": "We couldn't load this route. Go back to the list and try again.",
+    "notFoundTitle": "Route not found",
+    "retryCopy": "Check your connection and try again to reload this route.",
+    "retryTitle": "We couldn't load this route",
+    "stopsTitle": "Places you'll visit",
+    "summaryTitle": "Summary",
+    "tagsTitle": "Tags"
+  },
+  "emptyTags": "No tags yet.",
+  "fallbackDescription": "This route doesn't have a description yet.",
+  "fallbackStopTitle": "Unnamed stop",
+  "fallbackTitle": "Untitled route",
+  "footerCopy": "These routes are a starting guide. You can use them as a base and adapt them with what you find on the map.",
+  "heroCopy": "A quick selection for when you want to open TourIn and head out without planning from scratch.",
+  "heroTitle": "Suggested routes",
+  "list": {
+    "emptyCopy": "Once you add routes in Appwrite, they'll show up here with their linked stops.",
+    "emptyTitle": "No routes available",
+    "loadingCopy": "We're fetching suggested routes from Appwrite.",
+    "loadingTitle": "Loading routes",
+    "retryCopy": "Check your connection and try again to view the suggested routes.",
+    "retryTitle": "We couldn't load the routes"
+  },
+  "noTags": "This route doesn't have highlighted tags yet.",
+  "viewRoute": "View route details"
+}

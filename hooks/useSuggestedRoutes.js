@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Query } from 'react-native-appwrite'
+import { useTranslation } from 'react-i18next'
 import { tables } from '../lib/appwrite'
+import { useI18n } from '../contexts/I18nContext'
+import getLocalizedField from '../i18n/getLocalizedField'
 import {
   formatRouteDistance,
   formatRouteDuration,
@@ -16,6 +19,12 @@ const SITES_TABLE_ID = 'heritage_sites'
 const PAGE_LIMIT = 100
 
 const trimString = (value) => (typeof value === 'string' ? value.trim() : '')
+
+const sortByTitle = (left, right, locale) =>
+  String(left?.title || '').localeCompare(String(right?.title || ''), locale)
+
+const sortByName = (left, right, locale) =>
+  String(left?.name || '').localeCompare(String(right?.name || ''), locale)
 
 const listAllRows = async (tableId, baseQueries = []) => {
   let offset = 0
@@ -37,57 +46,93 @@ const listAllRows = async (tableId, baseQueries = []) => {
   return allRows
 }
 
-const normalizeStop = (row) => ({
+const getRouteJoinKey = (row) => trimString(row?.routeId) || trimString(row?.route)
+
+const normalizeStop = (row, locale, t) => ({
   id: row?.$id,
-  name: trimString(row?.name) || 'Parada sin nombre',
-  description: trimString(row?.description),
-  route: trimString(row?.route),
+  description: getLocalizedField(row, 'description', locale, { defaultValue: '' }),
+  name: getLocalizedField(row, 'name', locale, {
+    defaultValue: t('routes:fallbackStopTitle'),
+  }),
+  routeKey: getRouteJoinKey(row),
 })
 
-const buildStopsByRoute = (siteRows) => {
+const buildStopsByRoute = (siteRows, locale, t) => {
   const groupedStops = Object.create(null)
 
   for (const row of siteRows) {
-    const stop = normalizeStop(row)
-    if (!stop.route) continue
+    const stop = normalizeStop(row, locale, t)
+    if (!stop.routeKey) continue
 
-    if (!groupedStops[stop.route]) {
-      groupedStops[stop.route] = []
+    if (!groupedStops[stop.routeKey]) {
+      groupedStops[stop.routeKey] = []
     }
 
-    groupedStops[stop.route].push(stop)
+    groupedStops[stop.routeKey].push(stop)
   }
 
   return groupedStops
 }
 
-const normalizeRoute = (row, stopsByRouteName) => {
-  const title = trimString(row?.name) || 'Ruta sin nombre'
-  const description = trimString(row?.description)
-  const intensity = trimString(row?.intensity)
-  const bestTime = trimString(row?.bestTime)
-  const stops = stopsByRouteName[title] ?? []
+const dedupeStops = (stops) => {
+  const seen = new Set()
+  const dedupedStops = []
+
+  for (const stop of stops) {
+    const key = stop?.id || `${stop?.name}-${stop?.description}`
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    dedupedStops.push(stop)
+  }
+
+  return dedupedStops
+}
+
+const normalizeRoute = (row, stopsByRouteKey, locale, t) => {
+  const title = getLocalizedField(row, 'name', locale, { defaultValue: t('routes:fallbackTitle') })
+  const legacyTitle = trimString(row?.name)
+  const description = getLocalizedField(row, 'description', locale, { defaultValue: '' })
+  const rawBestTime = getLocalizedField(row, 'bestTime', locale, { defaultValue: '' })
+  const intensity = getLocalizedField(row, 'intensity', locale, {
+    defaultValue: t('common:fallbacks.undefined'),
+  })
+  const bestTime = rawBestTime || t('common:fallbacks.undefined')
+  const routeStops = dedupeStops([
+    ...(stopsByRouteKey[row?.$id] ?? []),
+    ...(legacyTitle ? stopsByRouteKey[legacyTitle] ?? [] : []),
+  ]).sort((left, right) => sortByName(left, right, locale))
 
   return {
     id: row?.$id,
     title,
     description,
-    subtitle: bestTime ? `Mejor momento: ${bestTime}` : null,
-    duration: formatRouteDuration(row?.timeToComplete),
-    distance: formatRouteDistance(row?.distance),
+    subtitle: rawBestTime ? t('routes:bestTimeLabel', { bestTime: rawBestTime }) : null,
+    duration: formatRouteDuration(row?.timeToComplete, locale, {
+      fallbackLabel: t('common:fallbacks.undefined'),
+      hourUnit: 'h',
+    }),
+    distance: formatRouteDistance(row?.distance, locale, {
+      fallbackLabel: t('common:fallbacks.undefined'),
+      kilometerUnit: 'km',
+      meterUnit: 'm',
+    }),
     intensity,
     bestTime,
-    tags: normalizeRouteTags(row?.tags),
+    tags: normalizeRouteTags(getLocalizedField(row, 'tags', locale, { defaultValue: [] }), locale),
     icon: getRouteIconName(row?.icon),
     accentColor: getRouteAccentColor(row?.color, title),
-    stopCount: stops.length,
-    stopsPreview: stops.slice(0, 3),
-    stops,
+    stopCount: routeStops.length,
+    stopsPreview: routeStops.slice(0, 3),
+    stops: routeStops,
   }
 }
 
 export function useSuggestedRoutes() {
-  const [routes, setRoutes] = useState([])
+  const { locale } = useI18n()
+  const { t } = useTranslation(['common', 'routes'])
+  const [routeRows, setRouteRows] = useState([])
+  const [siteRows, setSiteRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -100,22 +145,21 @@ export function useSuggestedRoutes() {
     try {
       const [routeRows, siteRows] = await Promise.all([
         listAllRows(ROUTES_TABLE_ID, [Query.orderAsc('name')]),
-        listAllRows(SITES_TABLE_ID, [Query.isNotNull('route'), Query.orderAsc('name')]),
+        listAllRows(SITES_TABLE_ID, [Query.orderAsc('name')]),
       ])
 
       if (signal?.aborted) return
 
-      const stopsByRouteName = buildStopsByRoute(siteRows)
-      const normalizedRoutes = routeRows.map((row) => normalizeRoute(row, stopsByRouteName))
-
-      setRoutes(normalizedRoutes)
-      return normalizedRoutes
+      setRouteRows(routeRows)
+      setSiteRows(siteRows)
+      return routeRows
     } catch (err) {
       if (signal?.aborted) return
 
       console.error('[useSuggestedRoutes] fetch error', err)
       setError(err)
-      setRoutes([])
+      setRouteRows([])
+      setSiteRows([])
       return []
     } finally {
       if (!signal?.aborted) {
@@ -132,6 +176,14 @@ export function useSuggestedRoutes() {
       abortController.abort()
     }
   }, [fetchRoutes])
+
+  const routes = useMemo(() => {
+    const stopsByRouteKey = buildStopsByRoute(siteRows, locale, t)
+
+    return routeRows
+      .map((row) => normalizeRoute(row, stopsByRouteKey, locale, t))
+      .sort((left, right) => sortByTitle(left, right, locale))
+  }, [routeRows, siteRows, locale, t])
 
   const getRouteById = useCallback(
     (routeId) => {

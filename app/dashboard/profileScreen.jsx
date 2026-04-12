@@ -1,36 +1,44 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { useTheme } from 'react-native-paper'
+import { Modal, Portal, useTheme } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
 import { router, useFocusEffect } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
+import { useI18n } from '../../contexts/I18nContext'
+import { formatMonthYear } from '../../i18n/formatters'
 
 const profileScreen = () => {
   const { user, logout } = useUser()
   const { stats, getStats } = useStats(user.$id)
   const theme = useTheme()
+  const { t } = useTranslation(['common', 'profile'])
+  const { locale, setLocale, availableLocales } = useI18n()
+  const [languageModalVisible, setLanguageModalVisible] = useState(false)
 
-  const displayName = user?.name || 'Usuario'
-  const handle = user?.email ? user.email.split('@')[0] : 'usuario'
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ]
+  const displayName = user?.name || t('common:fallbacks.genericUser')
+  const handle = user?.email ? user.email.split('@')[0] : t('common:fallbacks.handle')
   const createdAtDate = user?.$createdAt ? new Date(user.$createdAt) : null
   const joinDate = createdAtDate
-    ? `${monthNames[createdAtDate.getMonth()]} ${createdAtDate.getFullYear()}`
-    : 'Enero 2026'
+    ? formatMonthYear(createdAtDate, locale)
+    : t('profile:memberSinceFallback')
   const initials = displayName
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join('')
+  const handleLabel = t('profile:handle', { date: joinDate, handle })
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleLanguageChange = async (nextLocale) => {
+    await setLocale(nextLocale)
+    setLanguageModalVisible(false)
   }
 
   useFocusEffect(
@@ -54,7 +62,11 @@ const profileScreen = () => {
               </View>
             )}
           </View>
-          <TouchableOpacity style={[styles.settingsButton, styles.raised]} disabled>
+          <TouchableOpacity
+            style={[styles.settingsButton, styles.raised]}
+            onPress={() => setLanguageModalVisible(true)}
+            activeOpacity={0.85}
+          >
             <Ionicons name="settings" size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
@@ -63,12 +75,12 @@ const profileScreen = () => {
           <Text style={styles.flagEmoji}>🇨🇱</Text>
           <Text style={styles.nameText}>{displayName}</Text>
         </View>
-        <Text style={styles.handleText}>@{handle} desde {joinDate}</Text>
+        <Text style={styles.handleText}>{handleLabel}</Text>
 
         <View style={styles.actionsRow}>
           <TouchableOpacity style={[styles.addFriendButton, styles.raised]} disabled activeOpacity={1}>
             <Ionicons name="person-add" size={16} color={theme.colors.primary} style={styles.addFriendIcon} />
-            <Text style={styles.addFriendText}>AGREGA AMIGOS</Text>
+            <Text style={styles.addFriendText}>{t('profile:addFriends')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.shareIconButton, styles.raised]} disabled activeOpacity={1}>
             <Ionicons name="share-social" size={18} color={theme.colors.primary} />
@@ -76,7 +88,7 @@ const profileScreen = () => {
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Resumen</Text>
+      <Text style={styles.sectionTitle}>{t('profile:summaryTitle')}</Text>
 
       <TouchableOpacity
         style={[styles.summaryCard, styles.raised]}
@@ -86,14 +98,14 @@ const profileScreen = () => {
         <View style={styles.summaryIcon}>
           <Ionicons name="location" size={18} color="#6f6f6f" />
         </View>
-        <Text style={styles.summaryText}>{stats?.sitesVisited ?? 0} sitios</Text>
+        <Text style={styles.summaryText}>{t('common:counts.sites', { count: stats?.sitesVisited ?? 0 })}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.summaryCard, styles.raised]} disabled activeOpacity={1}>
         <View style={styles.summaryIcon}>
           <Ionicons name="calendar" size={18} color="#6f6f6f" />
         </View>
-        <Text style={styles.summaryText}>{stats?.eventsAttended ?? 0} eventos</Text>
+        <Text style={styles.summaryText}>{t('common:counts.events', { count: stats?.eventsAttended ?? 0 })}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -104,7 +116,7 @@ const profileScreen = () => {
         <View style={styles.summaryIcon}>
           <Ionicons name="trophy" size={18} color="#6f6f6f" />
         </View>
-        <Text style={styles.summaryText}>{stats?.achievementsUnlocked ?? 0} logros</Text>
+        <Text style={styles.summaryText}>{t('common:counts.achievements', { count: stats?.achievementsUnlocked ?? 0 })}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -113,8 +125,46 @@ const profileScreen = () => {
         activeOpacity={0.8}
       >
         <Ionicons name="log-out-outline" size={18} color="#ffffff" style={styles.logoutIcon} />
-        <Text style={styles.logoutText}>CERRAR SESIÓN</Text>
+        <Text style={styles.logoutText}>{t('profile:logout')}</Text>
       </TouchableOpacity>
+
+      <Portal>
+        <Modal
+          visible={languageModalVisible}
+          onDismiss={() => setLanguageModalVisible(false)}
+          contentContainerStyle={styles.languageModal}
+        >
+          <Text style={styles.languageModalTitle}>{t('profile:language.title')}</Text>
+          <Text style={styles.languageModalCopy}>{t('profile:language.description')}</Text>
+          {availableLocales.map((localeCode) => {
+            const isActive = locale === localeCode
+
+            return (
+              <TouchableOpacity
+                key={localeCode}
+                style={[
+                  styles.languageOption,
+                  isActive && styles.languageOptionActive,
+                ]}
+                onPress={() => handleLanguageChange(localeCode)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.languageOptionText,
+                    isActive && styles.languageOptionTextActive,
+                  ]}
+                >
+                  {t(`common:languageNames.${localeCode}`)}
+                </Text>
+                {isActive ? (
+                  <Ionicons name="checkmark-circle" size={18} color="#1B7D4A" />
+                ) : null}
+              </TouchableOpacity>
+            )
+          })}
+        </Modal>
+      </Portal>
     </ThemedView>
   )
 }
@@ -294,5 +344,44 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.6,
+  },
+  languageModal: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+  },
+  languageModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2933',
+  },
+  languageModalCopy: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#5B6572',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  languageOptionActive: {
+    borderColor: '#1B7D4A',
+    backgroundColor: '#F2FBF5',
+  },
+  languageOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#25303B',
+  },
+  languageOptionTextActive: {
+    color: '#1B7D4A',
   },
 })

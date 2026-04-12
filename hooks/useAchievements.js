@@ -1,14 +1,18 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Query, ID, Permission, Role } from 'react-native-appwrite'
 import { tables } from '../lib/appwrite'
 import { posthog } from '../lib/posthog'
+import { useI18n } from '../contexts/I18nContext'
+import getLocalizedField from '../i18n/getLocalizedField'
 
 const DATABASE_ID = '68b399490018d7cb309b'
 const ACHIVEMENTS_TABLE_ID  = 'achivements'
 const USER_ACHIVEMENTS_TABLE_ID = 'user_achivements'
 
 export function useAchievements(userId) {
-  const [achievements, setAchievements] = useState([])
+  const { locale } = useI18n()
+  const [achievementRows, setAchievementRows] = useState([])
+  const [unlocksByAchievementId, setUnlocksByAchievementId] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -45,16 +49,8 @@ export function useAchievements(userId) {
         if (u?.achivementId) unlockedByAchId[u.achivementId] = u
       }
 
-      const merged = (achList.rows || []).map((row) => ({
-        $id: row.$id,
-        name: row.name,
-        description: row.description,
-        criteria: row.criteria,
-        badge: row.badge,
-        unlockedAt: unlockedByAchId[row.$id]?.unlockedAt || null,
-      }))
-
-      setAchievements(merged)
+      setAchievementRows(achList.rows || [])
+      setUnlocksByAchievementId(unlockedByAchId)
     } catch (err) {
       if (signal?.aborted) return
 
@@ -66,6 +62,21 @@ export function useAchievements(userId) {
       }
     }
   }, [userId])
+
+  const achievements = useMemo(
+    () =>
+      achievementRows
+        .map((row) => ({
+          $id: row.$id,
+          badge: row.badge,
+          criteria: getLocalizedField(row, 'criteria', locale, { defaultValue: row.criteria }),
+          description: getLocalizedField(row, 'description', locale, { defaultValue: row.description }),
+          name: getLocalizedField(row, 'name', locale, { defaultValue: row.name }),
+          unlockedAt: unlocksByAchievementId[row.$id]?.unlockedAt || null,
+        }))
+        .sort((left, right) => String(left?.name || '').localeCompare(String(right?.name || ''), locale)),
+    [achievementRows, unlocksByAchievementId, locale]
+  )
 
   const isUnlocked = useCallback(
     (achievementId) => Boolean(achievements.find((a) => a.$id === achievementId)?.unlockedAt),
@@ -99,7 +110,13 @@ export function useAchievements(userId) {
     })
 
     // Optimistic update
-    setAchievements((prev) => prev.map((a) => (a.$id === achievementId ? { ...a, unlockedAt: payload.unlockedAt } : a)))
+    setUnlocksByAchievementId((prev) => ({
+      ...prev,
+      [achievementId]: {
+        ...(prev[achievementId] || {}),
+        unlockedAt: payload.unlockedAt,
+      },
+    }))
   }, [userId, isUnlocked, achievements])
 
   const refresh = fetchAchievements

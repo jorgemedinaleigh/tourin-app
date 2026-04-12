@@ -1,0 +1,11 @@
+{
+  "pageNumber": "Page {{page}}",
+  "role": "Beginner Explorer",
+  "shareDialogTitle": "TourIn stamp",
+  "sharePrepareErrorBody": "The stamp couldn't be prepared for sharing.",
+  "sharePrepareErrorTitle": "Error",
+  "shareUnavailableBody": "Image sharing isn't available on this device.",
+  "shareUnavailableTitle": "Sharing unavailable",
+  "shareUploadErrorBody": "The stamp couldn't be shared.",
+  "shareUploadErrorTitle": "Error"
+}

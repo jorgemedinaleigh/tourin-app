@@ -1,0 +1,21 @@
+{
+  "chips": {
+    "free": "Gratis",
+    "paid": "Pagado",
+    "route": "Ruta: {{route}}",
+    "website": "Web"
+  },
+  "fallbackPointTitle": "Punto",
+  "location": {
+    "alreadyVisitedBody": "Este punto ya estaba estampado en tu pasaporte.",
+    "alreadyVisitedTitle": "Sitio ya visitado",
+    "permissionBody": "Activa el permiso de ubicación para estampar este punto.",
+    "permissionTitle": "Permiso requerido",
+    "tooFarBody": "Necesitas estar más cerca del punto para estampar tu pasaporte.",
+    "tooFarTitle": "Estás lejos",
+    "unavailableBody": "No pudimos validar tu ubicación para estampar este punto.",
+    "unavailableTitle": "Ubicación no disponible"
+  },
+  "stampButton": "Estampar",
+  "visitedButton": "Sitio visitado"
+}

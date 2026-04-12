@@ -1,0 +1,16 @@
+{
+  "centerLocation": {
+    "locatingBody": "We're getting your current location.",
+    "locatingTitle": "Finding location",
+    "permissionBody": "Enable location permission to center the map.",
+    "permissionTitle": "Permission required"
+  },
+  "geoStatus": {
+    "retry": "Retry"
+  },
+  "metro": {
+    "lineLabel": "Line",
+    "stationFallback": "Station",
+    "undefinedLine": "No line"
+  }
+}
