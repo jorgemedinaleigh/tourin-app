@@ -22,6 +22,17 @@ import passportEs from './locales/es/passport.json'
 import profileEs from './locales/es/profile.json'
 import routesEs from './locales/es/routes.json'
 import stampOverlayEs from './locales/es/stampOverlay.json'
+import achievementsPt from './locales/pt/achievements.json'
+import authPt from './locales/pt/auth.json'
+import commonPt from './locales/pt/common.json'
+import errorsPt from './locales/pt/errors.json'
+import homePt from './locales/pt/home.json'
+import infoCardPt from './locales/pt/infoCard.json'
+import mapPt from './locales/pt/map.json'
+import passportPt from './locales/pt/passport.json'
+import profilePt from './locales/pt/profile.json'
+import routesPt from './locales/pt/routes.json'
+import stampOverlayPt from './locales/pt/stampOverlay.json'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './formatters'
 
 const resources = {
@@ -50,6 +61,19 @@ const resources = {
     profile: profileEs,
     routes: routesEs,
     stampOverlay: stampOverlayEs,
+  },
+  pt: {
+    achievements: achievementsPt,
+    auth: authPt,
+    common: commonPt,
+    errors: errorsPt,
+    home: homePt,
+    infoCard: infoCardPt,
+    map: mapPt,
+    passport: passportPt,
+    profile: profilePt,
+    routes: routesPt,
+    stampOverlay: stampOverlayPt,
   },
 }
 

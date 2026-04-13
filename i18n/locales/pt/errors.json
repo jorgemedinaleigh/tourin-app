@@ -1,0 +1,11 @@
+{
+  "appwrite": {
+    "blockedAccount": "Sua conta está bloqueada. Entre em contato com o suporte.",
+    "emailAlreadyExists": "Esse e-mail já está cadastrado.",
+    "emailNotAllowed": "Este e-mail não tem permissão para entrar.",
+    "generic": "Algo deu errado. Tente novamente.",
+    "invalidCredentials": "E-mail ou senha inválidos.",
+    "tooManyRequests": "Muitas solicitações. Tente novamente em instantes.",
+    "userNotFound": "Não encontramos uma conta com esses dados."
+  }
+}

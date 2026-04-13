@@ -28,8 +28,9 @@
     "undefined": "Por definir"
   },
   "languageNames": {
-    "en": "English",
-    "es": "Español"
+    "en": "Inglés",
+    "es": "Español",
+    "pt": "Portugués"
   },
   "tabs": {
     "map": "Mapa",

@@ -1,0 +1,16 @@
+{
+  "centerLocation": {
+    "locatingBody": "Estamos obtendo sua localização atual.",
+    "locatingTitle": "Buscando localização",
+    "permissionBody": "Ative a permissão de localização para centralizar o mapa.",
+    "permissionTitle": "Permissão necessária"
+  },
+  "geoStatus": {
+    "retry": "Tentar novamente"
+  },
+  "metro": {
+    "lineLabel": "Linha",
+    "stationFallback": "Estação",
+    "undefinedLine": "Sem linha"
+  }
+}

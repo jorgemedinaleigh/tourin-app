@@ -1,0 +1,32 @@
+{
+  "bestTimeLabel": "Melhor época: {{bestTime}}",
+  "details": {
+    "emptyStops": "Esta rota ainda não tem paradas vinculadas na tabela heritage_sites.",
+    "loadingCopy": "Estamos carregando esta rota do Appwrite.",
+    "loadingTitle": "Carregando rota",
+    "notFoundCopy": "Não foi possível carregar esta rota. Volte para a lista e tente novamente.",
+    "notFoundTitle": "Rota não encontrada",
+    "retryCopy": "Verifique sua conexão e tente novamente para recarregar esta rota.",
+    "retryTitle": "Não foi possível carregar esta rota",
+    "stopsTitle": "Locais que você vai visitar",
+    "summaryTitle": "Resumo",
+    "tagsTitle": "Tags"
+  },
+  "emptyTags": "Ainda não há tags.",
+  "fallbackDescription": "Esta rota ainda não tem descrição.",
+  "fallbackStopTitle": "Parada sem nome",
+  "fallbackTitle": "Rota sem título",
+  "footerCopy": "Estas rotas são um guia inicial. Você pode usá-las como base e adaptá-las com o que encontrar no mapa.",
+  "heroCopy": "Uma seleção rápida para quando você quiser abrir o TourIn e sair sem planejar do zero.",
+  "heroTitle": "Rotas sugeridas",
+  "list": {
+    "emptyCopy": "Quando você adicionar rotas no Appwrite, elas aparecerão aqui com suas paradas vinculadas.",
+    "emptyTitle": "Nenhuma rota disponível",
+    "loadingCopy": "Estamos buscando rotas sugeridas no Appwrite.",
+    "loadingTitle": "Carregando rotas",
+    "retryCopy": "Verifique sua conexão e tente novamente para ver as rotas sugeridas.",
+    "retryTitle": "Não foi possível carregar as rotas"
+  },
+  "noTags": "Esta rota ainda não tem tags em destaque.",
+  "viewRoute": "Ver detalhes da rota"
+}

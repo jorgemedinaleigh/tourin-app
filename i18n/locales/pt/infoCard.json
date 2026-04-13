@@ -1,0 +1,21 @@
+{
+  "chips": {
+    "free": "Grátis",
+    "paid": "Pago",
+    "route": "Rota: {{route}}",
+    "website": "Site"
+  },
+  "fallbackPointTitle": "Ponto",
+  "location": {
+    "alreadyVisitedBody": "Este lugar já foi carimbado no seu passaporte.",
+    "alreadyVisitedTitle": "Local já visitado",
+    "permissionBody": "Ative a permissão de localização para carimbar este lugar.",
+    "permissionTitle": "Permissão necessária",
+    "tooFarBody": "Você precisa estar mais perto deste lugar para carimbar seu passaporte.",
+    "tooFarTitle": "Você está longe demais",
+    "unavailableBody": "Não foi possível validar sua localização para carimbar este lugar.",
+    "unavailableTitle": "Localização indisponível"
+  },
+  "stampButton": "Carimbar",
+  "visitedButton": "Local visitado"
+}

@@ -1,9 +1,10 @@
 export const DEFAULT_LOCALE = 'es'
-export const SUPPORTED_LOCALES = ['es', 'en']
+export const SUPPORTED_LOCALES = ['es', 'en', 'pt']
 
 const LOCALE_TAGS = {
   es: 'es-CL',
   en: 'en-US',
+  pt: 'pt-BR',
 }
 
 export const normalizeLocale = (value) => {

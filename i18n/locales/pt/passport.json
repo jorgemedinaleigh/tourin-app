@@ -1,0 +1,11 @@
+{
+  "pageNumber": "Página {{page}}",
+  "role": "Explorador iniciante",
+  "shareDialogTitle": "Carimbo do TourIn",
+  "sharePrepareErrorBody": "Não foi possível preparar o carimbo para compartilhamento.",
+  "sharePrepareErrorTitle": "Erro",
+  "shareUnavailableBody": "O compartilhamento de imagens não está disponível neste dispositivo.",
+  "shareUnavailableTitle": "Compartilhamento indisponível",
+  "shareUploadErrorBody": "Não foi possível compartilhar o carimbo.",
+  "shareUploadErrorTitle": "Erro"
+}
