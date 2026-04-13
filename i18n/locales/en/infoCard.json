@@ -5,6 +5,13 @@
     "route": "Route: {{route}}",
     "website": "Web"
   },
+  "directions": {
+    "button": "Get directions",
+    "openErrorBody": "Try again or open your maps app manually to get to this place.",
+    "openErrorTitle": "We couldn't open Maps",
+    "unavailableBody": "We couldn't find valid coordinates to open navigation to this place.",
+    "unavailableTitle": "Navigation unavailable"
+  },
   "fallbackPointTitle": "Point",
   "location": {
     "alreadyVisitedBody": "This place was already stamped in your passport.",

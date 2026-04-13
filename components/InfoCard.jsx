@@ -1,4 +1,4 @@
-import { Alert, Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, Linking } from 'react-native'
+import { Alert, Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, Linking, Platform } from 'react-native'
 import { Button, Card, Chip, IconButton, Portal, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +10,14 @@ import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
 import * as Location from 'expo-location'
 import { posthog } from '../lib/posthog'
+import {
+  buildAppleMapsDirectionsUrl,
+  buildGoogleMapsDirectionsUrl,
+  GOOGLE_MAPS_IOS_SCHEME,
+  normalizeRouteNavigationStop,
+  resolveRouteMapsProvider,
+  ROUTE_MAPS_PROVIDERS,
+} from '../lib/routeNavigation'
 
 const pickUri = (candidate) => {
   if (!candidate) return null
@@ -60,7 +68,7 @@ const getDistanceMeters = (fromLat, fromLon, toLat, toLon) => {
 function InfoCard({ info, onClose }) {
   const theme = useTheme()
   const { height } = useWindowDimensions()
-  const { t } = useTranslation(['common', 'infoCard'])
+  const { t, i18n } = useTranslation(['common', 'infoCard'])
   const { user } = useUser()
   const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
   const { addPoints, siteVisited, getStats } = useStats(user.$id)
@@ -71,6 +79,7 @@ function InfoCard({ info, onClose }) {
   const [showStampOverlay, setShowStampOverlay] = useState(false)
   const [overlayDismissible, setOverlayDismissible] = useState(false)
   const cardMaxHeight = height * 0.9
+  const locale = i18n.resolvedLanguage || i18n.language || 'en'
 
   const stampUri = useMemo(() => {
     if (!info) return null
@@ -122,6 +131,20 @@ function InfoCard({ info, onClose }) {
     if (/^https?:\/\//i.test(trimmed)) return trimmed
     return `https://${trimmed}`
   }, [info])
+
+  const navigationStop = useMemo(() => {
+    const pointCoordinate = Array.isArray(info?.pointCoordinate) ? info.pointCoordinate : null
+    const [longitude, latitude] = pointCoordinate || []
+
+    return normalizeRouteNavigationStop({
+      name: info?.name,
+      latitude,
+      longitude,
+    })
+  }, [info])
+
+  const canOpenDirections =
+    navigationStop.latitude !== null && navigationStop.longitude !== null
 
   useEffect(() => {
     let alive = true
@@ -296,6 +319,77 @@ function InfoCard({ info, onClose }) {
     }
   }
 
+  const handleDirectionsPress = async () => {
+    if (!canOpenDirections) {
+      Alert.alert(
+        t('infoCard:directions.unavailableTitle'),
+        t('infoCard:directions.unavailableBody')
+      )
+      return
+    }
+
+    let supportsGoogleMapsOnIos = false
+
+    if (Platform.OS === 'ios') {
+      try {
+        supportsGoogleMapsOnIos = await Linking.canOpenURL(GOOGLE_MAPS_IOS_SCHEME)
+      } catch (error) {
+        console.warn('Unable to detect Google Maps availability on iOS:', error)
+      }
+    }
+
+    const provider = resolveRouteMapsProvider({
+      platform: Platform.OS,
+      supportsGoogleMapsOnIos,
+    })
+    const fallback = provider === ROUTE_MAPS_PROVIDERS.APPLE && Platform.OS === 'ios'
+    const url =
+      provider === ROUTE_MAPS_PROVIDERS.GOOGLE
+        ? buildGoogleMapsDirectionsUrl([navigationStop], {
+            locale,
+            travelMode: 'walking',
+            useIosScheme: Platform.OS === 'ios' && supportsGoogleMapsOnIos,
+          })
+        : buildAppleMapsDirectionsUrl(navigationStop, {
+            travelMode: 'walking',
+          })
+
+    if (!url) {
+      posthog.capture('site_directions_opened', {
+        site_id: info.id,
+        site_name: info.name,
+        provider,
+        fallback,
+        success: false,
+        failure_reason: 'missing_navigation_url',
+      })
+      Alert.alert(t('infoCard:directions.openErrorTitle'), t('infoCard:directions.openErrorBody'))
+      return
+    }
+
+    try {
+      await Linking.openURL(url)
+      posthog.capture('site_directions_opened', {
+        site_id: info.id,
+        site_name: info.name,
+        provider,
+        fallback,
+        success: true,
+      })
+    } catch (error) {
+      console.error('Error opening site directions:', error)
+      posthog.capture('site_directions_opened', {
+        site_id: info.id,
+        site_name: info.name,
+        provider,
+        fallback,
+        success: false,
+        failure_reason: error?.message || 'open_url_failed',
+      })
+      Alert.alert(t('infoCard:directions.openErrorTitle'), t('infoCard:directions.openErrorBody'))
+    }
+  }
+
   return (
     <>
       <Card mode="elevated" style={[styles.card, { maxHeight: cardMaxHeight }]}>
@@ -345,12 +439,21 @@ function InfoCard({ info, onClose }) {
             {!!info.description && <Text style={styles.description}>{info.description}</Text>}
           </Card.Content>
 
-          <Card.Actions >
+          <Card.Actions style={styles.actionsRow}>
+            <Button
+              icon="navigation-variant-outline"
+              mode="outlined"
+              style={styles.actionButton}
+              onPress={handleDirectionsPress}
+              disabled={!canOpenDirections}
+            >
+              {t('infoCard:directions.button')}
+            </Button>
             {
               isVisited ? <Button
                             icon="check-decagram"
                             mode="contained"
-                            style={{ marginTop: 8 }}
+                            style={styles.actionButton}
                             buttonColor='#17972fff'
                           >
                             {t('infoCard:visitedButton')}
@@ -358,7 +461,7 @@ function InfoCard({ info, onClose }) {
                         : <Button
                             icon="stamper"
                             mode="contained"
-                            style={{ marginTop: 8 }}
+                            style={styles.actionButton}
                             theme={theme}
                             onPress={handleStamp}
                             loading={stamping}
@@ -424,5 +527,14 @@ const styles = StyleSheet.create({
   description: {
     marginTop: 8,
     marginBottom: 8,
+  },
+  actionsRow: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  actionButton: {
+    marginTop: 0,
   },
 })

@@ -5,6 +5,13 @@
     "route": "Rota: {{route}}",
     "website": "Site"
   },
+  "directions": {
+    "button": "Como chegar",
+    "openErrorBody": "Tente novamente ou abra seu app de mapas manualmente para chegar a este lugar.",
+    "openErrorTitle": "Não foi possível abrir o Maps",
+    "unavailableBody": "Não encontramos coordenadas válidas para abrir a navegação até este lugar.",
+    "unavailableTitle": "Navegação indisponível"
+  },
   "fallbackPointTitle": "Ponto",
   "location": {
     "alreadyVisitedBody": "Este lugar já foi carimbado no seu passaporte.",

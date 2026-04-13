@@ -5,6 +5,10 @@ import { tables } from '../lib/appwrite'
 import { useI18n } from '../contexts/I18nContext'
 import getLocalizedField from '../i18n/getLocalizedField'
 import {
+  normalizeRouteNavigationStop,
+  sortRouteStopsByNavigationOrder,
+} from '../lib/routeNavigation'
+import {
   formatRouteDistance,
   formatRouteDuration,
   getRouteAccentColor,
@@ -22,9 +26,6 @@ const trimString = (value) => (typeof value === 'string' ? value.trim() : '')
 
 const sortByTitle = (left, right, locale) =>
   String(left?.title || '').localeCompare(String(right?.title || ''), locale)
-
-const sortByName = (left, right, locale) =>
-  String(left?.name || '').localeCompare(String(right?.name || ''), locale)
 
 const listAllRows = async (tableId, baseQueries = []) => {
   let offset = 0
@@ -49,6 +50,11 @@ const listAllRows = async (tableId, baseQueries = []) => {
 const getRouteJoinKey = (row) => trimString(row?.routeId) || trimString(row?.route)
 
 const normalizeStop = (row, locale, t) => ({
+  ...normalizeRouteNavigationStop({
+    latitude: row?.latitude,
+    longitude: row?.longitude,
+    stopOrder: row?.stopOrder,
+  }),
   id: row?.$id,
   description: getLocalizedField(row, 'description', locale, { defaultValue: '' }),
   name: getLocalizedField(row, 'name', locale, {
@@ -101,7 +107,7 @@ const normalizeRoute = (row, stopsByRouteKey, locale, t) => {
   const routeStops = dedupeStops([
     ...(stopsByRouteKey[row?.$id] ?? []),
     ...(legacyTitle ? stopsByRouteKey[legacyTitle] ?? [] : []),
-  ]).sort((left, right) => sortByName(left, right, locale))
+  ]).sort((left, right) => sortRouteStopsByNavigationOrder(left, right, locale))
 
   return {
     id: row?.$id,

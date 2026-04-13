@@ -16,6 +16,9 @@ export default {
     ios: {
       supportsTablet: true,
       infoPlist: {
+        LSApplicationQueriesSchemes: [
+          "comgooglemapsurl"
+        ],
         NSLocationWhenInUseUsageDescription: "Mostramos tu ubicación en el mapa."
       }
     },

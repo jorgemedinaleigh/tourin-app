@@ -1,11 +1,23 @@
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, BackHandler, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { ActivityIndicator, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import { useSuggestedRoutes } from '../../hooks/useSuggestedRoutes'
+import { posthog } from '../../lib/posthog'
+import {
+  buildAppleMapsDirectionsUrl,
+  buildGoogleMapsDirectionsUrl,
+  getGoogleRouteStopsForExternalNavigation,
+  getOrderedRouteNavigationStops,
+  GOOGLE_MAPS_IOS_SCHEME,
+  hasCompleteRouteStopNavigation,
+  MAX_GOOGLE_ROUTE_STOPS,
+  resolveRouteMapsProvider,
+  ROUTE_MAPS_PROVIDERS,
+} from '../../lib/routeNavigation'
 
 const DESCRIPTION_COLLAPSED_LINES = 3
 
@@ -54,17 +66,118 @@ const CollapsibleText = ({ buttonColor, collapsedLines = DESCRIPTION_COLLAPSED_L
 
 const RouteDetailsScreen = () => {
   const theme = useTheme()
-  const { t } = useTranslation(['common', 'routes'])
+  const { t, i18n } = useTranslation(['common', 'routes'])
   const { routeId } = useLocalSearchParams()
   const { loading, error, refresh, getRouteById } = useSuggestedRoutes()
   const route = getRouteById(routeId)
+  const locale = i18n.resolvedLanguage || i18n.language || 'en'
   const surface = theme.colors.surface || '#FFFFFF'
   const surfaceVariant = theme.colors.surfaceVariant || '#F1EEE8'
   const outlineVariant = theme.colors.outlineVariant || '#D8D1C5'
   const onSurfaceVariant = theme.colors.onSurfaceVariant || '#5E584F'
   const goToSuggestedRoutes = () => router.replace('/dashboard/suggestedRoutesScreen')
+  const routeStops = useMemo(
+    () => getOrderedRouteNavigationStops(route?.stops, locale),
+    [locale, route?.stops]
+  )
+  const canOpenInMaps = routeStops.length > 0 && routeStops.every(hasCompleteRouteStopNavigation)
+  const showMapsUnavailableHelper = routeStops.length > 0 && !canOpenInMaps
 
   const getStopKey = (stop) => `${route?.id || 'route'}-${stop.id || stop.name}`
+
+  const trackRouteMapsOpen = useCallback(
+    ({ fallback, failureReason = null, provider, sentStopCount, success, truncated }) => {
+      posthog.capture('route_maps_opened', {
+        route_id: route?.id,
+        route_title: route?.title,
+        provider,
+        total_stop_count: routeStops.length,
+        sent_stop_count: sentStopCount,
+        truncated,
+        fallback,
+        success,
+        failure_reason: failureReason,
+      })
+    },
+    [route?.id, route?.title, routeStops.length]
+  )
+
+  const handleOpenInMaps = useCallback(async () => {
+    if (!canOpenInMaps || !routeStops.length) return
+
+    let supportsGoogleMapsOnIos = false
+
+    if (Platform.OS === 'ios') {
+      try {
+        supportsGoogleMapsOnIos = await Linking.canOpenURL(GOOGLE_MAPS_IOS_SCHEME)
+      } catch (error) {
+        console.warn('Unable to detect Google Maps availability on iOS:', error)
+      }
+    }
+
+    const provider = resolveRouteMapsProvider({
+      platform: Platform.OS,
+      supportsGoogleMapsOnIos,
+    })
+    const fallback = provider === ROUTE_MAPS_PROVIDERS.APPLE && Platform.OS === 'ios'
+    const googleStops = getGoogleRouteStopsForExternalNavigation(routeStops, MAX_GOOGLE_ROUTE_STOPS, locale)
+    const truncated = provider === ROUTE_MAPS_PROVIDERS.GOOGLE && routeStops.length > MAX_GOOGLE_ROUTE_STOPS
+
+    if (truncated) {
+      Alert.alert(
+        t('routes:details.mapsTruncatedTitle'),
+        t('routes:details.mapsTruncatedBody', { count: MAX_GOOGLE_ROUTE_STOPS })
+      )
+    }
+
+    const url =
+      provider === ROUTE_MAPS_PROVIDERS.GOOGLE
+        ? buildGoogleMapsDirectionsUrl(googleStops, {
+            locale,
+            travelMode: 'walking',
+            useIosScheme: Platform.OS === 'ios' && supportsGoogleMapsOnIos,
+          })
+        : buildAppleMapsDirectionsUrl(routeStops[routeStops.length - 1], {
+            travelMode: 'walking',
+          })
+
+    const sentStopCount = provider === ROUTE_MAPS_PROVIDERS.GOOGLE ? googleStops.length : 1
+
+    if (!url) {
+      trackRouteMapsOpen({
+        fallback,
+        failureReason: 'missing_navigation_url',
+        provider,
+        sentStopCount,
+        success: false,
+        truncated,
+      })
+      Alert.alert(t('routes:details.mapsOpenErrorTitle'), t('routes:details.mapsOpenErrorBody'))
+      return
+    }
+
+    try {
+      await Linking.openURL(url)
+      trackRouteMapsOpen({
+        fallback,
+        provider,
+        sentStopCount,
+        success: true,
+        truncated,
+      })
+    } catch (error) {
+      console.error('Error opening route directions:', error)
+      trackRouteMapsOpen({
+        fallback,
+        failureReason: error?.message || 'open_url_failed',
+        provider,
+        sentStopCount,
+        success: false,
+        truncated,
+      })
+      Alert.alert(t('routes:details.mapsOpenErrorTitle'), t('routes:details.mapsOpenErrorBody'))
+    }
+  }, [canOpenInMaps, locale, routeStops, t, trackRouteMapsOpen])
 
   useFocusEffect(
     useCallback(() => {
@@ -147,7 +260,7 @@ const RouteDetailsScreen = () => {
 
         <View style={[styles.heroCard, { backgroundColor: route.accentColor }]}>
           <View style={styles.heroTopRow}>
-            <Text style={styles.heroTitle}>{route.title}</Text>  
+            <Text style={styles.heroTitle}>{route.title}</Text>
             <View style={styles.heroIconBadge}>
               <Ionicons name={route.icon} size={18} color={route.accentColor} />
             </View>
@@ -179,6 +292,37 @@ const RouteDetailsScreen = () => {
           </View>
         </View>
 
+        <View style={styles.mapsCtaBlock}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={!canOpenInMaps}
+            onPress={handleOpenInMaps}
+            style={({ pressed }) => [
+              styles.mapsButton,
+              {
+                backgroundColor: canOpenInMaps ? route.accentColor : surfaceVariant,
+                borderColor: canOpenInMaps ? route.accentColor : outlineVariant,
+              },
+              pressed && canOpenInMaps ? styles.mapsButtonPressed : null,
+            ]}
+          >
+            <Ionicons
+              name="navigate-outline"
+              size={18}
+              color={canOpenInMaps ? '#FFFFFF' : onSurfaceVariant}
+            />
+            <Text style={[styles.mapsButtonText, { color: canOpenInMaps ? '#FFFFFF' : onSurfaceVariant }]}>
+              {t('routes:details.mapsButton')}
+            </Text>
+          </Pressable>
+
+          {showMapsUnavailableHelper ? (
+            <Text style={[styles.mapsHelperText, { color: onSurfaceVariant }]}>
+              {t('routes:details.mapsUnavailable')}
+            </Text>
+          ) : null}
+        </View>
+
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
           <Text style={styles.sectionTitle}>{t('routes:details.summaryTitle')}</Text>
           <CollapsibleText
@@ -190,9 +334,9 @@ const RouteDetailsScreen = () => {
 
         <View style={[styles.sectionCard, { backgroundColor: surface, borderColor: outlineVariant }]}>
           <Text style={styles.sectionTitle}>{t('routes:details.stopsTitle')}</Text>
-          {route.stops.length ? (
+          {routeStops.length ? (
             <View style={styles.stopList}>
-              {route.stops.map((stop, index) => {
+              {routeStops.map((stop, index) => {
                 const stopKey = getStopKey(stop)
 
                 return (
@@ -202,13 +346,6 @@ const RouteDetailsScreen = () => {
                     </View>
                     <View style={styles.stopCopyBlock}>
                       <Text style={styles.stopName}>{stop.name}</Text>
-                      {stop.description ? (
-                        <CollapsibleText
-                          buttonColor={route.accentColor}
-                          text={stop.description}
-                          textStyle={[styles.stopDescription, { color: onSurfaceVariant }]}
-                        />
-                      ) : null}
                     </View>
                   </View>
                 )
@@ -332,6 +469,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  mapsCtaBlock: {
+    gap: 8,
+  },
+  mapsButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  mapsButtonPressed: {
+    opacity: 0.9,
+  },
+  mapsButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  mapsHelperText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   sectionCard: {
     borderWidth: 1,
     borderRadius: 22,
@@ -417,10 +579,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#1E1E1E',
-  },
-  stopDescription: {
-    fontSize: 14,
-    lineHeight: 20,
   },
   expandButton: {
     alignSelf: 'flex-start',
