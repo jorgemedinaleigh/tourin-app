@@ -4,7 +4,7 @@ import { Button, Text, TextInput, HelperText } from 'react-native-paper'
 import { Link } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../hooks/useUser'
-import { appwriteErrorToMessage } from '../../utils/appwriteErrorToMessage'
+import { authErrorToMessage } from '../../utils/authErrorToMessage'
 import ThemedView from '../../components/ThemedView'
 import { posthog } from '../../lib/posthog'
 
@@ -33,7 +33,7 @@ const loginScreen = () => {
       await login(mailText, passwordText)
     }
     catch (err) {
-      const errorMessage = appwriteErrorToMessage(err)
+      const errorMessage = authErrorToMessage(err)
       setError(errorMessage)
 
       // Track login failure with error details
