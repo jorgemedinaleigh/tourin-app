@@ -4,22 +4,17 @@ import { mapHeritageSiteRow, mapSiteVisitRow } from '../lib/supabaseAdapters'
 
 const PAGE_LIMIT = 100
 
-export function useSiteVisits(userId, siteId) {
+export function useSiteVisits(userId) {
   const [visits, setVisits] = useState([])
   const [sitesVisited, setSitesVisited] = useState([])
 
-  async function stampVisit(userId, siteId) {
-    if (!userId || !siteId) return { created: false, alreadyVisited: false }
+  async function stampVisit(siteId, targetUserId = userId) {
+    if (!targetUserId || !siteId) return { created: false, alreadyVisited: false }
     try {
-      const existingVisit = await getVisit(userId, siteId)
-      if (existingVisit) {
-        return { created: false, alreadyVisited: true }
-      }
-
       const { data: createdVisit, error } = await supabase
         .from('site_visits')
         .insert({
-          user_id: userId,
+          user_id: targetUserId,
           site_id: siteId,
         })
         .select('*')
@@ -36,26 +31,26 @@ export function useSiteVisits(userId, siteId) {
       return { created: false, alreadyVisited: false }
     }
   }
-  
-  async function getVisit(userId, siteId) {
-    if (!userId || !siteId) return false
+
+  async function getVisit(siteId, targetUserId = userId) {
+    if (!targetUserId || !siteId) return false
     try {
       const { data, error } = await supabase
         .from('site_visits')
         .select('id')
         .eq('site_id', siteId)
-        .eq('user_id', userId)
+        .eq('user_id', targetUserId)
         .maybeSingle()
 
       if (error) throw error
       return Boolean(data)
     } catch (error) {
-      console.error('Error fetching info:', error)
+      console.error('Error fetching visit:', error)
       return false
     }
   }
 
-  async function listAllVisits(userId) {
+  async function listAllVisits(targetUserId) {
     let offset = 0
     let keepGoing = true
     const allRows = []
@@ -64,7 +59,7 @@ export function useSiteVisits(userId, siteId) {
       const { data, error } = await supabase
         .from('site_visits')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', targetUserId)
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE_LIMIT - 1)
 
@@ -79,16 +74,16 @@ export function useSiteVisits(userId, siteId) {
     return allRows
   }
 
-  async function fetchVisits(userId) {
-    if (!userId) {
+  async function fetchVisits(targetUserId = userId) {
+    if (!targetUserId) {
       setVisits([])
       setSitesVisited([])
       return []
     }
     try {
-      const stampedSites = await listAllVisits(userId)
+      const stampedSites = await listAllVisits(targetUserId)
       setVisits(stampedSites)
-      const siteIds = [...new Set(stampedSites.map(v => v.siteId).filter(Boolean))]
+      const siteIds = [...new Set(stampedSites.map((v) => v.siteId).filter(Boolean))]
 
       if (!siteIds.length) {
         setSitesVisited([])
@@ -113,12 +108,12 @@ export function useSiteVisits(userId, siteId) {
       setSitesVisited(fetchedSites)
       return stampedSites
     } catch (error) {
-      console.error('Error fetching info:', error)
+      console.error('Error fetching visits:', error)
       setVisits([])
       setSitesVisited([])
       return []
     }
   }
 
-  return { visits, sitesVisited, getVisit, fetchVisits, stampVisit}
+  return { visits, sitesVisited, getVisit, fetchVisits, stampVisit }
 }
