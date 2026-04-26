@@ -151,7 +151,7 @@ function InfoCard({ info, onClose }) {
     ;(async () => {
       setIsVisited(false)
       try {
-        const v = await getVisit(user.$id, info.id)
+        const v = await getVisit(info.id)
         if(alive) {
           setIsVisited(!!v)
         }
@@ -220,7 +220,7 @@ function InfoCard({ info, onClose }) {
 
       setStamping(true)
       setOverlayDismissible(false)
-      const stampResult = await stampVisit(user.$id, info.id)
+      const stampResult = await stampVisit(info.id)
 
       if (!stampResult?.created) {
         if (stampResult?.alreadyVisited) {
