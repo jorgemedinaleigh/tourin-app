@@ -8,7 +8,7 @@ Aplicación móvil construida con **Expo + React Native** para explorar puntos d
 - React Native 0.79 + React 19
 - Expo Router (navegación por archivos)
 - MapLibre (mapas)
-- Appwrite (autenticación, base de datos y storage)
+- Supabase (autenticación, base de datos y storage)
 - PostHog (analítica y screen tracking)
 
 ## 📱 Funcionalidades
@@ -34,14 +34,14 @@ app/
 components/              # Componentes reutilizables de UI y mapa
 contexts/                # Providers globales (usuario, geodatos)
 hooks/                   # Hooks de dominio (achievements, stats, leaderboard...)
-lib/                     # Clientes externos (Appwrite, PostHog)
+lib/                     # Clientes externos (Supabase, PostHog)
 constants/               # Colores y datos estáticos
 assets/                  # Íconos e imágenes
 ```
 
 ## ✅ Requisitos
 
-- Node.js 18+
+- Node.js 20+
 - npm 9+
 - Expo CLI (vía `npx expo`)
 
@@ -70,6 +70,8 @@ npm run web
 Crea un archivo `.env` en la raíz del proyecto (si no existe):
 
 ```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxx
 EXPO_PUBLIC_POSTHOG_API_KEY=phc_xxxxxxxxxxxxxxxxx
 EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
@@ -78,15 +80,15 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 ## 🧭 Configuración de servicios
 
-### Appwrite
+### Supabase
 
-La configuración del cliente Appwrite se encuentra en `lib/appwrite.js` e incluye:
+La configuración del cliente Supabase se encuentra en `lib/supabase.js` e incluye:
 
-- Endpoint
-- Project ID
-- Platform/package identifier
+- Project URL
+- Publishable key
+- Persistencia de sesión con AsyncStorage
 
-Si necesitas cambiar entorno (dev/staging/prod), actualiza esos valores o centralízalos en variables de entorno.
+Si necesitas cambiar entorno (dev/staging/prod), actualiza `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
 ### PostHog
 

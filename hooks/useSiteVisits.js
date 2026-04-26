@@ -1,10 +1,7 @@
 import { useState } from 'react'
-import { Query, ID } from 'react-native-appwrite'
-import { tables } from '../lib/appwrite'
+import { supabase } from '../lib/supabase'
+import { mapHeritageSiteRow, mapSiteVisitRow } from '../lib/supabaseAdapters'
 
-const DATABASE_ID = '68b399490018d7cb309b'
-const VISITS_TABLE_ID  = 'site_visits'
-const SITES_TABLE_ID = 'heritage_sites'
 const PAGE_LIMIT = 100
 
 export function useSiteVisits(userId, siteId) {
@@ -19,15 +16,20 @@ export function useSiteVisits(userId, siteId) {
         return { created: false, alreadyVisited: true }
       }
 
-      const createdVisit = await tables.createRow({
-        databaseId: DATABASE_ID,
-        tableId: VISITS_TABLE_ID,
-        rowId: ID.unique(),
-        data: {
-          userId: userId,
-          siteId: siteId,
-        }
-      })
+      const { data: createdVisit, error } = await supabase
+        .from('site_visits')
+        .insert({
+          user_id: userId,
+          site_id: siteId,
+        })
+        .select('*')
+        .single()
+
+      if (error?.code === '23505') {
+        return { created: false, alreadyVisited: true }
+      }
+      if (error) throw error
+
       return { created: !!createdVisit, alreadyVisited: false }
     } catch (error) {
       console.error('Error stamping visit:', error)
@@ -38,36 +40,38 @@ export function useSiteVisits(userId, siteId) {
   async function getVisit(userId, siteId) {
     if (!userId || !siteId) return false
     try {
-      const response = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: VISITS_TABLE_ID,
-        queries: [
-          Query.equal('siteId', [siteId]),
-          Query.equal('userId', [userId]),
-          Query.limit(1),
-        ],
-      })
-      return response.total > 0
+      const { data, error } = await supabase
+        .from('site_visits')
+        .select('id')
+        .eq('site_id', siteId)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+      return Boolean(data)
     } catch (error) {
       console.error('Error fetching info:', error)
       return false
     }
   }
 
-  // Appwrite pagina los resultados (25 por defecto), por lo que necesitamos recorrer todas las paginas.
-  async function listAllRows(tableId, baseQueries = []) {
+  async function listAllVisits(userId) {
     let offset = 0
     let keepGoing = true
     const allRows = []
 
     while (keepGoing) {
-      const response = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId,
-        queries: [...baseQueries, Query.limit(PAGE_LIMIT), Query.offset(offset)],
-      })
-      const batch = response?.rows ?? []
-      allRows.push(...batch)
+      const { data, error } = await supabase
+        .from('site_visits')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_LIMIT - 1)
+
+      if (error) throw error
+
+      const batch = data ?? []
+      allRows.push(...batch.map(mapSiteVisitRow).filter(Boolean))
       offset += PAGE_LIMIT
       keepGoing = batch.length === PAGE_LIMIT
     }
@@ -82,7 +86,7 @@ export function useSiteVisits(userId, siteId) {
       return []
     }
     try {
-      const stampedSites = await listAllRows(VISITS_TABLE_ID, [Query.equal('userId', [userId])])
+      const stampedSites = await listAllVisits(userId)
       setVisits(stampedSites)
       const siteIds = [...new Set(stampedSites.map(v => v.siteId).filter(Boolean))]
 
@@ -94,13 +98,15 @@ export function useSiteVisits(userId, siteId) {
       const fetchedSites = []
       for (let i = 0; i < siteIds.length; i += PAGE_LIMIT) {
         const batchIds = siteIds.slice(i, i + PAGE_LIMIT)
-        const sitesResponse = await tables.listRows({
-          databaseId: DATABASE_ID,
-          tableId: SITES_TABLE_ID,
-          queries: [Query.equal('$id', batchIds), Query.limit(PAGE_LIMIT)],
-        })
-        if (sitesResponse?.rows?.length) {
-          fetchedSites.push(...sitesResponse.rows)
+        const { data, error } = await supabase
+          .from('heritage_sites')
+          .select('*')
+          .in('id', batchIds)
+
+        if (error) throw error
+
+        if (data?.length) {
+          fetchedSites.push(...data.map(mapHeritageSiteRow).filter(Boolean))
         }
       }
 

@@ -1,9 +1,6 @@
-import { Query } from 'react-native-appwrite'
 import { useState } from 'react'
-import { tables } from '../lib/appwrite'
-
-const DATABASE_ID = '68b399490018d7cb309b'
-const TABLE_ID = 'user_stats'
+import { supabase } from '../lib/supabase'
+import { mapUserStatsRow } from '../lib/supabaseAdapters'
 
 export function useLeaderboard() {
   const [leaderboard, setLeaderboard] = useState([])
@@ -11,22 +8,26 @@ export function useLeaderboard() {
   const [error, setError] = useState(null)
 
   async function getTop({ sortBy = 'score' } = {}) {
-    const allowed = new Set(['score', 'sitesVisited', 'eventsAttended'])
-    const field = allowed.has(sortBy) ? sortBy : 'score'
+    const fieldMap = {
+      score: 'score',
+      sitesVisited: 'sites_visited',
+      eventsAttended: 'events_attended',
+    }
+    const field = fieldMap[sortBy] || 'score'
 
     setLoading(true)
     setError(null)
     try {
-      const response = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        queries: [
-          Query.isNotNull(field),
-          Query.orderDesc(field), // siempre descendente
-          Query.limit(100),
-        ],
-      })
-      const rows = response?.rows ?? []
+      const { data, error } = await supabase
+        .from('user_stats')
+        .select('*')
+        .not(field, 'is', null)
+        .order(field, { ascending: false })
+        .limit(100)
+
+      if (error) throw error
+
+      const rows = (data ?? []).map(mapUserStatsRow).filter(Boolean)
       setLeaderboard(rows)
       return rows
     } catch (e) {

@@ -14,11 +14,11 @@ export function authErrorToMessage(error) {
     type === 'user_invalid_credentials' ||
     normalizedMessage.includes('invalid login credentials')
   ) {
-    return i18n.t('errors:appwrite.invalidCredentials')
+    return i18n.t('errors:auth.invalidCredentials')
   }
 
   if (status === 429 || code === 429 || type === 'general_rate_limit_exceeded') {
-    return i18n.t('errors:appwrite.tooManyRequests')
+    return i18n.t('errors:auth.tooManyRequests')
   }
 
   if (
@@ -27,15 +27,15 @@ export function authErrorToMessage(error) {
     type === 'user_blocked' ||
     normalizedMessage.includes('not allowed')
   ) {
-    return i18n.t('errors:appwrite.blockedAccount')
+    return i18n.t('errors:auth.blockedAccount')
   }
 
   if (type === 'user_not_found') {
-    return i18n.t('errors:appwrite.userNotFound')
+    return i18n.t('errors:auth.userNotFound')
   }
 
   if (type === 'user_email_not_whitelisted') {
-    return i18n.t('errors:appwrite.emailNotAllowed')
+    return i18n.t('errors:auth.emailNotAllowed')
   }
 
   if (
@@ -43,8 +43,8 @@ export function authErrorToMessage(error) {
     normalizedMessage.includes('already registered') ||
     normalizedMessage.includes('already exists')
   ) {
-    return i18n.t('errors:appwrite.emailAlreadyExists')
+    return i18n.t('errors:auth.emailAlreadyExists')
   }
 
-  return message || i18n.t('errors:appwrite.generic')
+  return message || i18n.t('errors:auth.generic')
 }

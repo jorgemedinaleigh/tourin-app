@@ -2,7 +2,7 @@
   "bestTimeLabel": "Mejor momento: {{bestTime}}",
   "details": {
     "emptyStops": "Esta ruta aún no tiene paradas asociadas en la tabla heritage_sites.",
-    "loadingCopy": "Estamos obteniendo la información de esta ruta desde Appwrite.",
+    "loadingCopy": "Estamos obteniendo la información de esta ruta.",
     "loadingTitle": "Cargando ruta",
     "mapsButton": "Abrir en Maps",
     "mapsOpenErrorBody": "Intenta de nuevo o abre tu app de mapas manualmente para seguir esta ruta.",
@@ -26,9 +26,9 @@
   "heroCopy": "Una selección rápida para cuando quieras abrir TourIn y salir a recorrer sin planear desde cero.",
   "heroTitle": "Rutas sugeridas",
   "list": {
-    "emptyCopy": "Cuando agregues rutas en Appwrite aparecerán aquí con sus paradas asociadas.",
+    "emptyCopy": "Cuando agregues rutas aparecerán aquí con sus paradas asociadas.",
     "emptyTitle": "No hay rutas disponibles",
-    "loadingCopy": "Estamos obteniendo las rutas sugeridas desde Appwrite.",
+    "loadingCopy": "Estamos obteniendo las rutas sugeridas.",
     "loadingTitle": "Cargando rutas",
     "retryCopy": "Revisa tu conexión e intenta de nuevo para ver las rutas sugeridas.",
     "retryTitle": "No pudimos cargar las rutas"

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Query } from 'react-native-appwrite'
 import { useTranslation } from 'react-i18next'
-import { tables } from '../lib/appwrite'
+import { supabase } from '../lib/supabase'
+import { mapHeritageSiteRow, mapRouteRow } from '../lib/supabaseAdapters'
 import { useI18n } from '../contexts/I18nContext'
 import getLocalizedField from '../i18n/getLocalizedField'
 import {
@@ -17,9 +17,6 @@ import {
   normalizeSuggestedRouteId,
 } from '../constants/suggestedRoutes'
 
-const DATABASE_ID = '68b399490018d7cb309b'
-const ROUTES_TABLE_ID = 'routes'
-const SITES_TABLE_ID = 'heritage_sites'
 const PAGE_LIMIT = 100
 
 const trimString = (value) => (typeof value === 'string' ? value.trim() : '')
@@ -27,19 +24,21 @@ const trimString = (value) => (typeof value === 'string' ? value.trim() : '')
 const sortByTitle = (left, right, locale) =>
   String(left?.title || '').localeCompare(String(right?.title || ''), locale)
 
-const listAllRows = async (tableId, baseQueries = []) => {
+const listAllRows = async (tableName, mapper) => {
   let offset = 0
   let keepGoing = true
   const allRows = []
 
   while (keepGoing) {
-    const response = await tables.listRows({
-      databaseId: DATABASE_ID,
-      tableId,
-      queries: [...baseQueries, Query.limit(PAGE_LIMIT), Query.offset(offset)],
-    })
-    const batch = response?.rows ?? []
-    allRows.push(...batch)
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('*')
+      .range(offset, offset + PAGE_LIMIT - 1)
+
+    if (error) throw error
+
+    const batch = data ?? []
+    allRows.push(...batch.map(mapper).filter(Boolean))
     offset += PAGE_LIMIT
     keepGoing = batch.length === PAGE_LIMIT
   }
@@ -150,8 +149,8 @@ export function useSuggestedRoutes() {
 
     try {
       const [routeRows, siteRows] = await Promise.all([
-        listAllRows(ROUTES_TABLE_ID, [Query.orderAsc('name')]),
-        listAllRows(SITES_TABLE_ID, [Query.orderAsc('name')]),
+        listAllRows('routes', mapRouteRow),
+        listAllRows('heritage_sites', mapHeritageSiteRow),
       ])
 
       if (signal?.aborted) return

@@ -1,11 +1,9 @@
 import { createContext, useContext, useCallback, useMemo, useState, useEffect } from "react"
-import { Query } from "react-native-appwrite"
-import { tables } from "../lib/appwrite"
+import { supabase } from "../lib/supabase"
+import { mapHeritageSiteRow } from "../lib/supabaseAdapters"
 import { useI18n } from "./I18nContext"
 import getLocalizedField from "../i18n/getLocalizedField"
 
-const DATABASE_ID = '68b399490018d7cb309b'
-const TABLE_ID = 'heritage_sites'
 const PAGE_LIMIT = 500
 
 export const GeoDataContext = createContext({
@@ -23,21 +21,23 @@ export function GeoDataProvider({ children }) {
 
   const fetchAllRows = async () => {
     let all = []
-    let cursor = null
-    let total = 0
-    do {
-      const res = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        queries: [
-          Query.limit(PAGE_LIMIT),
-          ...(cursor ? [Query.cursorAfter(cursor)] : []),
-        ],
-      })
-      all.push(...res.rows)
-      total = res.total ?? all.length
-      cursor = res.rows.length ? res.rows[res.rows.length - 1].$id : null
-    } while (cursor && all.length < total)
+    let offset = 0
+    let keepGoing = true
+
+    while (keepGoing) {
+      const { data, error } = await supabase
+        .from('heritage_sites')
+        .select('*')
+        .range(offset, offset + PAGE_LIMIT - 1)
+
+      if (error) throw error
+
+      const batch = data ?? []
+      all.push(...batch.map(mapHeritageSiteRow).filter(Boolean))
+      offset += PAGE_LIMIT
+      keepGoing = batch.length === PAGE_LIMIT
+    }
+
     return all
   }
 
@@ -77,8 +77,8 @@ export function GeoDataProvider({ children }) {
         },
         properties: {
           id: row.$id,
-          name: getLocalizedField(row, 'name', locale, { defaultValue: row.name }),
-          description: getLocalizedField(row, 'description', locale, { defaultValue: row.description }),
+          name: getLocalizedField(row, 'name', locale, { defaultValue: '' }),
+          description: getLocalizedField(row, 'description', locale, { defaultValue: '' }),
           isFree: row.isFree,
           price: row.price,
           score: row.score,

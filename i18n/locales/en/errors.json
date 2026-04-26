@@ -1,5 +1,5 @@
 {
-  "appwrite": {
+  "auth": {
     "blockedAccount": "Your account is blocked. Contact support.",
     "emailAlreadyExists": "That email is already registered.",
     "emailNotAllowed": "This email is not allowed to sign in.",

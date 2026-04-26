@@ -1,13 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Query, ID, Permission, Role } from 'react-native-appwrite'
-import { tables } from '../lib/appwrite'
+import { supabase } from '../lib/supabase'
+import { mapAchievementRow, mapUserAchievementRow } from '../lib/supabaseAdapters'
 import { posthog } from '../lib/posthog'
 import { useI18n } from '../contexts/I18nContext'
 import getLocalizedField from '../i18n/getLocalizedField'
-
-const DATABASE_ID = '68b399490018d7cb309b'
-const ACHIVEMENTS_TABLE_ID  = 'achivements'
-const USER_ACHIVEMENTS_TABLE_ID = 'user_achivements'
 
 export function useAchievements(userId) {
   const { locale } = useI18n()
@@ -21,35 +17,34 @@ export function useAchievements(userId) {
     
     setLoading(true); setError(null)
     try {
-      const achList = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: ACHIVEMENTS_TABLE_ID,
-        queries: [
-          Query.limit(200),
-          Query.orderAsc('name'),
-        ],
-      })
+      const { data: achievementRows, error: achievementError } = await supabase
+        .from('achievements')
+        .select('*')
+        .limit(200)
 
-      let userUnlocks = { rows: [] }
+      if (achievementError) throw achievementError
+
+      let userUnlockRows = []
       if (userId) {
-        userUnlocks = await tables.listRows({
-          databaseId: DATABASE_ID,
-          tableId: USER_ACHIVEMENTS_TABLE_ID,
-          queries: [
-            Query.equal('userId', [userId]),
-            Query.limit(500),
-          ],
-        })
+        const { data, error } = await supabase
+          .from('user_achievements')
+          .select('*')
+          .eq('user_id', userId)
+          .limit(500)
+
+        if (error) throw error
+        userUnlockRows = data ?? []
       }
 
       if (signal?.aborted) return
 
       const unlockedByAchId = Object.create(null)
-      for (const u of userUnlocks.rows || []) {
+      for (const row of userUnlockRows) {
+        const u = mapUserAchievementRow(row)
         if (u?.achivementId) unlockedByAchId[u.achivementId] = u
       }
 
-      setAchievementRows(achList.rows || [])
+      setAchievementRows((achievementRows || []).map(mapAchievementRow).filter(Boolean))
       setUnlocksByAchievementId(unlockedByAchId)
     } catch (err) {
       if (signal?.aborted) return
@@ -88,15 +83,17 @@ export function useAchievements(userId) {
     if (isUnlocked(achievementId)) return
 
     const payload = { userId, achivementId: achievementId, unlockedAt: new Date().toISOString() }
-    const permissions = [Permission.read(Role.user(userId))]
 
-    await tables.createRow({
-      databaseId: DATABASE_ID,
-      tableId: USER_ACHIVEMENTS_TABLE_ID,
-      rowId: ID.unique(),
-      data: payload,
-      permissions,
-    })
+    const { error } = await supabase
+      .from('user_achievements')
+      .insert({
+        user_id: userId,
+        achievement_id: achievementId,
+        unlocked_at: payload.unlockedAt,
+      })
+
+    if (error?.code === '23505') return
+    if (error) throw error
 
     // Get achievement details for tracking
     const achievement = achievements.find((a) => a.$id === achievementId)

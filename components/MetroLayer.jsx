@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ShapeSource, SymbolLayer, Images } from "@maplibre/maplibre-react-native"
-import { Query } from "react-native-appwrite"
-import { tables } from "../lib/appwrite"
+import { supabase } from "../lib/supabase"
+import { mapMetroStationRow } from "../lib/supabaseAdapters"
 
-const DATABASE_ID = "68b399490018d7cb309b"
-const TABLE_ID = "metro_stations"
 const PAGE_LIMIT = 500
 const MIN_ZOOM = 14
 const METRO_ICON_ID = "metro-icon"
@@ -20,21 +18,23 @@ function MetroLayer({ onPointPress }) {
 
   const fetchAllRows = useCallback(async () => {
     let all = []
-    let cursor = null
-    let total = 0
-    do {
-      const res = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        queries: [
-          Query.limit(PAGE_LIMIT),
-          ...(cursor ? [Query.cursorAfter(cursor)] : []),
-        ],
-      })
-      all.push(...res.rows)
-      total = res.total ?? all.length
-      cursor = res.rows.length ? res.rows[res.rows.length - 1].$id : null
-    } while (cursor && all.length < total)
+    let offset = 0
+    let keepGoing = true
+
+    while (keepGoing) {
+      const { data, error } = await supabase
+        .from('metro_stations')
+        .select('*')
+        .range(offset, offset + PAGE_LIMIT - 1)
+
+      if (error) throw error
+
+      const batch = data ?? []
+      all.push(...batch.map(mapMetroStationRow).filter(Boolean))
+      offset += PAGE_LIMIT
+      keepGoing = batch.length === PAGE_LIMIT
+    }
+
     return all
   }, [])
 

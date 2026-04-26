@@ -1,25 +1,6 @@
-import { Query, ID } from 'react-native-appwrite'
 import { useEffect, useState } from 'react'
-import { tables } from '../lib/appwrite'
-
-const DATABASE_ID = '68b399490018d7cb309b'
-const TABLE_ID = 'user_stats'
-
-function normalizeRow(row) {
-  if (!row) return null
-
-  const achievementsUnlockedRaw = typeof row.achievementsUnlocked === 'number'
-    ? row.achievementsUnlocked
-    : row.achivementsUnlocked
-
-  return {
-    ...row,
-    score: typeof row.score === 'number' ? row.score : 0,
-    sitesVisited: typeof row.sitesVisited === 'number' ? row.sitesVisited : 0,
-    eventsAttended: typeof row.eventsAttended === 'number' ? row.eventsAttended : 0,
-    achievementsUnlocked: typeof achievementsUnlockedRaw === 'number' ? achievementsUnlockedRaw : 0,
-  }
-}
+import { supabase } from '../lib/supabase'
+import { mapUserStatsRow } from '../lib/supabaseAdapters'
 
 export function useStats(userId) {
   const [stats, setStats] = useState(null)
@@ -30,34 +11,36 @@ export function useStats(userId) {
       return null
     }
     try {
-      const response = await tables.listRows({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        queries: [
-          Query.equal('userId', [userId]),
-          Query.limit(1),
-        ],
-      })
-      if(response.total > 0)
+      const { data, error } = await supabase
+        .from('user_stats')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+
+      if(data)
       {
-        const row = normalizeRow(response.rows?.[0])
+        const row = mapUserStatsRow(data)
         setStats(row)
         return row
       }
       else {
-        const created = await tables.createRow({
-          databaseId: DATABASE_ID,
-          tableId: TABLE_ID,
-          rowId: ID.unique(),
-          data: {
-            userId: userId,
+        const { data: created, error: createError } = await supabase
+          .from('user_stats')
+          .insert({
+            user_id: userId,
             score: 0,
-            sitesVisited: 0,
-            eventsAttended: 0,
-            achievementsUnlocked: 0,
-          }
-        })
-        const normalized = normalizeRow(created)
+            sites_visited: 0,
+            events_attended: 0,
+            achievements_unlocked: 0,
+          })
+          .select('*')
+          .single()
+
+        if (createError) throw createError
+
+        const normalized = mapUserStatsRow(created)
         setStats(normalized)
         return normalized
       }
@@ -77,15 +60,18 @@ export function useStats(userId) {
       const increment = Number(points) || 0
       const newScore = row.score + increment
 
-      const updated = await tables.updateRow({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: row.$id,
-        data: {
+      const { data: updated, error } = await supabase
+        .from('user_stats')
+        .update({
           score: newScore
-        }
-      })
-      const normalized = normalizeRow(updated)
+        })
+        .eq('user_id', userId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      const normalized = mapUserStatsRow(updated)
       setStats(normalized)
       return normalized
     } catch(error) {
@@ -101,15 +87,18 @@ export function useStats(userId) {
 
       const numSitesVisited = row.sitesVisited + 1
 
-      const updated = await tables.updateRow({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: row.$id,
-        data: {
-          sitesVisited: numSitesVisited
-        }
-      })
-      const normalized = normalizeRow(updated)
+      const { data: updated, error } = await supabase
+        .from('user_stats')
+        .update({
+          sites_visited: numSitesVisited
+        })
+        .eq('user_id', userId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      const normalized = mapUserStatsRow(updated)
       setStats(normalized)
       return normalized
     } catch(error) {
@@ -125,15 +114,18 @@ export function useStats(userId) {
 
       const numEventsAttended = row.eventsAttended + 1
 
-      const updated = await tables.updateRow({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: row.$id,
-        data: {
-          eventsAttended: numEventsAttended
-        }
-      })
-      const normalized = normalizeRow(updated)
+      const { data: updated, error } = await supabase
+        .from('user_stats')
+        .update({
+          events_attended: numEventsAttended
+        })
+        .eq('user_id', userId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      const normalized = mapUserStatsRow(updated)
       setStats(normalized)
       return normalized
     } catch(error) {
