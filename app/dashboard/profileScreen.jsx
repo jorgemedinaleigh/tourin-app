@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Modal, Portal, useTheme } from 'react-native-paper'
+import { Button, HelperText, Modal, Portal, TextInput, useTheme } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
 import { router, useFocusEffect } from 'expo-router'
@@ -7,16 +7,24 @@ import { useCallback, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
+import CountrySelect from '../../components/CountrySelect'
 import { useI18n } from '../../contexts/I18nContext'
 import { formatMonthYear } from '../../i18n/formatters'
+import { COUNTRY_CODE_PATTERN, formatDateOfBirthInput, getCountryFlagEmoji, normalizeCountryCode, normalizeDateOfBirth } from '../../utils/profileDetails'
 
 const profileScreen = () => {
-  const { user, logout } = useUser()
+  const { user, logout, updateProfileDetails } = useUser()
   const { stats, getStats } = useStats(user.$id)
   const theme = useTheme()
   const { t } = useTranslation(['common', 'profile'])
   const { locale, setLocale, availableLocales } = useI18n()
+  const [preferencesModalVisible, setPreferencesModalVisible] = useState(false)
   const [languageModalVisible, setLanguageModalVisible] = useState(false)
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false)
+  const [detailsCountryCode, setDetailsCountryCode] = useState('')
+  const [detailsDateOfBirth, setDetailsDateOfBirth] = useState('')
+  const [detailsError, setDetailsError] = useState(null)
+  const [detailsSaving, setDetailsSaving] = useState(false)
 
   const displayName = user?.name || t('common:fallbacks.genericUser')
   const handle = user?.email ? user.email.split('@')[0] : t('common:fallbacks.handle')
@@ -31,6 +39,7 @@ const profileScreen = () => {
     .map((part) => part[0].toUpperCase())
     .join('')
   const handleLabel = t('profile:handle', { date: joinDate, handle })
+  const countryFlag = getCountryFlagEmoji(user?.countryCode || user?.profile?.country_code)
 
   const handleLogout = async () => {
     await logout()
@@ -39,6 +48,58 @@ const profileScreen = () => {
   const handleLanguageChange = async (nextLocale) => {
     await setLocale(nextLocale)
     setLanguageModalVisible(false)
+  }
+
+  const openPreferencesModal = () => {
+    setPreferencesModalVisible(true)
+  }
+
+  const openLanguageModal = () => {
+    setPreferencesModalVisible(false)
+    setLanguageModalVisible(true)
+  }
+
+  const openDetailsModal = () => {
+    setPreferencesModalVisible(false)
+    setDetailsCountryCode(user?.countryCode || user?.profile?.country_code || '')
+    setDetailsDateOfBirth(user?.dateOfBirth || user?.privateDetails?.date_of_birth || '')
+    setDetailsError(null)
+    setDetailsModalVisible(true)
+  }
+
+  const handleDetailsSave = async () => {
+    setDetailsError(null)
+
+    const countryCode = normalizeCountryCode(detailsCountryCode)
+    const dateOfBirth = normalizeDateOfBirth(detailsDateOfBirth)
+
+    if (!countryCode || !detailsDateOfBirth.trim()) {
+      setDetailsError(t('profile:details.missingFields'))
+      return
+    }
+
+    if (!dateOfBirth) {
+      setDetailsError(t('profile:details.invalidDateOfBirth'))
+      return
+    }
+
+    if (!COUNTRY_CODE_PATTERN.test(countryCode)) {
+      setDetailsError(t('profile:details.invalidCountry'))
+      return
+    }
+
+    try {
+      setDetailsSaving(true)
+      await updateProfileDetails({
+        countryCode,
+        dateOfBirth,
+      })
+      setDetailsModalVisible(false)
+    } catch (error) {
+      setDetailsError(t('profile:details.saveError'))
+    } finally {
+      setDetailsSaving(false)
+    }
   }
 
   useFocusEffect(
@@ -62,17 +123,10 @@ const profileScreen = () => {
               </View>
             )}
           </View>
-          <TouchableOpacity
-            style={[styles.settingsButton, styles.raised]}
-            onPress={() => setLanguageModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="settings" size={20} color="#ffffff" />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.nameRow}>
-          <Text style={styles.flagEmoji}>🇨🇱</Text>
+          {countryFlag ? <Text style={styles.flagEmoji}>{countryFlag}</Text> : null}
           <Text style={styles.nameText}>{displayName}</Text>
         </View>
         <Text style={styles.handleText}>{handleLabel}</Text>
@@ -120,6 +174,15 @@ const profileScreen = () => {
       </TouchableOpacity>
 
       <TouchableOpacity
+        style={[styles.preferencesButton, styles.raised]}
+        onPress={openPreferencesModal}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="settings" size={18} color={theme.colors.primary} style={styles.preferencesButtonIcon} />
+        <Text style={styles.preferencesButtonText}>{t('profile:preferences.action')}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={[styles.logoutButton, styles.raised]}
         onPress={handleLogout}
         activeOpacity={0.8}
@@ -129,6 +192,33 @@ const profileScreen = () => {
       </TouchableOpacity>
 
       <Portal>
+        <Modal
+          visible={preferencesModalVisible}
+          onDismiss={() => setPreferencesModalVisible(false)}
+          contentContainerStyle={styles.preferencesModal}
+        >
+          <Text style={styles.languageModalTitle}>{t('profile:preferences.title')}</Text>
+          <TouchableOpacity
+            style={styles.preferenceOption}
+            onPress={openDetailsModal}
+            activeOpacity={0.8}
+          >
+            <View style={styles.preferenceOptionTextBlock}>
+              <Text style={styles.preferenceOptionTitle}>{t('profile:preferences.user')}</Text>
+            </View>
+            <Ionicons name="person-circle" size={20} color="#5B6572" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.preferenceOption}
+            onPress={openLanguageModal}
+            activeOpacity={0.8}
+          >
+            <View style={styles.preferenceOptionTextBlock}>
+              <Text style={styles.preferenceOptionTitle}>{t('profile:preferences.language')}</Text>
+            </View>
+            <Ionicons name="language" size={20} color="#5B6572" />
+          </TouchableOpacity>
+        </Modal>
         <Modal
           visible={languageModalVisible}
           onDismiss={() => setLanguageModalVisible(false)}
@@ -163,6 +253,51 @@ const profileScreen = () => {
               </TouchableOpacity>
             )
           })}
+        </Modal>
+        <Modal
+          visible={detailsModalVisible}
+          onDismiss={() => setDetailsModalVisible(false)}
+          contentContainerStyle={styles.detailsModal}
+        >
+          <Text style={styles.languageModalTitle}>{t('profile:details.title')}</Text>
+          <Text style={styles.languageModalCopy}>{t('profile:details.description')}</Text>
+          <TextInput
+            label={t('profile:details.dateOfBirthLabel')}
+            mode="outlined"
+            keyboardType="numeric"
+            maxLength={10}
+            placeholder={t('profile:details.dateOfBirthPlaceholder')}
+            value={detailsDateOfBirth}
+            onChangeText={(value) => setDetailsDateOfBirth(formatDateOfBirthInput(value))}
+          />
+          <CountrySelect
+            label={t('profile:details.countryCodeLabel')}
+            locale={locale}
+            modalTitle={t('profile:details.countrySelectTitle')}
+            onSelect={setDetailsCountryCode}
+            placeholder={t('profile:details.countryPlaceholder')}
+            value={detailsCountryCode}
+          />
+          <HelperText type="error" visible={!!detailsError}>
+            {detailsError}
+          </HelperText>
+          <View style={styles.detailsModalActions}>
+            <Button
+              mode="text"
+              onPress={() => setDetailsModalVisible(false)}
+              disabled={detailsSaving}
+            >
+              {t('common:actions.cancel')}
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleDetailsSave}
+              loading={detailsSaving}
+              disabled={detailsSaving}
+            >
+              {t('common:actions.save')}
+            </Button>
+          </View>
         </Modal>
       </Portal>
     </ThemedView>
@@ -214,19 +349,6 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: '#7A4B46',
-  },
-  settingsButton: {
-    position: 'absolute',
-    right: -10,
-    top: 60,
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#4CAF7D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#F5F5F5',
   },
   nameRow: {
     flexDirection: 'row',
@@ -284,6 +406,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 10,
+  },
+  preferencesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D6D6D6',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  preferencesButtonIcon: {
+    marginRight: 8,
+  },
+  preferencesButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4A9CD6',
+    letterSpacing: 0.3,
   },
   sectionTitle: {
     fontSize: 18,
@@ -352,6 +496,26 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  preferencesModal: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+  },
+  detailsModal: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    borderRadius: 18,
+    padding: 20,
+    gap: 10,
+  },
+  detailsModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
   languageModalTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -361,6 +525,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#5B6572',
+  },
+  preferenceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  preferenceOptionTextBlock: {
+    flex: 1,
+    marginRight: 12,
+  },
+  preferenceOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#25303B',
   },
   languageOption: {
     flexDirection: 'row',

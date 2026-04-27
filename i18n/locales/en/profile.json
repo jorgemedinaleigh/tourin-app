@@ -1,5 +1,19 @@
 {
   "addFriends": "ADD FRIENDS",
+  "details": {
+    "countryCodeLabel": "Country",
+    "countryPlaceholder": "Select your country",
+    "countrySelectTitle": "Select country",
+    "dateOfBirthLabel": "Date of birth",
+    "dateOfBirthPlaceholder": "YYYY-MM-DD",
+    "description": "Update the details used on your profile and passport.",
+    "editAction": "EDIT PROFILE DETAILS",
+    "invalidCountry": "Select a country from the list.",
+    "invalidDateOfBirth": "Enter a valid date of birth in YYYY-MM-DD format.",
+    "missingFields": "Enter your date of birth and country.",
+    "saveError": "We couldn't update your details. Try again.",
+    "title": "Profile details"
+  },
   "handle": "@{{handle}} since {{date}}",
   "language": {
     "description": "Choose the language you want to use in the app.",
@@ -8,6 +22,12 @@
   },
   "logout": "SIGN OUT",
   "memberSinceFallback": "January 2026",
+  "preferences": {
+    "action": "PREFERENCES",
+    "language": "Language",
+    "title": "Preferences",
+    "user": "User"
+  },
   "role": "Beginner Explorer",
   "summaryTitle": "Summary"
 }

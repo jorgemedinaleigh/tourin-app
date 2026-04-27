@@ -1,11 +1,13 @@
 import { createContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { posthog } from '../lib/posthog'
+import { normalizeCountryCode } from '../utils/profileDetails'
 
 export const UserContext = createContext()
 
 const DEFAULT_LOCALE = 'es'
-const PROFILE_COLUMNS = 'id, display_name, locale, avatar_path, created_at, updated_at'
+const PROFILE_COLUMNS = 'id, display_name, locale, avatar_path, country_code, created_at, updated_at'
+const PRIVATE_DETAILS_COLUMNS = 'user_id, date_of_birth, created_at, updated_at'
 
 const getMetadataName = (authUser) =>
   authUser?.user_metadata?.display_name ||
@@ -13,7 +15,7 @@ const getMetadataName = (authUser) =>
   authUser?.email?.split('@')?.[0] ||
   ''
 
-function normalizeUser(authUser, profile) {
+function normalizeUser(authUser, profile, privateDetails) {
   if (!authUser) return null
 
   const metadata = authUser.user_metadata || {}
@@ -33,6 +35,9 @@ function normalizeUser(authUser, profile) {
     $createdAt: authUser.created_at,
     email: authUser.email,
     name: profile?.display_name || getMetadataName(authUser),
+    countryCode: profile?.country_code || null,
+    dateOfBirth: privateDetails?.date_of_birth || null,
+    privateDetails: privateDetails || null,
     prefs,
     profile,
     rawAuthUser: authUser,
@@ -60,6 +65,7 @@ export function UserProvider({ children }){
       display_name: overrides.display_name || getMetadataName(authUser),
       locale: overrides.locale || authUser.user_metadata?.prefs?.locale || DEFAULT_LOCALE,
       avatar_path: overrides.avatar_path || null,
+      country_code: overrides.country_code || null,
     }
 
     const { data, error } = await supabase
@@ -76,11 +82,79 @@ export function UserProvider({ children }){
     return data
   }
 
+  async function getPrivateDetails(userId) {
+    const { data, error } = await supabase
+      .from('user_private_details')
+      .select(PRIVATE_DETAILS_COLUMNS)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) throw error
+    return data
+  }
+
   async function ensureProfile(authUser, overrides = {}) {
     const existingProfile = await getProfile(authUser.id)
-    if (existingProfile) return existingProfile
+    if (existingProfile) {
+      const profilePatch = {}
+
+      if (overrides.display_name && existingProfile.display_name !== overrides.display_name) {
+        profilePatch.display_name = overrides.display_name
+      }
+      if (Object.prototype.hasOwnProperty.call(overrides, 'country_code') && existingProfile.country_code !== overrides.country_code) {
+        profilePatch.country_code = overrides.country_code
+      }
+
+      if (Object.keys(profilePatch).length > 0) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update(profilePatch)
+          .eq('id', authUser.id)
+          .select(PROFILE_COLUMNS)
+          .single()
+
+        if (error) throw error
+        return data
+      }
+
+      return existingProfile
+    }
 
     return createProfile(authUser, overrides)
+  }
+
+  async function createPrivateDetails(authUser, details = {}) {
+    const payload = {
+      user_id: authUser.id,
+      date_of_birth: details.dateOfBirth,
+    }
+
+    const { data, error } = await supabase
+      .from('user_private_details')
+      .insert(payload)
+      .select(PRIVATE_DETAILS_COLUMNS)
+      .single()
+
+    if (error?.code === '23505') return getPrivateDetails(authUser.id)
+    if (error) throw error
+    return data
+  }
+
+  async function upsertPrivateDetails(userId, details = {}) {
+    const payload = {
+      user_id: userId,
+      date_of_birth: details.dateOfBirth,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await supabase
+      .from('user_private_details')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select(PRIVATE_DETAILS_COLUMNS)
+      .single()
+
+    if (error) throw error
+    return data
   }
 
   async function setCurrentUser(authUser, options = {}) {
@@ -90,7 +164,8 @@ export function UserProvider({ children }){
     }
 
     const profile = await ensureProfile(authUser, options.profile || {})
-    const normalizedUser = normalizeUser(authUser, profile)
+    const privateDetails = options.privateDetails || await getPrivateDetails(authUser.id)
+    const normalizedUser = normalizeUser(authUser, profile, privateDetails)
     setUser(normalizedUser)
 
     if (options.identify) {
@@ -128,7 +203,9 @@ export function UserProvider({ children }){
     }
   }
 
-  async function register(email, password, name) {
+  async function register(email, password, name, details = {}) {
+    const countryCode = normalizeCountryCode(details.countryCode)
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -150,11 +227,17 @@ export function UserProvider({ children }){
         throw new Error('Please verify your email before signing in.')
       }
 
+      const privateDetails = await createPrivateDetails(data.user, {
+        dateOfBirth: details.dateOfBirth,
+      })
+
       const response = await setCurrentUser(data.user, {
         identify: true,
         profile: {
           display_name: name.trim(),
+          country_code: countryCode,
         },
+        privateDetails,
       })
 
       posthog.capture('user_signed_up', {
@@ -166,6 +249,37 @@ export function UserProvider({ children }){
       return response
     }
     catch (error) {
+      throw Error(error.message)
+    }
+  }
+
+  async function updateProfileDetails(details = {}) {
+    if (!user) return null
+
+    const countryCode = normalizeCountryCode(details.countryCode)
+
+    try {
+      const authUser = user.rawAuthUser || { id: user.$id, email: user.email }
+      let profile = user.profile || await ensureProfile(authUser)
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from('profiles')
+        .update({ country_code: countryCode })
+        .eq('id', user.$id)
+        .select(PROFILE_COLUMNS)
+        .single()
+
+      if (profileError) throw profileError
+      profile = updatedProfile
+
+      const privateDetails = await upsertPrivateDetails(user.$id, {
+        dateOfBirth: details.dateOfBirth,
+      })
+
+      const response = normalizeUser(authUser, profile, privateDetails)
+      setUser(response)
+      return response
+    } catch (error) {
       throw Error(error.message)
     }
   }
@@ -223,7 +337,8 @@ export function UserProvider({ children }){
 
       if (error) throw error
 
-      const response = normalizeUser(data.user || user.rawAuthUser, profile)
+      const privateDetails = user.privateDetails || await getPrivateDetails(user.$id)
+      const response = normalizeUser(data.user || user.rawAuthUser, profile, privateDetails)
       setUser(response)
       return response
     } catch (error) {
@@ -283,7 +398,7 @@ export function UserProvider({ children }){
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs }} >
+    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs, updateProfileDetails }} >
       {children}
     </UserContext.Provider>
   )

@@ -1,5 +1,19 @@
 {
   "addFriends": "ADICIONAR AMIGOS",
+  "details": {
+    "countryCodeLabel": "País",
+    "countryPlaceholder": "Selecione seu país",
+    "countrySelectTitle": "Selecionar país",
+    "dateOfBirthLabel": "Data de nascimento",
+    "dateOfBirthPlaceholder": "AAAA-MM-DD",
+    "description": "Atualize os dados usados no seu perfil e passaporte.",
+    "editAction": "EDITAR DADOS DO PERFIL",
+    "invalidCountry": "Selecione um país da lista.",
+    "invalidDateOfBirth": "Digite uma data de nascimento válida no formato AAAA-MM-DD.",
+    "missingFields": "Digite sua data de nascimento e país.",
+    "saveError": "Não foi possível atualizar seus dados. Tente novamente.",
+    "title": "Dados do perfil"
+  },
   "handle": "@{{handle}} desde {{date}}",
   "language": {
     "description": "Escolha o idioma que você quer usar no app.",
@@ -8,6 +22,12 @@
   },
   "logout": "SAIR",
   "memberSinceFallback": "janeiro de 2026",
+  "preferences": {
+    "action": "PREFERENCIAS",
+    "language": "Idioma",
+    "title": "Preferencias",
+    "user": "Usuario"
+  },
   "role": "Explorador iniciante",
   "summaryTitle": "Resumo"
 }

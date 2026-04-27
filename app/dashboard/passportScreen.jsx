@@ -24,6 +24,7 @@ import { useSiteVisits } from '../../hooks/useSiteVisits'
 import ThemedView from '../../components/ThemedView'
 import getLocalizedField from '../../i18n/getLocalizedField'
 import { formatDate } from '../../i18n/formatters'
+import { getCountryFlagEmoji } from '../../utils/profileDetails'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PAGE_SIZE = 6
@@ -46,6 +47,7 @@ const PassportScreen = () => {
   const viewShotRef = useRef(null)
 
   const displayName = user?.name || t('common:fallbacks.genericUser')
+  const countryFlag = getCountryFlagEmoji(user?.countryCode || user?.profile?.country_code)
 
   useFocusEffect(
     useCallback(() => {
@@ -279,7 +281,7 @@ const PassportScreen = () => {
 
           <View style={styles.userInfoText}>
             <Text style={styles.userName} numberOfLines={1}>
-              {displayName} 🇨🇱
+              {countryFlag ? `${displayName} ${countryFlag}` : displayName}
             </Text>
             <Text>{t('passport:role')}</Text>
           </View>

@@ -13,6 +13,10 @@ The client supports localized Supabase content with this fallback order:
   - Supported values: `es`, `en`, `pt`
 - `profiles.avatar_path`
   - Optional Storage path for future profile images
+- `profiles.country_code`
+  - Optional ISO 3166-1 alpha-2 country code used for profile display
+- `user_private_details.date_of_birth`
+  - Required for new registrations and kept in an owner-readable private table
 
 ## `routes`
 
