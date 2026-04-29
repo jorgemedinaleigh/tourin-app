@@ -78,6 +78,19 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 > La app deshabilita PostHog automáticamente si `EXPO_PUBLIC_POSTHOG_API_KEY` no está configurada.
 
+### EAS Build
+
+El archivo `.env` es solo para desarrollo local y no se sube al repositorio. Para builds remotos de EAS, configura las mismas variables en el ambiente correspondiente antes de crear el binario:
+
+```bash
+eas env:create --environment preview --name EXPO_PUBLIC_SUPABASE_URL --value "<your-supabase-url>" --visibility plaintext
+eas env:create --environment preview --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value "<your-publishable-key>" --visibility sensitive
+eas env:list --environment preview
+eas build --platform android --profile preview --clear-cache
+```
+
+Las variables `EXPO_PUBLIC_*` se incluyen en el bundle de la app, por lo que no deben contener secretos privados ni service-role keys. Si cambias una variable usada por la app, vuelve a generar el build preview para que Metro la inserte en el bundle.
+
 ## 🧭 Configuración de servicios
 
 ### Supabase
@@ -89,6 +102,7 @@ La configuración del cliente Supabase se encuentra en `lib/supabase.js` e inclu
 - Persistencia de sesión con AsyncStorage
 
 Si necesitas cambiar entorno (dev/staging/prod), actualiza `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+Para builds remotos, también actualiza esas variables en EAS (`development`, `preview` o `production`) según el perfil definido en `eas.json`.
 
 ### PostHog
 
