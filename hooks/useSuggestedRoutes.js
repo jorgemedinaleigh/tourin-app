@@ -29,10 +29,13 @@ const listAllRows = async (tableName, mapper) => {
   let keepGoing = true
   const allRows = []
 
+  // Keep a deterministic order when paginating to avoid duplicates/skipped
+  // rows while concatenating `.range(...)` results.
   while (keepGoing) {
     const { data, error } = await supabase
       .from(tableName)
       .select('*')
+      .order('id', { ascending: true })
       .range(offset, offset + PAGE_LIMIT - 1)
 
     if (error) throw error
