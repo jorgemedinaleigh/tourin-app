@@ -41,7 +41,7 @@ export function useAchievements(userId) {
       const unlockedByAchId = Object.create(null)
       for (const row of userUnlockRows) {
         const u = mapUserAchievementRow(row)
-        if (u?.achivementId) unlockedByAchId[u.achivementId] = u
+        if (u?.achievementId) unlockedByAchId[u.achievementId] = u
       }
 
       setAchievementRows((achievementRows || []).map(mapAchievementRow).filter(Boolean))
@@ -82,7 +82,7 @@ export function useAchievements(userId) {
     if (!userId) throw new Error('unlockAchievement: userId es requerido')
     if (isUnlocked(achievementId)) return
 
-    const payload = { userId, achivementId: achievementId, unlockedAt: new Date().toISOString() }
+    const payload = { userId, achievementId, unlockedAt: new Date().toISOString() }
 
     const { error } = await supabase
       .from('user_achievements')
