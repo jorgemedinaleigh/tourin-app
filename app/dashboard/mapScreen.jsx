@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import mapStyle from '../../constants/positronTourin.json'
 import ThemedView from '../../components/ThemedView'
 import PointsLayer from '../../components/PointsLayer'
+import StampRadiusLayer from '../../components/StampRadiusLayer'
 import InfoCard from '../../components/InfoCard'
 import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
@@ -232,6 +233,7 @@ const MapScreen = () => {
             defaultSettings={CAMERA_DEFAULT_SETTINGS}
             followUserLocation={isFollowingUser}
           />
+          <StampRadiusLayer userCoordinate={coord} />
           <PointsLayer
             onPointPress={(feature) => {
               const pointCoordinate = Array.isArray(feature.geometry?.coordinates)

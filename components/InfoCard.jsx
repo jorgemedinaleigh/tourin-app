@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
 import * as Location from 'expo-location'
 import { posthog } from '../lib/posthog'
+import { getDistanceMeters } from '../utils/geo'
 import {
   buildAppleMapsDirectionsUrl,
   buildGoogleMapsDirectionsUrl,
@@ -48,21 +49,6 @@ const findUri = (candidates) => {
     if (uri) return uri
   }
   return null
-}
-
-const toRadians = (value) => (value * Math.PI) / 180
-
-const getDistanceMeters = (fromLat, fromLon, toLat, toLon) => {
-  const earthRadius = 6371000
-  const dLat = toRadians(toLat - fromLat)
-  const dLon = toRadians(toLon - fromLon)
-  const lat1 = toRadians(fromLat)
-  const lat2 = toRadians(toLat)
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return earthRadius * c
 }
 
 function InfoCard({ info, onClose }) {
