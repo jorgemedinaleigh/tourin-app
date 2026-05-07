@@ -1,6 +1,7 @@
 import { createContext, useContext, useCallback, useMemo, useState, useEffect } from "react"
 import { supabase } from "../lib/supabase"
-import { mapHeritageSiteRow } from "../lib/supabaseAdapters"
+import { mapHeritageSiteRow, mapRouteRow } from "../lib/supabaseAdapters"
+import { buildRouteLabelMap, resolveSiteRouteLabel } from "../lib/routeLabels"
 import { useI18n } from "./I18nContext"
 import getLocalizedField from "../i18n/getLocalizedField"
 
@@ -15,25 +16,26 @@ export const GeoDataContext = createContext({
 
 export function GeoDataProvider({ children }) {
   const { locale } = useI18n()
-  const [rows, setRows] = useState([])
+  const [siteRows, setSiteRows] = useState([])
+  const [routeRows, setRouteRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const fetchAllRows = async () => {
+  const fetchAllRows = async (tableName, mapper) => {
     let all = []
     let offset = 0
     let keepGoing = true
 
     while (keepGoing) {
       const { data, error } = await supabase
-        .from('heritage_sites')
+        .from(tableName)
         .select('*')
         .range(offset, offset + PAGE_LIMIT - 1)
 
       if (error) throw error
 
       const batch = data ?? []
-      all.push(...batch.map(mapHeritageSiteRow).filter(Boolean))
+      all.push(...batch.map(mapper).filter(Boolean))
       offset += PAGE_LIMIT
       keepGoing = batch.length === PAGE_LIMIT
     }
@@ -46,8 +48,12 @@ export function GeoDataProvider({ children }) {
       setLoading(true)
       setError(null)
 
-      const rows = await fetchAllRows()
-      setRows(rows)
+      const [siteRows, routeRows] = await Promise.all([
+        fetchAllRows('heritage_sites', mapHeritageSiteRow),
+        fetchAllRows('routes', mapRouteRow),
+      ])
+      setSiteRows(siteRows)
+      setRouteRows(routeRows)
     }
     catch (err) {
       if (err?.name === "AbortError") return
@@ -64,7 +70,8 @@ export function GeoDataProvider({ children }) {
   }, [fetchGeoData])
 
   const geoData = useMemo(() => {
-    const features = rows.map((row) => {
+    const routeLabelsById = buildRouteLabelMap(routeRows, locale)
+    const features = siteRows.map((row) => {
       const lat = Number(row.latitude)
       const lon = Number(row.longitude)
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
@@ -92,14 +99,14 @@ export function GeoDataProvider({ children }) {
           region: row.region,
           stampRadius: row.stampRadius,
           routeId: row.routeId || null,
-          route: getLocalizedField(row, 'route', locale, { defaultValue: row.route }),
+          route: resolveSiteRouteLabel(row, routeLabelsById, locale),
           website: row.website,
         }
       }
     }).filter(Boolean)
 
     return { type: "FeatureCollection", features }
-  }, [rows, locale])
+  }, [siteRows, routeRows, locale])
 
   const value = useMemo(
     () => ({ geoData, loading, error, refresh: fetchGeoData }),

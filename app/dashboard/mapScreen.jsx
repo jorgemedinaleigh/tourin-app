@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, UserLocation, requestAndroidLocationPermissions } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, UserLocation, requestAndroidLocationPermissions, Logger } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,22 @@ const CAMERA_USER_INTERACTION_GRACE_MS = 1_200
 const CAMERA_CENTER_EPSILON = 0.00001
 const CAMERA_ZOOM_EPSILON = 0.01
 const USER_LOCATION_MIN_DISPLACEMENT_M = 2
+const LAST_LOCATION_UNAVAILABLE_LOG = Object.freeze({
+  tag: 'Mbgl-LocationComponent',
+  message: 'Failed to obtain last location update',
+})
+
+Logger.setLogCallback((log) => {
+  if (
+    Platform.OS === 'android' &&
+    log.tag === LAST_LOCATION_UNAVAILABLE_LOG.tag &&
+    log.message === LAST_LOCATION_UNAVAILABLE_LOG.message
+  ) {
+    return true
+  }
+
+  return false
+})
 
 function toCoordinate(position) {
   return [position.coords.longitude, position.coords.latitude]
@@ -188,14 +204,14 @@ const MapScreen = () => {
       return
     }
 
-    if (followAfterCenter) {
-      setIsFollowingUser(true)
-    }
-
     const currentCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
     if (!currentCoord) {
       Alert.alert(t('centerLocation.locatingTitle'), t('centerLocation.locatingBody'))
       return
+    }
+
+    if (followAfterCenter) {
+      setIsFollowingUser(true)
     }
 
     setCameraSafely({
@@ -286,8 +302,7 @@ const MapScreen = () => {
           />
           {shouldRenderUserLocation ? (
             <UserLocation
-              renderMode="native"
-              androidRenderMode="compass"
+              renderMode="normal"
               showsUserHeadingIndicator={true}
               minDisplacement={USER_LOCATION_MIN_DISPLACEMENT_M}
               onUpdate={handleUserLocationUpdate}
