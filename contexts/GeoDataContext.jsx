@@ -21,15 +21,21 @@ export function GeoDataProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const fetchAllRows = async (tableName, mapper) => {
+  const fetchAllRows = async (tableName, mapper, options = {}) => {
     let all = []
     let offset = 0
     let keepGoing = true
 
     while (keepGoing) {
-      const { data, error } = await supabase
+      let query = supabase
         .from(tableName)
         .select('*')
+
+      if (options.publishedOnly) {
+        query = query.eq('is_published', true)
+      }
+
+      const { data, error } = await query
         .range(offset, offset + PAGE_LIMIT - 1)
 
       if (error) throw error
@@ -49,8 +55,8 @@ export function GeoDataProvider({ children }) {
       setError(null)
 
       const [siteRows, routeRows] = await Promise.all([
-        fetchAllRows('heritage_sites', mapHeritageSiteRow),
-        fetchAllRows('routes', mapRouteRow),
+        fetchAllRows('heritage_sites', mapHeritageSiteRow, { publishedOnly: true }),
+        fetchAllRows('routes', mapRouteRow, { publishedOnly: true }),
       ])
       setSiteRows(siteRows)
       setRouteRows(routeRows)
@@ -91,7 +97,7 @@ export function GeoDataProvider({ children }) {
           score: row.score,
           stamp: row.stamp,
           coverPhoto: row.coverPhoto,
-          type: row.type,
+          type: getLocalizedField(row, 'type', locale, { defaultValue: '' }),
           subType: getLocalizedField(row, 'subType', locale, { defaultValue: row.subType }),
           location: row.location,
           legalStatus: row.legalStatus,

@@ -24,7 +24,7 @@ const trimString = (value) => (typeof value === 'string' ? value.trim() : '')
 const sortByTitle = (left, right, locale) =>
   String(left?.title || '').localeCompare(String(right?.title || ''), locale)
 
-const listAllRows = async (tableName, mapper) => {
+const listAllRows = async (tableName, mapper, options = {}) => {
   let offset = 0
   let keepGoing = true
   const allRows = []
@@ -32,9 +32,15 @@ const listAllRows = async (tableName, mapper) => {
   // Keep a deterministic order when paginating to avoid duplicates/skipped
   // rows while concatenating `.range(...)` results.
   while (keepGoing) {
-    const { data, error } = await supabase
+    let query = supabase
       .from(tableName)
       .select('*')
+
+    if (options.publishedOnly) {
+      query = query.eq('is_published', true)
+    }
+
+    const { data, error } = await query
       .order('id', { ascending: true })
       .range(offset, offset + PAGE_LIMIT - 1)
 
@@ -152,8 +158,8 @@ export function useSuggestedRoutes() {
 
     try {
       const [routeRows, siteRows] = await Promise.all([
-        listAllRows('routes', mapRouteRow),
-        listAllRows('heritage_sites', mapHeritageSiteRow),
+        listAllRows('routes', mapRouteRow, { publishedOnly: true }),
+        listAllRows('heritage_sites', mapHeritageSiteRow, { publishedOnly: true }),
       ])
 
       if (signal?.aborted) return
