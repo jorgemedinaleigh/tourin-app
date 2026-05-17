@@ -26,7 +26,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="tourinapp"/>
+        <data android:scheme="tourin"/>
         <data android:scheme="exp+tourin-app"/>
       </intent-filter>
     </activity>
