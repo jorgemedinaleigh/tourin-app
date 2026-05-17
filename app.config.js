@@ -2,7 +2,7 @@ export default {
   expo: {
     scheme: "tourin",
     name: "Tourin",
-    slug: "tourin",
+    slug: "tourin-app",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/tourin_icon.png",

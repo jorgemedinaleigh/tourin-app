@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, UserLocation, requestAndroidLocationPermissions, Logger } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, UserLocation, PointAnnotation, requestAndroidLocationPermissions, Logger } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,11 @@ import InfoCard from '../../components/InfoCard'
 import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
 import { posthog } from '../../lib/posthog'
+import {
+  getDevLocationOverrideCoordinate,
+  getDevLocationOverridePosition,
+  isDevLocationOverrideEnabled,
+} from '../../lib/devLocation'
 
 const CAMERA_DEFAULT_SETTINGS = Object.freeze({ zoomLevel: 16 })
 const CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS = 1_500
@@ -67,14 +72,16 @@ function GeoDataStatus() {
 const MapScreen = () => {
   const { t } = useTranslation('map')
   const insets = useSafeAreaInsets()
-  const [coord, setCoord] = useState(null)
-  const [hasLocationPermission, setHasLocationPermission] = useState(Platform.OS !== 'android')
+  const devLocationOverrideCoordinate = getDevLocationOverrideCoordinate()
+  const hasDevLocationOverride = isDevLocationOverrideEnabled && Array.isArray(devLocationOverrideCoordinate)
+  const [coord, setCoord] = useState(devLocationOverrideCoordinate)
+  const [hasLocationPermission, setHasLocationPermission] = useState(hasDevLocationOverride || Platform.OS !== 'android')
   const [isFollowingUser, setIsFollowingUser] = useState(false)
   const [popup, setPopup] = useState(null)
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
-  const latestUserLocationRef = useRef(null)
+  const latestUserLocationRef = useRef(getDevLocationOverridePosition())
   const programmaticCameraUntilRef = useRef(Date.now() + 3_000)
   const lastUserInteractionAtRef = useRef(0)
   const lastStableViewportRef = useRef(null)
@@ -161,7 +168,7 @@ const MapScreen = () => {
   }
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return undefined
+    if (hasDevLocationOverride || Platform.OS !== 'android') return undefined
 
     let isActive = true
 
@@ -180,7 +187,7 @@ const MapScreen = () => {
   }, [])
 
   const ensureLocationPermission = async () => {
-    if (Platform.OS !== 'android') return true
+    if (hasDevLocationOverride || Platform.OS !== 'android') return true
 
     const granted = await requestAndroidLocationPermissions().catch(() => false)
     setHasLocationPermission(granted)
@@ -188,6 +195,8 @@ const MapScreen = () => {
   }
 
   const handleUserLocationUpdate = (position) => {
+    if (hasDevLocationOverride) return
+
     latestUserLocationRef.current = position
 
     const userCoord = updateUserCoord(position)
@@ -224,10 +233,14 @@ const MapScreen = () => {
       longitude: currentCoord[0],
       accuracy_m: latestUserLocationRef.current?.coords?.accuracy ?? null,
       used_cached_coordinate: false,
+      used_dev_location_override: hasDevLocationOverride,
     })
   }
 
-  const shouldRenderUserLocation = Platform.OS !== 'android' || hasLocationPermission
+  const shouldRenderUserLocation = !hasDevLocationOverride && (Platform.OS !== 'android' || hasLocationPermission)
+  const cameraDefaultSettings = hasDevLocationOverride
+    ? { ...CAMERA_DEFAULT_SETTINGS, centerCoordinate: devLocationOverrideCoordinate }
+    : CAMERA_DEFAULT_SETTINGS
 
   return (
     <GeoDataProvider>
@@ -246,8 +259,8 @@ const MapScreen = () => {
         >
           <Camera
             ref={cameraRef}
-            defaultSettings={CAMERA_DEFAULT_SETTINGS}
-            followUserLocation={isFollowingUser}
+            defaultSettings={cameraDefaultSettings}
+            followUserLocation={!hasDevLocationOverride && isFollowingUser}
           />
           <StampRadiusLayer userCoordinate={coord} />
           <PointsLayer
@@ -300,6 +313,11 @@ const MapScreen = () => {
               showModal()
             }}
           />
+          {hasDevLocationOverride ? (
+            <PointAnnotation id="dev-location-override" coordinate={devLocationOverrideCoordinate}>
+              <Ionicons name="radio-button-on" size={26} color="#2563eb" />
+            </PointAnnotation>
+          ) : null}
           {shouldRenderUserLocation ? (
             <UserLocation
               renderMode="normal"
@@ -312,13 +330,15 @@ const MapScreen = () => {
 
         <IconButton
           mode="contained-tonal"
-          icon={isFollowingUser ? "target" : "crosshairs-gps"}
-          iconColor={isFollowingUser ? "#22c55e" : "#e8e7ef"}
+          icon={!hasDevLocationOverride && isFollowingUser ? "target" : "crosshairs-gps"}
+          iconColor={!hasDevLocationOverride && isFollowingUser ? "#22c55e" : "#e8e7ef"}
           size={28}
           animated={true}
           style={styles.buttonFollow}
           onPress={() => {
-            if (isFollowingUser) {
+            if (hasDevLocationOverride) {
+              centerOnUser(false)
+            } else if (isFollowingUser) {
               setIsFollowingUser(false)
             } else {
               centerOnUser(true)

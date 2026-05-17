@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
 import * as Location from 'expo-location'
 import { posthog } from '../lib/posthog'
+import { getDevLocationOverridePosition } from '../lib/devLocation'
 import { getDistanceMeters } from '../utils/geo'
 import {
   buildAppleMapsDirectionsUrl,
@@ -158,21 +159,25 @@ function InfoCard({ info, onClose }) {
       const [pointLon, pointLat] = pointCoordinate || []
 
       if (Number.isFinite(radius) && radius > 0 && Number.isFinite(pointLat) && Number.isFinite(pointLon)) {
-        const { status } = await Location.requestForegroundPermissionsAsync()
-        if (status !== "granted") {
-          Alert.alert(t('infoCard:location.permissionTitle'), t('infoCard:location.permissionBody'))
+        let pos = getDevLocationOverridePosition()
 
-          // Track stamp failure due to location permission
-          posthog.capture('stamp_failed', {
-            site_id: info.id,
-            site_name: info.name,
-            failure_reason: 'location_permission_denied',
-          })
-          return
+        if (!pos) {
+          const { status } = await Location.requestForegroundPermissionsAsync()
+          if (status !== "granted") {
+            Alert.alert(t('infoCard:location.permissionTitle'), t('infoCard:location.permissionBody'))
+
+            // Track stamp failure due to location permission
+            posthog.capture('stamp_failed', {
+              site_id: info.id,
+              site_name: info.name,
+              failure_reason: 'location_permission_denied',
+            })
+            return
+          }
+
+          pos = await Location.getLastKnownPositionAsync()
+          if (!pos) pos = await Location.getCurrentPositionAsync({})
         }
-
-        let pos = await Location.getLastKnownPositionAsync()
-        if (!pos) pos = await Location.getCurrentPositionAsync({})
         const userLat = pos?.coords?.latitude
         const userLon = pos?.coords?.longitude
 

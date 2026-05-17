@@ -78,6 +78,22 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 > La app deshabilita PostHog automáticamente si `EXPO_PUBLIC_POSTHOG_API_KEY` no está configurada.
 
+### Override de ubicación en desarrollo
+
+Opcionalmente puedes simular una ubicación fija en builds de desarrollo. Solo se activa cuando la app corre en modo `__DEV__`; en builds de producción se ignora aunque las variables existan.
+
+```env
+EXPO_PUBLIC_DEV_LOCATION_LAT=-33.4489
+EXPO_PUBLIC_DEV_LOCATION_LON=-70.6693
+EXPO_PUBLIC_DEV_LOCATION_ACCURACY=5
+```
+
+Después de cambiar estos valores, reinicia Metro con cache limpia:
+
+```bash
+npx expo start --dev-client --clear
+```
+
 ### EAS Build
 
 El archivo `.env` es solo para desarrollo local y no se sube al repositorio. Para builds remotos de EAS, configura las mismas variables en el ambiente correspondiente antes de crear el binario:
