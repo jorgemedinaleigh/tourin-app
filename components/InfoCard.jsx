@@ -194,20 +194,19 @@ function InfoCard({ info, onClose }) {
         }
 
         const distance = getDistanceMeters(userLat, userLon, pointLat, pointLon)
-        // TEMP: Re-enable this block to restore the stamp radius restriction.
-        // if (distance > radius) {
-        //   Alert.alert(t('infoCard:location.tooFarTitle'), t('infoCard:location.tooFarBody'))
-        //
-        //   // Track stamp failure due to distance
-        //   posthog.capture('stamp_failed', {
-        //     site_id: info.id,
-        //     site_name: info.name,
-        //     failure_reason: 'too_far_away',
-        //     distance_meters: Math.round(distance),
-        //     required_radius: radius,
-        //   })
-        //   return
-        // }
+        if (distance > radius) {
+          Alert.alert(t('infoCard:location.tooFarTitle'), t('infoCard:location.tooFarBody'))
+
+          // Track stamp failure due to distance
+          posthog.capture('stamp_failed', {
+            site_id: info.id,
+            site_name: info.name,
+            failure_reason: 'too_far_away',
+            distance_meters: Math.round(distance),
+            required_radius: radius,
+          })
+          return
+        }
       }
 
       setStamping(true)
