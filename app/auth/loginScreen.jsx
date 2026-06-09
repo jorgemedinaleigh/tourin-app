@@ -21,12 +21,12 @@ const loginScreen = () => {
     setError(null)
 
     if (!mailText.trim() || !passwordText) {
-      setError(t('login.missingCredentials'));
+      setError(t('login.missingCredentials'))
       posthog.capture('login_failed', {
         error_type: 'validation',
-        error_message: 'Missing email or password',
+        validation_error: 'missing_credentials',
       })
-      return;
+      return
     }
 
     try {
@@ -39,18 +39,18 @@ const loginScreen = () => {
       // Track login failure with error details
       posthog.capture('login_failed', {
         error_type: 'authentication',
-        error_message: errorMessage,
+        error_code: err?.type || err?.code || err?.status || err?.name || 'unknown',
       })
 
       // Capture exception for error tracking
       posthog.capture('$exception', {
         $exception_list: [
           {
-            type: err.name || 'LoginError',
-            value: err.message,
+            type: err?.name || 'LoginError',
+            value: 'Login failed',
             stacktrace: {
               type: 'raw',
-              frames: err.stack ?? '',
+              frames: err?.stack ?? '',
             },
           },
         ],

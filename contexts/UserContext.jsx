@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState } from 'react'
+import * as Linking from 'expo-linking'
 import { supabase } from '../lib/supabase'
 import { posthog } from '../lib/posthog'
 import { normalizeCountryCode } from '../utils/profileDetails'
@@ -8,12 +9,34 @@ export const UserContext = createContext()
 const DEFAULT_LOCALE = 'es'
 const PROFILE_COLUMNS = 'id, display_name, locale, avatar_path, country_code, created_at, updated_at'
 const PRIVATE_DETAILS_COLUMNS = 'user_id, date_of_birth, created_at, updated_at'
+const REGISTRATION_REDIRECT_PATH = '/auth/loginScreen'
+const REGISTRATION_SOURCE = 'tourin_app'
+const REGISTRATION_METADATA_KEYS = ['country_code', 'date_of_birth', 'registration_source']
 
 const getMetadataName = (authUser) =>
   authUser?.user_metadata?.display_name ||
   authUser?.user_metadata?.name ||
   authUser?.email?.split('@')?.[0] ||
   ''
+
+const hasRegistrationMetadata = (metadata = {}) =>
+  REGISTRATION_METADATA_KEYS.some((key) => Object.prototype.hasOwnProperty.call(metadata, key))
+
+const getCleanRegistrationMetadata = (metadata = {}) => {
+  const cleanedMetadata = {}
+
+  if (Object.prototype.hasOwnProperty.call(metadata, 'name')) {
+    cleanedMetadata.name = metadata.name
+  }
+  if (Object.prototype.hasOwnProperty.call(metadata, 'display_name')) {
+    cleanedMetadata.display_name = metadata.display_name
+  }
+  if (Object.prototype.hasOwnProperty.call(metadata, 'prefs')) {
+    cleanedMetadata.prefs = metadata.prefs
+  }
+
+  return cleanedMetadata
+}
 
 function normalizeUser(authUser, profile, privateDetails) {
   if (!authUser) return null
@@ -123,23 +146,6 @@ export function UserProvider({ children }){
     return createProfile(authUser, overrides)
   }
 
-  async function createPrivateDetails(authUser, details = {}) {
-    const payload = {
-      user_id: authUser.id,
-      date_of_birth: details.dateOfBirth,
-    }
-
-    const { data, error } = await supabase
-      .from('user_private_details')
-      .insert(payload)
-      .select(PRIVATE_DETAILS_COLUMNS)
-      .single()
-
-    if (error?.code === '23505') return getPrivateDetails(authUser.id)
-    if (error) throw error
-    return data
-  }
-
   async function upsertPrivateDetails(userId, details = {}) {
     const payload = {
       user_id: userId,
@@ -157,6 +163,24 @@ export function UserProvider({ children }){
     return data
   }
 
+  async function cleanupRegistrationMetadata(authUser) {
+    const metadata = authUser?.user_metadata || {}
+    if (!hasRegistrationMetadata(metadata)) return authUser
+
+    try {
+      const { error } = await supabase.rpc('cleanup_registration_metadata')
+      if (error) throw error
+
+      return {
+        ...authUser,
+        user_metadata: getCleanRegistrationMetadata(metadata),
+      }
+    } catch (error) {
+      console.warn('Failed to clean registration metadata', error)
+      return authUser
+    }
+  }
+
   async function setCurrentUser(authUser, options = {}) {
     if (!authUser) {
       setUser(null)
@@ -165,16 +189,12 @@ export function UserProvider({ children }){
 
     const profile = await ensureProfile(authUser, options.profile || {})
     const privateDetails = options.privateDetails || await getPrivateDetails(authUser.id)
-    const normalizedUser = normalizeUser(authUser, profile, privateDetails)
+    const cleanedAuthUser = await cleanupRegistrationMetadata(authUser)
+    const normalizedUser = normalizeUser(cleanedAuthUser, profile, privateDetails)
     setUser(normalizedUser)
 
     if (options.identify) {
-      posthog.identify(normalizedUser.$id, {
-        $set: {
-          email: normalizedUser.email,
-          name: normalizedUser.name,
-        },
-      })
+      posthog.identify(normalizedUser.$id)
     }
 
     return normalizedUser
@@ -193,27 +213,32 @@ export function UserProvider({ children }){
 
       posthog.capture('user_logged_in', {
         user_id: response.$id,
-        email: response.email,
       })
 
       return response
     }
     catch (error) {
-      throw Error(error.message)
+      throw error
     }
   }
 
   async function register(email, password, name, details = {}) {
+    const trimmedEmail = email.trim()
+    const trimmedName = name.trim()
     const countryCode = normalizeCountryCode(details.countryCode)
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: trimmedEmail,
         password,
         options: {
+          emailRedirectTo: Linking.createURL(REGISTRATION_REDIRECT_PATH),
           data: {
-            name: name.trim(),
-            display_name: name.trim(),
+            name: trimmedName,
+            display_name: trimmedName,
+            country_code: countryCode,
+            date_of_birth: details.dateOfBirth,
+            registration_source: REGISTRATION_SOURCE,
             prefs: {
               locale: DEFAULT_LOCALE,
             },
@@ -223,33 +248,36 @@ export function UserProvider({ children }){
 
       if (error) throw error
 
-      if (!data.session || !data.user) {
-        throw new Error('Please verify your email before signing in.')
+      if (!data.session) {
+        const userId = data.user?.id || null
+
+        posthog.capture('user_signed_up', {
+          user_id: userId,
+          status: 'confirmation_required',
+        })
+
+        return {
+          status: 'confirmation_required',
+          userId,
+        }
       }
 
-      const privateDetails = await createPrivateDetails(data.user, {
-        dateOfBirth: details.dateOfBirth,
-      })
+      if (!data.user) throw new Error('Registration failed')
 
-      const response = await setCurrentUser(data.user, {
-        identify: true,
-        profile: {
-          display_name: name.trim(),
-          country_code: countryCode,
-        },
-        privateDetails,
-      })
+      const response = await setCurrentUser(data.user, { identify: true })
 
       posthog.capture('user_signed_up', {
         user_id: response.$id,
-        email: response.email,
-        name: response.name,
+        status: 'signed_in',
       })
 
-      return response
+      return {
+        status: 'signed_in',
+        user: response,
+      }
     }
     catch (error) {
-      throw Error(error.message)
+      throw error
     }
   }
 
@@ -330,7 +358,7 @@ export function UserProvider({ children }){
 
       const { data, error } = await supabase.auth.updateUser({
         data: {
-          ...(user.rawAuthUser?.user_metadata || {}),
+          ...getCleanRegistrationMetadata(user.rawAuthUser?.user_metadata || {}),
           prefs: nextPrefs,
         },
       })

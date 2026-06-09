@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Keyboard, ScrollView, StyleSheet, TouchableWithoutFeedback } from 'react-native'
 import { Button, Text, TextInput, HelperText } from 'react-native-paper'
 import { Link } from 'expo-router'
@@ -19,55 +19,71 @@ const registerScreen = () => {
   const [confirmPasswordText, setConfirmPasswordText] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitLockedRef = useRef(false)
 
   const { register } = useUser()
   const { t, i18n } = useTranslation('auth')
 
   const handleSubmit = async () => {
+    if (submitLockedRef.current) return
+
     setError(null)
+    setSuccessMessage(null)
 
     const countryCode = normalizeCountryCode(countryCodeText)
     const dateOfBirth = normalizeDateOfBirth(dateOfBirthText)
 
     if (!emailText.trim() || !passwordText || !nameText.trim() || !dateOfBirthText.trim() || !countryCodeText.trim()) {
-      setError(t('register.missingFields'));
+      setError(t('register.missingFields'))
       posthog.capture('signup_failed', {
         error_type: 'validation',
-        error_message: 'Missing required fields',
+        validation_error: 'missing_fields',
       })
-      return;
+      return
     }
     if (!dateOfBirth) {
-      setError(t('register.invalidDateOfBirth'));
+      setError(t('register.invalidDateOfBirth'))
       posthog.capture('signup_failed', {
         error_type: 'validation',
-        error_message: 'Invalid date of birth',
+        validation_error: 'invalid_date_of_birth',
       })
-      return;
+      return
     }
     if (!COUNTRY_CODE_PATTERN.test(countryCode)) {
-      setError(t('register.invalidCountry'));
+      setError(t('register.invalidCountry'))
       posthog.capture('signup_failed', {
         error_type: 'validation',
-        error_message: 'Invalid country',
+        validation_error: 'invalid_country',
       })
-      return;
+      return
     }
     if (passwordText !== confirmPasswordText)
     {
-      setError(t('register.passwordMismatch'));
+      setError(t('register.passwordMismatch'))
       posthog.capture('signup_failed', {
         error_type: 'validation',
-        error_message: 'Password mismatch',
+        validation_error: 'password_mismatch',
       })
-      return;
+      return
     }
 
+    submitLockedRef.current = true
+    setIsSubmitting(true)
+
     try {
-      await register(emailText, passwordText, nameText, {
+      const response = await register(emailText, passwordText, nameText, {
         countryCode,
         dateOfBirth,
       })
+
+      setPasswordText('')
+      setConfirmPasswordText('')
+
+      if (response?.status === 'confirmation_required') {
+        setSuccessMessage(t('register.confirmationRequired'))
+      }
     }
     catch (err) {
       const errorMessage = authErrorToMessage(err)
@@ -76,24 +92,27 @@ const registerScreen = () => {
       // Track signup failure with error details
       posthog.capture('signup_failed', {
         error_type: 'registration',
-        error_message: errorMessage,
+        error_code: err?.type || err?.code || err?.status || err?.name || 'unknown',
       })
 
       // Capture exception for error tracking
       posthog.capture('$exception', {
         $exception_list: [
           {
-            type: err.name || 'RegistrationError',
-            value: err.message,
+            type: err?.name || 'RegistrationError',
+            value: 'Registration failed',
             stacktrace: {
               type: 'raw',
-              frames: err.stack ?? '',
+              frames: err?.stack ?? '',
             },
           },
         ],
         $exception_source: 'react-native',
         screen: 'registerScreen',
       })
+    } finally {
+      submitLockedRef.current = false
+      setIsSubmitting(false)
     }
   }
 
@@ -174,8 +193,20 @@ const registerScreen = () => {
           <HelperText type="error" visible={!!error}>
             {error}
           </HelperText>
+          <HelperText type="info" visible={!!successMessage}>
+            {successMessage}
+          </HelperText>
 
-          <Button mode="contained" style={{ marginTop: 8 }} onPress={handleSubmit} testID="register-button" >{t('register.submit')}</Button>
+          <Button
+            mode="contained"
+            style={{ marginTop: 8 }}
+            onPress={handleSubmit}
+            loading={isSubmitting}
+            disabled={isSubmitting}
+            testID="register-button"
+          >
+            {t('register.submit')}
+          </Button>
 
           <Link href="auth/loginScreen" style={{ marginTop: 40}} >
             <Text variant="bodyMedium" >{t('haveAccount')}</Text>
