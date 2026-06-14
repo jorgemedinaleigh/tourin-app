@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, UserLocation, PointAnnotation, UserLocationRenderMode, UserTrackingMode, requestAndroidLocationPermissions, Logger } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, UserLocation, PointAnnotation, UserLocationRenderMode, UserTrackingMode, Logger } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
+import * as Location from 'expo-location'
 import { GeoDataProvider, useGeoData } from '../../contexts/GeoDataContext'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import mapStyle from '../../constants/positronTourin.json'
@@ -27,6 +28,11 @@ const CAMERA_CENTER_EPSILON = 0.00001
 const CAMERA_ZOOM_EPSILON = 0.01
 const FOLLOW_USER_ZOOM_LEVEL = 16
 const USER_LOCATION_MIN_DISPLACEMENT_M = 0
+const EXPO_LOCATION_OPTIONS = Object.freeze({
+  accuracy: Location.Accuracy.High,
+  timeInterval: 1_000,
+  distanceInterval: 0,
+})
 const LAST_LOCATION_UNAVAILABLE_LOG = Object.freeze({
   tag: 'Mbgl-LocationComponent',
   message: 'Failed to obtain last location update',
@@ -119,6 +125,15 @@ const MapScreen = () => {
     cameraRef.current?.setCamera(config)
   }
 
+  const requestForegroundLocationPermission = async () => {
+    if (hasDevLocationOverride) return true
+
+    const permission = await Location.requestForegroundPermissionsAsync().catch(() => null)
+    const granted = permission?.status === 'granted'
+    setHasLocationPermission(granted)
+    return granted
+  }
+
   const saveViewport = (feature) => {
     const center = feature?.geometry?.coordinates
     if (!Array.isArray(center) || center.length !== 2) return
@@ -180,12 +195,12 @@ const MapScreen = () => {
   }
 
   useEffect(() => {
-    if (hasDevLocationOverride || Platform.OS !== 'android') return undefined
+    if (hasDevLocationOverride) return undefined
 
     let isActive = true
 
     const requestPermission = async () => {
-      const granted = await requestAndroidLocationPermissions().catch(() => false)
+      const granted = await requestForegroundLocationPermission()
       if (isActive) {
         setHasLocationPermission(granted)
       }
@@ -199,20 +214,16 @@ const MapScreen = () => {
   }, [])
 
   const ensureLocationPermission = async () => {
-    if (hasDevLocationOverride || Platform.OS !== 'android') return true
-
-    const granted = await requestAndroidLocationPermissions().catch(() => false)
-    setHasLocationPermission(granted)
-    return granted
+    return requestForegroundLocationPermission()
   }
 
   const handleUserLocationUpdate = (position) => {
-    if (hasDevLocationOverride) return
+    if (hasDevLocationOverride) return null
 
     latestUserLocationRef.current = position
 
     const userCoord = updateUserCoord(position)
-    if (!userCoord) return
+    if (!userCoord) return null
 
     if (isFollowingUserRef.current) {
       setCameraSafely({
@@ -220,14 +231,53 @@ const MapScreen = () => {
         zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
         animationDuration: 350,
       }, 700)
-      return
+      return userCoord
     }
 
-    if (hasAutoCenteredRef.current) return
+    if (hasAutoCenteredRef.current) return userCoord
 
     setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
     hasAutoCenteredRef.current = true
+    return userCoord
   }
+
+  useEffect(() => {
+    if (hasDevLocationOverride || !hasLocationPermission) return undefined
+
+    let isActive = true
+    let subscription = null
+
+    const startLocationWatch = async () => {
+      const lastKnownPosition = await Location.getLastKnownPositionAsync().catch(() => null)
+      if (isActive && lastKnownPosition) {
+        handleUserLocationUpdate(lastKnownPosition)
+      }
+
+      const nextSubscription = await Location.watchPositionAsync(
+        EXPO_LOCATION_OPTIONS,
+        handleUserLocationUpdate
+      ).catch((error) => {
+        console.log('Error watching location:', error?.message ?? error)
+        return null
+      })
+
+      if (!nextSubscription) return
+
+      if (!isActive) {
+        nextSubscription.remove()
+        return
+      }
+
+      subscription = nextSubscription
+    }
+
+    startLocationWatch()
+
+    return () => {
+      isActive = false
+      subscription?.remove()
+    }
+  }, [hasDevLocationOverride, hasLocationPermission])
 
   const centerOnUser = async (followAfterCenter = false) => {
     const hasPermission = await ensureLocationPermission()
@@ -236,7 +286,14 @@ const MapScreen = () => {
       return
     }
 
-    const currentCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
+    let currentCoord = Array.isArray(coord) && coord.length === 2 ? coord : null
+    if (!currentCoord && !hasDevLocationOverride) {
+      const currentPosition = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      }).catch(() => null)
+      currentCoord = handleUserLocationUpdate(currentPosition)
+    }
+
     if (!currentCoord) {
       Alert.alert(t('centerLocation.locatingTitle'), t('centerLocation.locatingBody'))
       return
