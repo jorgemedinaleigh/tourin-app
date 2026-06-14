@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, UserLocation, PointAnnotation, requestAndroidLocationPermissions, Logger } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, UserLocation, PointAnnotation, UserLocationRenderMode, UserTrackingMode, requestAndroidLocationPermissions, Logger } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +25,8 @@ const CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS = 1_500
 const CAMERA_USER_INTERACTION_GRACE_MS = 1_200
 const CAMERA_CENTER_EPSILON = 0.00001
 const CAMERA_ZOOM_EPSILON = 0.01
-const USER_LOCATION_MIN_DISPLACEMENT_M = 2
+const FOLLOW_USER_ZOOM_LEVEL = 16
+const USER_LOCATION_MIN_DISPLACEMENT_M = 0
 const LAST_LOCATION_UNAVAILABLE_LOG = Object.freeze({
   tag: 'Mbgl-LocationComponent',
   message: 'Failed to obtain last location update',
@@ -81,6 +82,7 @@ const MapScreen = () => {
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
+  const isFollowingUserRef = useRef(false)
   const latestUserLocationRef = useRef(getDevLocationOverridePosition())
   const programmaticCameraUntilRef = useRef(Date.now() + 3_000)
   const lastUserInteractionAtRef = useRef(0)
@@ -94,6 +96,11 @@ const MapScreen = () => {
     setMetroPopup(null)
   }
 
+  const setFollowingUser = useCallback((nextIsFollowing) => {
+    isFollowingUserRef.current = nextIsFollowing
+    setIsFollowingUser(nextIsFollowing)
+  }, [])
+
   const updateUserCoord = (position) => {
     if (!isValidCoordinate(position)) return null
 
@@ -106,7 +113,7 @@ const MapScreen = () => {
   // when the map is following the user. This prevents unexpected
   // recentring triggered from other asynchronous flows.
   const setCameraSafely = (config, lockMs = CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS, force = false) => {
-    if (!force && !isFollowingUser) return
+    if (!force && !isFollowingUserRef.current) return
 
     programmaticCameraUntilRef.current = Date.now() + lockMs
     cameraRef.current?.setCamera(config)
@@ -125,9 +132,14 @@ const MapScreen = () => {
 
   const handleRegionIsChanging = (feature) => {
     if (feature?.properties?.isUserInteraction) {
+      if (Date.now() <= programmaticCameraUntilRef.current) {
+        saveViewport(feature)
+        return
+      }
+
       lastUserInteractionAtRef.current = Date.now()
       // Si el usuario interactúa con el mapa, desactivar seguimiento automático
-      setIsFollowingUser(false)
+      setFollowingUser(false)
     }
   }
 
@@ -200,7 +212,18 @@ const MapScreen = () => {
     latestUserLocationRef.current = position
 
     const userCoord = updateUserCoord(position)
-    if (!userCoord || hasAutoCenteredRef.current) return
+    if (!userCoord) return
+
+    if (isFollowingUserRef.current) {
+      setCameraSafely({
+        centerCoordinate: userCoord,
+        zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
+        animationDuration: 350,
+      }, 700)
+      return
+    }
+
+    if (hasAutoCenteredRef.current) return
 
     setCameraSafely({ centerCoordinate: userCoord, animationDuration: 350 }, 700, true)
     hasAutoCenteredRef.current = true
@@ -220,11 +243,12 @@ const MapScreen = () => {
     }
 
     if (followAfterCenter) {
-      setIsFollowingUser(true)
+      setFollowingUser(true)
     }
 
     setCameraSafely({
       centerCoordinate: currentCoord,
+      zoomLevel: followAfterCenter ? FOLLOW_USER_ZOOM_LEVEL : undefined,
       animationDuration: 220,
     }, 700, true)
 
@@ -236,6 +260,56 @@ const MapScreen = () => {
       used_dev_location_override: hasDevLocationOverride,
     })
   }
+
+  const handleSitePress = useCallback((feature) => {
+    const pointCoordinate = Array.isArray(feature.geometry?.coordinates)
+      ? feature.geometry.coordinates
+      : null
+    const [lon, lat] = pointCoordinate || []
+    const props = { ...(feature.properties || {}), pointCoordinate }
+
+    setFollowingUser(false)
+    setPopup({ props, lat, lon })
+    setMetroPopup(null)
+    setCameraSafely({
+      centerCoordinate: [lon, lat],
+      zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
+      animationDuration: 600,
+    }, undefined, true)
+
+    posthog.capture('site_info_viewed', {
+      site_id: props.id,
+      site_name: props.name,
+      site_type: props.type,
+      site_subtype: props.subType,
+      site_location: props.location,
+      is_free: props.isFree,
+      score: props.score,
+    })
+
+    showModal()
+  }, [])
+
+  const handleMetroPress = useCallback((feature) => {
+    const props = feature.properties || {}
+    const [lon, lat] = feature.geometry?.coordinates || []
+
+    setFollowingUser(false)
+    setMetroPopup({ props, lat, lon })
+    setPopup(null)
+    setCameraSafely({
+      centerCoordinate: [lon, lat],
+      zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
+      animationDuration: 600,
+    }, undefined, true)
+
+    posthog.capture('metro_info_viewed', {
+      station_name: props.name,
+      line: props.line,
+    })
+
+    showModal()
+  }, [])
 
   const shouldRenderUserLocation = !hasDevLocationOverride && (Platform.OS !== 'android' || hasLocationPermission)
   const cameraDefaultSettings = hasDevLocationOverride
@@ -261,58 +335,12 @@ const MapScreen = () => {
             ref={cameraRef}
             defaultSettings={cameraDefaultSettings}
             followUserLocation={!hasDevLocationOverride && isFollowingUser}
+            followUserMode={UserTrackingMode.Follow}
+            followZoomLevel={FOLLOW_USER_ZOOM_LEVEL}
           />
           <StampRadiusLayer userCoordinate={coord} />
-          <PointsLayer
-            onPointPress={(feature) => {
-              const pointCoordinate = Array.isArray(feature.geometry?.coordinates)
-                ? feature.geometry.coordinates
-                : null
-              const [lon, lat] = pointCoordinate || []
-              const props = { ...(feature.properties || {}), pointCoordinate }
-              setPopup({ props, lat, lon })
-              setMetroPopup(null)
-              setCameraSafely({
-                centerCoordinate: [lon, lat],
-                zoomLevel: 16,
-                animationDuration: 600,
-              }, undefined, true)
-
-              // Track site info viewed event
-              posthog.capture('site_info_viewed', {
-                site_id: props.id,
-                site_name: props.name,
-                site_type: props.type,
-                site_subtype: props.subType,
-                site_location: props.location,
-                is_free: props.isFree,
-                score: props.score,
-              })
-
-              showModal()
-            }}
-          />
-          <MetroLayer
-            onPointPress={(feature) => {
-              const props = feature.properties || {}
-              const [lon, lat] = feature.geometry?.coordinates || []
-              setMetroPopup({ props, lat, lon })
-              setPopup(null)
-              setCameraSafely({
-                centerCoordinate: [lon, lat],
-                zoomLevel: 16,
-                animationDuration: 600,
-              }, undefined, true)
-
-              // Track metro info viewed event
-              posthog.capture('metro_info_viewed', {
-                station_name: props.name,
-                line: props.line,
-              })
-
-              showModal()
-            }}
-          />
+          <PointsLayer onPointPress={handleSitePress} />
+          <MetroLayer onPointPress={handleMetroPress} />
           {hasDevLocationOverride ? (
             <PointAnnotation id="dev-location-override" coordinate={devLocationOverrideCoordinate}>
               <Ionicons name="radio-button-on" size={26} color="#2563eb" />
@@ -320,7 +348,9 @@ const MapScreen = () => {
           ) : null}
           {shouldRenderUserLocation ? (
             <UserLocation
-              renderMode="normal"
+              renderMode={UserLocationRenderMode.Native}
+              androidRenderMode="compass"
+              androidPreferredFramesPerSecond={60}
               showsUserHeadingIndicator={true}
               minDisplacement={USER_LOCATION_MIN_DISPLACEMENT_M}
               onUpdate={handleUserLocationUpdate}
@@ -339,7 +369,7 @@ const MapScreen = () => {
             if (hasDevLocationOverride) {
               centerOnUser(false)
             } else if (isFollowingUser) {
-              setIsFollowingUser(false)
+              setFollowingUser(false)
             } else {
               centerOnUser(true)
             }

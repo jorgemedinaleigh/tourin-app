@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { FillLayer, LineLayer, ShapeSource } from "@maplibre/maplibre-react-native"
 import { useGeoData } from "../contexts/GeoDataContext"
 import { buildCirclePolygonCoordinates, getDistanceMeters } from "../utils/geo"
@@ -7,6 +7,10 @@ const SOURCE_ID = "stamp-radius-source"
 const FILL_LAYER_ID = "stamp-radius-fill"
 const LINE_LAYER_ID = "stamp-radius-line"
 const CIRCLE_SEGMENTS = 64
+const EMPTY_RADIUS_DATA = Object.freeze({
+  type: "FeatureCollection",
+  features: [],
+})
 
 const fillStyle = {
   fillColor: "#22c55e",
@@ -62,7 +66,7 @@ function StampRadiusLayer({ userCoordinate }) {
       }
     }).filter(Boolean)
 
-    if (!features.length) return null
+    if (!features.length) return EMPTY_RADIUS_DATA
 
     return {
       type: "FeatureCollection",
@@ -80,4 +84,4 @@ function StampRadiusLayer({ userCoordinate }) {
   )
 }
 
-export default StampRadiusLayer
+export default memo(StampRadiusLayer)

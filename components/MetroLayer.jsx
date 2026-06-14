@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { ShapeSource, SymbolLayer, Images } from "@maplibre/maplibre-react-native"
 import { supabase } from "../lib/supabase"
 import { mapMetroStationRow } from "../lib/supabaseAdapters"
@@ -129,4 +129,4 @@ function MetroLayer({ onPointPress }) {
   )
 }
 
-export default MetroLayer
+export default memo(MetroLayer)

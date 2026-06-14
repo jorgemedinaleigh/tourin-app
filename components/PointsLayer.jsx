@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { memo, useCallback } from "react"
 import { Ionicons } from "@expo/vector-icons"
 import { PointAnnotation } from "@maplibre/maplibre-react-native"
 import { useGeoData } from "../contexts/GeoDataContext"
@@ -37,4 +37,4 @@ function PointsLayer({ onPointPress }) {
   )
 }
 
-export default PointsLayer
+export default memo(PointsLayer)
