@@ -28,8 +28,9 @@ This is the canonical AI-agent entry point for this repo. Prefer this file plus 
 - `lib/posthog.js` — PostHog client and required env vars.
 - `i18n/` — translation setup and locale JSON files.
 - `docs/` — project notes and Supabase content conventions.
-- `.agents/` — concise context and workflows for generic AI agents.
-- `.claude/` — original Claude Code skill material, mostly PostHog reference docs.
+- `.agents/SKILLS.md` — single source of truth for reusable agent skills and workflows.
+- `.agents/` — generic agent context plus compatibility redirects.
+- `.claude/` — Claude compatibility wrappers and verbose PostHog reference docs only.
 
 ## Commands
 
@@ -57,15 +58,11 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 `EXPO_PUBLIC_SUPABASE_ANON_KEY` is also accepted as a fallback for Supabase.
 
-## PostHog rules
+## Skills and workflows
 
-- Use the shared `posthog` instance from `lib/posthog.js`.
-- Event names use `snake_case`.
-- Prefer action/conversion events over generic page views; screen tracking already happens in `app/_layout.jsx`.
-- Identify users after login/signup in `contexts/UserContext.jsx`; reset on logout.
-- Add useful, non-sensitive properties and avoid hardcoded credentials.
+Use `.agents/SKILLS.md` as the canonical, tool-agnostic source for reusable skills and workflows. It currently covers PostHog analytics maintenance, the PostHog event inventory, and app name changes.
 
-See `.agents/skills/posthog/` for the concise PostHog guide.
+Treat `.agents/skills/*`, `.agents/workflows/*`, `.claude/skills/*`, and old setup reports as compatibility pointers or deep references, not separate sources of truth.
 
 ## i18n rules
 
@@ -73,6 +70,3 @@ See `.agents/skills/posthog/` for the concise PostHog guide.
 - Keep namespaces consistent with existing files.
 - For localized Supabase content, follow `docs/supabase-content-fields.md` and `i18n/getLocalizedField.js`.
 
-## App naming caution
-
-For display-name changes, update `app.config.js` and Android `strings.xml`. Do not change `android.package` / native application IDs for a published app unless the user wants a new store app.

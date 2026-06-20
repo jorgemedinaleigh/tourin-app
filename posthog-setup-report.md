@@ -1,5 +1,7 @@
 # PostHog post-wizard report
 
+> Historical report only. The current PostHog skill and event inventory live in `.agents/SKILLS.md#posthog-analytics-skill`.
+
 The wizard has completed a deep integration of PostHog analytics into your tourin-app Expo project. This integration provides comprehensive event tracking for user authentication, heritage site visits, achievements, and map interactions. The setup includes:
 
 - **PostHog SDK Configuration**: Created `lib/posthog.js` with optimized settings for React Native including batching, feature flags, and lifecycle event capture.
@@ -44,4 +46,4 @@ We've built some insights and a dashboard for you to keep an eye on user behavio
 
 ### Agent skill
 
-We've left an agent skill folder in your project at `.claude/skills/posthog-integration-expo/`. You can use this context for further agent development when using Claude Code. This will help ensure the model provides the most up-to-date approaches for integrating PostHog.
+Canonical, tool-agnostic PostHog instructions now live in `.agents/SKILLS.md#posthog-analytics-skill`. The legacy `.claude/skills/posthog-integration-expo/` folder remains only as a compatibility wrapper and deep SDK reference material.

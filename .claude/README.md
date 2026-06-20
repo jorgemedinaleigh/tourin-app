@@ -1,12 +1,11 @@
-# Claude-Specific Agent Material
+# Claude Compatibility Material
 
-This folder is kept for Claude Code compatibility.
+This folder is kept for Claude Code compatibility only.
 
-For generic coding-agent context, use the new structure instead:
+For generic coding-agent context, use:
 
 - `../AGENTS.md`
-- `../.agents/README.md`
 - `../.agents/project-context.md`
-- `../.agents/skills/posthog/`
+- `../.agents/SKILLS.md`
 
-The existing `skills/posthog-integration-expo/` folder contains the original PostHog wizard skill and long reference docs. Keep it available as deep reference material, but prefer the concise `.agents/skills/posthog/` guide for day-to-day changes.
+The canonical, tool-agnostic skill/workflow source is `../.agents/SKILLS.md`. The `skills/posthog-integration-expo/` folder is a compatibility wrapper around the original PostHog wizard material, and `skills/posthog-integration-expo/references/` contains verbose vendor reference docs for deeper SDK details.
