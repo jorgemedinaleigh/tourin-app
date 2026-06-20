@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildCirclePolygonCoordinates, getDistanceMeters } from './geo'
+import { STAMP_GPS_BUFFER_METERS, getEffectiveStampRadius } from './stampRadius'
 
 test('getDistanceMeters returns zero for the same point', () => {
   assert.equal(getDistanceMeters(-33.4372, -70.6506, -33.4372, -70.6506), 0)
@@ -30,4 +31,16 @@ test('buildCirclePolygonCoordinates places points near the requested radius', ()
     const distance = getDistanceMeters(centerLat, centerLon, lat, lon)
     assert.ok(Math.abs(distance - radius) < 0.001)
   }
+})
+
+test('getEffectiveStampRadius adds the GPS buffer to valid radii', () => {
+  assert.equal(STAMP_GPS_BUFFER_METERS, 10)
+  assert.equal(getEffectiveStampRadius(50), 60)
+  assert.equal(getEffectiveStampRadius('25'), 35)
+})
+
+test('getEffectiveStampRadius rejects invalid radii', () => {
+  assert.equal(getEffectiveStampRadius(0), null)
+  assert.equal(getEffectiveStampRadius(-1), null)
+  assert.equal(getEffectiveStampRadius('nope'), null)
 })

@@ -2,6 +2,7 @@ import { memo, useMemo } from "react"
 import { FillLayer, LineLayer, ShapeSource } from "@maplibre/maplibre-react-native"
 import { useGeoData } from "../contexts/GeoDataContext"
 import { buildCirclePolygonCoordinates, getDistanceMeters } from "../utils/geo"
+import { getEffectiveStampRadius } from "../utils/stampRadius"
 
 const SOURCE_ID = "stamp-radius-source"
 const FILL_LAYER_ID = "stamp-radius-fill"
@@ -46,10 +47,13 @@ function StampRadiusLayer({ userCoordinate }) {
         return null
       }
 
-      const distance = getDistanceMeters(userLat, userLon, siteLat, siteLon)
-      if (!Number.isFinite(distance) || distance > radius) return null
+      const effectiveRadius = getEffectiveStampRadius(radius)
+      if (!Number.isFinite(effectiveRadius)) return null
 
-      const ring = buildCirclePolygonCoordinates(siteLat, siteLon, radius, CIRCLE_SEGMENTS)
+      const distance = getDistanceMeters(userLat, userLon, siteLat, siteLon)
+      if (!Number.isFinite(distance) || distance > effectiveRadius) return null
+
+      const ring = buildCirclePolygonCoordinates(siteLat, siteLon, effectiveRadius, CIRCLE_SEGMENTS)
       if (!ring.length) return null
 
       return {
@@ -61,6 +65,7 @@ function StampRadiusLayer({ userCoordinate }) {
         properties: {
           id: feature.properties?.id,
           stampRadius: radius,
+          effectiveRadius,
           distanceMeters: Math.round(distance),
         },
       }

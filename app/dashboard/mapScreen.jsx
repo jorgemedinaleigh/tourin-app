@@ -439,7 +439,12 @@ const MapScreen = () => {
             {metroPopup?.props ? (
               <MetroInfoCard info={metroPopup.props} onClose={hideModal} />
             ) : popup?.props ? (
-              <InfoCard info={popup.props} onClose={hideModal} />
+              <InfoCard
+                info={popup.props}
+                onClose={hideModal}
+                userCoordinate={coord}
+                hasLocationPermission={hasLocationPermission}
+              />
             ) : null}
           </Modal>
         </Portal>

@@ -8,10 +8,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStats } from '../hooks/useStats'
 import { useRouter } from 'expo-router'
 import StampImpactOverlay from './StampImpactOverlay'
-import * as Location from 'expo-location'
 import { posthog } from '../lib/posthog'
-import { getDevLocationOverridePosition } from '../lib/devLocation'
 import { getDistanceMeters } from '../utils/geo'
+import { STAMP_GPS_BUFFER_METERS, getEffectiveStampRadius } from '../utils/stampRadius'
 import {
   buildAppleMapsDirectionsUrl,
   buildGoogleMapsDirectionsUrl,
@@ -52,7 +51,7 @@ const findUri = (candidates) => {
   return null
 }
 
-function InfoCard({ info, onClose }) {
+function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false }) {
   const theme = useTheme()
   const { height } = useWindowDimensions()
   const { t, i18n } = useTranslation(['common', 'infoCard'])
@@ -159,29 +158,23 @@ function InfoCard({ info, onClose }) {
       const [pointLon, pointLat] = pointCoordinate || []
 
       if (Number.isFinite(radius) && radius > 0 && Number.isFinite(pointLat) && Number.isFinite(pointLon)) {
-        let pos = getDevLocationOverridePosition()
+        const effectiveRadius = getEffectiveStampRadius(radius)
+        const userPointCoordinate = Array.isArray(userCoordinate) ? userCoordinate : null
+        const [userLon, userLat] = userPointCoordinate || []
 
-        if (!pos) {
-          const { status } = await Location.requestForegroundPermissionsAsync()
-          if (status !== "granted") {
-            Alert.alert(t('infoCard:location.permissionTitle'), t('infoCard:location.permissionBody'))
+        if (!hasLocationPermission) {
+          Alert.alert(t('infoCard:location.permissionTitle'), t('infoCard:location.permissionBody'))
 
-            // Track stamp failure due to location permission
-            posthog.capture('stamp_failed', {
-              site_id: info.id,
-              site_name: info.name,
-              failure_reason: 'location_permission_denied',
-            })
-            return
-          }
-
-          pos = await Location.getLastKnownPositionAsync()
-          if (!pos) pos = await Location.getCurrentPositionAsync({})
+          // Track stamp failure due to location permission
+          posthog.capture('stamp_failed', {
+            site_id: info.id,
+            site_name: info.name,
+            failure_reason: 'location_permission_denied',
+          })
+          return
         }
-        const userLat = pos?.coords?.latitude
-        const userLon = pos?.coords?.longitude
 
-        if (!Number.isFinite(userLat) || !Number.isFinite(userLon)) {
+        if (!Number.isFinite(userLat) || !Number.isFinite(userLon) || !Number.isFinite(effectiveRadius)) {
           Alert.alert(t('infoCard:location.unavailableTitle'), t('infoCard:location.unavailableBody'))
 
           // Track stamp failure due to location unavailable
@@ -194,7 +187,7 @@ function InfoCard({ info, onClose }) {
         }
 
         const distance = getDistanceMeters(userLat, userLon, pointLat, pointLon)
-        if (distance > radius) {
+        if (distance > effectiveRadius) {
           Alert.alert(t('infoCard:location.tooFarTitle'), t('infoCard:location.tooFarBody'))
 
           // Track stamp failure due to distance
@@ -204,6 +197,8 @@ function InfoCard({ info, onClose }) {
             failure_reason: 'too_far_away',
             distance_meters: Math.round(distance),
             required_radius: radius,
+            gps_buffer_meters: STAMP_GPS_BUFFER_METERS,
+            effective_radius: effectiveRadius,
           })
           return
         }
