@@ -1,0 +1,16 @@
+{
+  "termsCheckboxPrefix": "He leído y acepto los",
+  "termsLinkLabel": "Términos y Condiciones",
+  "privacyCheckboxPrefix": "He leído y acepto la",
+  "privacyLinkLabel": "Política de Privacidad",
+  "gate": {
+    "title": "Acepta los documentos legales",
+    "description": "Para seguir usando Tourin, confirma que leíste y aceptas los Términos y Condiciones y la Política de Privacidad vigentes.",
+    "accept": "Aceptar y continuar",
+    "signOut": "Cerrar sesión"
+  },
+  "errors": {
+    "missingConsent": "Debes aceptar los Términos y Condiciones y la Política de Privacidad para continuar.",
+    "acceptFailed": "No pudimos guardar tu aceptación. Inténtalo de nuevo."
+  }
+}

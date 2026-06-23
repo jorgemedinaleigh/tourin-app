@@ -8,6 +8,7 @@ import { authErrorToMessage } from '../../utils/authErrorToMessage'
 import ThemedView from '../../components/ThemedView'
 import { posthog } from '../../lib/posthog'
 import CountrySelect from '../../components/CountrySelect'
+import LegalDocumentConsent from '../../components/LegalDocumentConsent'
 import { COUNTRY_CODE_PATTERN, formatDateOfBirthInput, normalizeCountryCode, normalizeDateOfBirth } from '../../utils/profileDetails'
 
 const registerScreen = () => {
@@ -17,6 +18,8 @@ const registerScreen = () => {
   const [emailText, setEmailText] = useState('')
   const [passwordText, setPasswordText] = useState('')
   const [confirmPasswordText, setConfirmPasswordText] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
@@ -24,7 +27,7 @@ const registerScreen = () => {
   const submitLockedRef = useRef(false)
 
   const { register } = useUser()
-  const { t, i18n } = useTranslation('auth')
+  const { t, i18n } = useTranslation(['auth', 'legal'])
 
   const handleSubmit = async () => {
     if (submitLockedRef.current) return
@@ -68,6 +71,14 @@ const registerScreen = () => {
       })
       return
     }
+    if (!termsAccepted || !privacyAccepted) {
+      setError(t('legal:errors.missingConsent'))
+      posthog.capture('signup_failed', {
+        error_type: 'validation',
+        validation_error: 'missing_legal_consent',
+      })
+      return
+    }
 
     submitLockedRef.current = true
     setIsSubmitting(true)
@@ -76,6 +87,8 @@ const registerScreen = () => {
       const response = await register(emailText, passwordText, nameText, {
         countryCode,
         dateOfBirth,
+        termsAccepted,
+        privacyAccepted,
       })
 
       setPasswordText('')
@@ -190,6 +203,14 @@ const registerScreen = () => {
             value={confirmPasswordText}
             onChangeText={setConfirmPasswordText}
           />
+          <LegalDocumentConsent
+            termsAccepted={termsAccepted}
+            privacyAccepted={privacyAccepted}
+            disabled={isSubmitting}
+            onTermsChange={setTermsAccepted}
+            onPrivacyChange={setPrivacyAccepted}
+            style={styles.legalConsent}
+          />
           <HelperText type="error" visible={!!error}>
             {error}
           </HelperText>
@@ -228,5 +249,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20
+  },
+  legalConsent: {
+    marginTop: 12,
   },
 })

@@ -78,6 +78,8 @@ This inventory is based on current source references to `posthog.capture(...)`.
 | `user_signed_up` | Successful registration or confirmation-required registration | `contexts/UserContext.jsx` |
 | `user_logged_in` | Successful login | `contexts/UserContext.jsx` |
 | `user_logged_out` | Logout action | `contexts/UserContext.jsx` |
+| `legal_documents_accepted` | User accepts the current Terms and Privacy documents | `contexts/UserContext.jsx` |
+| `legal_documents_accept_failed` | Failed attempt to save legal document acceptance | `contexts/UserContext.jsx` |
 | `login_failed` | Failed login attempt | `app/auth/loginScreen.jsx` |
 | `signup_failed` | Failed registration attempt | `app/auth/registerScreen.jsx` |
 | `site_info_viewed` | User opens a heritage-site info card | `app/dashboard/mapScreen.jsx` |

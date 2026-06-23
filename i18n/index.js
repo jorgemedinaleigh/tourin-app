@@ -6,6 +6,7 @@ import commonEn from './locales/en/common.json'
 import errorsEn from './locales/en/errors.json'
 import homeEn from './locales/en/home.json'
 import infoCardEn from './locales/en/infoCard.json'
+import legalEn from './locales/en/legal.json'
 import mapEn from './locales/en/map.json'
 import passportEn from './locales/en/passport.json'
 import profileEn from './locales/en/profile.json'
@@ -17,6 +18,7 @@ import commonEs from './locales/es/common.json'
 import errorsEs from './locales/es/errors.json'
 import homeEs from './locales/es/home.json'
 import infoCardEs from './locales/es/infoCard.json'
+import legalEs from './locales/es/legal.json'
 import mapEs from './locales/es/map.json'
 import passportEs from './locales/es/passport.json'
 import profileEs from './locales/es/profile.json'
@@ -28,6 +30,7 @@ import commonPt from './locales/pt/common.json'
 import errorsPt from './locales/pt/errors.json'
 import homePt from './locales/pt/home.json'
 import infoCardPt from './locales/pt/infoCard.json'
+import legalPt from './locales/pt/legal.json'
 import mapPt from './locales/pt/map.json'
 import passportPt from './locales/pt/passport.json'
 import profilePt from './locales/pt/profile.json'
@@ -43,6 +46,7 @@ const resources = {
     errors: errorsEn,
     home: homeEn,
     infoCard: infoCardEn,
+    legal: legalEn,
     map: mapEn,
     passport: passportEn,
     profile: profileEn,
@@ -56,6 +60,7 @@ const resources = {
     errors: errorsEs,
     home: homeEs,
     infoCard: infoCardEs,
+    legal: legalEs,
     map: mapEs,
     passport: passportEs,
     profile: profileEs,
@@ -69,6 +74,7 @@ const resources = {
     errors: errorsPt,
     home: homePt,
     infoCard: infoCardPt,
+    legal: legalPt,
     map: mapPt,
     passport: passportPt,
     profile: profilePt,

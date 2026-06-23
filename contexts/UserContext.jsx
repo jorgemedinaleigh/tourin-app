@@ -3,15 +3,40 @@ import * as Linking from 'expo-linking'
 import { supabase } from '../lib/supabase'
 import { posthog } from '../lib/posthog'
 import { normalizeCountryCode } from '../utils/profileDetails'
+import {
+  LEGAL_CONSENT_PROFILE_FIELDS,
+  LEGAL_PRIVACY_VERSION,
+  LEGAL_TERMS_VERSION,
+  buildLegalConsentMetadata,
+  buildLegalConsentPatch,
+  getLegalConsentStatus,
+} from '../lib/legalDocuments'
 
 export const UserContext = createContext()
 
 const DEFAULT_LOCALE = 'es'
-const PROFILE_COLUMNS = 'id, display_name, locale, avatar_path, country_code, created_at, updated_at'
+const PROFILE_COLUMNS = [
+  'id',
+  'display_name',
+  'locale',
+  'avatar_path',
+  'country_code',
+  ...LEGAL_CONSENT_PROFILE_FIELDS,
+  'created_at',
+  'updated_at',
+].join(', ')
 const PRIVATE_DETAILS_COLUMNS = 'user_id, date_of_birth, created_at, updated_at'
 const REGISTRATION_REDIRECT_PATH = '/auth/loginScreen'
 const REGISTRATION_SOURCE = 'tourin_app'
-const REGISTRATION_METADATA_KEYS = ['country_code', 'date_of_birth', 'registration_source']
+const REGISTRATION_METADATA_KEYS = [
+  'country_code',
+  'date_of_birth',
+  'registration_source',
+  'legal_terms_accepted',
+  'legal_terms_version',
+  'legal_privacy_accepted',
+  'legal_privacy_version',
+]
 
 const getMetadataName = (authUser) =>
   authUser?.user_metadata?.display_name ||
@@ -43,6 +68,7 @@ function normalizeUser(authUser, profile, privateDetails) {
 
   const metadata = authUser.user_metadata || {}
   const metadataPrefs = metadata.prefs || {}
+  const legalConsent = getLegalConsentStatus(profile)
   const prefs = {
     ...metadataPrefs,
     locale: profile?.locale || metadataPrefs.locale || DEFAULT_LOCALE,
@@ -61,6 +87,7 @@ function normalizeUser(authUser, profile, privateDetails) {
     countryCode: profile?.country_code || null,
     dateOfBirth: privateDetails?.date_of_birth || null,
     privateDetails: privateDetails || null,
+    legalConsent,
     prefs,
     profile,
     rawAuthUser: authUser,
@@ -90,6 +117,12 @@ export function UserProvider({ children }){
       avatar_path: overrides.avatar_path || null,
       country_code: overrides.country_code || null,
     }
+
+    LEGAL_CONSENT_PROFILE_FIELDS.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(overrides, field)) {
+        payload[field] = overrides[field]
+      }
+    })
 
     const { data, error } = await supabase
       .from('profiles')
@@ -126,6 +159,13 @@ export function UserProvider({ children }){
       }
       if (Object.prototype.hasOwnProperty.call(overrides, 'country_code') && existingProfile.country_code !== overrides.country_code) {
         profilePatch.country_code = overrides.country_code
+      }
+      if (!getLegalConsentStatus(existingProfile).isCurrent) {
+        LEGAL_CONSENT_PROFILE_FIELDS.forEach((field) => {
+          if (Object.prototype.hasOwnProperty.call(overrides, field) && existingProfile[field] !== overrides[field]) {
+            profilePatch[field] = overrides[field]
+          }
+        })
       }
 
       if (Object.keys(profilePatch).length > 0) {
@@ -226,6 +266,14 @@ export function UserProvider({ children }){
     const trimmedEmail = email.trim()
     const trimmedName = name.trim()
     const countryCode = normalizeCountryCode(details.countryCode)
+    const legalConsentMetadata = buildLegalConsentMetadata()
+    const legalConsentPatch = buildLegalConsentPatch()
+
+    if (!details.termsAccepted || !details.privacyAccepted) {
+      const error = new Error('Legal consent is required')
+      error.code = 'missing_legal_consent'
+      throw error
+    }
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -239,6 +287,7 @@ export function UserProvider({ children }){
             country_code: countryCode,
             date_of_birth: details.dateOfBirth,
             registration_source: REGISTRATION_SOURCE,
+            ...legalConsentMetadata,
             prefs: {
               locale: DEFAULT_LOCALE,
             },
@@ -264,7 +313,14 @@ export function UserProvider({ children }){
 
       if (!data.user) throw new Error('Registration failed')
 
-      const response = await setCurrentUser(data.user, { identify: true })
+      const response = await setCurrentUser(data.user, {
+        identify: true,
+        profile: {
+          display_name: trimmedName,
+          country_code: countryCode,
+          ...legalConsentPatch,
+        },
+      })
 
       posthog.capture('user_signed_up', {
         user_id: response.$id,
@@ -277,6 +333,40 @@ export function UserProvider({ children }){
       }
     }
     catch (error) {
+      throw error
+    }
+  }
+
+  async function acceptLegalDocuments() {
+    if (!user) return null
+
+    const authUser = user.rawAuthUser || { id: user.$id, email: user.email }
+    const patch = buildLegalConsentPatch()
+
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .update(patch)
+        .eq('id', user.$id)
+        .select(PROFILE_COLUMNS)
+        .single()
+
+      if (error) throw error
+
+      const privateDetails = user.privateDetails || await getPrivateDetails(user.$id)
+      const response = normalizeUser(authUser, profile, privateDetails)
+      setUser(response)
+
+      posthog.capture('legal_documents_accepted', {
+        terms_version: LEGAL_TERMS_VERSION,
+        privacy_version: LEGAL_PRIVACY_VERSION,
+      })
+
+      return response
+    } catch (error) {
+      posthog.capture('legal_documents_accept_failed', {
+        error_code: error?.code || error?.status || error?.name || 'unknown',
+      })
       throw error
     }
   }
@@ -426,7 +516,7 @@ export function UserProvider({ children }){
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs, updateProfileDetails }} >
+    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs, updateProfileDetails, acceptLegalDocuments }} >
       {children}
     </UserContext.Provider>
   )
