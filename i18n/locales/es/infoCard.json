@@ -18,7 +18,7 @@
     "alreadyVisitedTitle": "Sitio ya visitado",
     "permissionBody": "Activa el permiso de ubicación para estampar este punto.",
     "permissionTitle": "Permiso requerido",
-    "tooFarBody": "Necesitas estar más cerca del punto para estampar tu pasaporte.",
+    "tooFarBody": "Aún no estás lo suficientemente cerca para estampar. ¡Acércate más y desbloquea tu estampa!",
     "tooFarTitle": "Estás lejos",
     "unavailableBody": "No pudimos validar tu ubicación para estampar este punto.",
     "unavailableTitle": "Ubicación no disponible"

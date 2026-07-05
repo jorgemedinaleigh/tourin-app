@@ -18,7 +18,7 @@
     "alreadyVisitedTitle": "Local já visitado",
     "permissionBody": "Ative a permissão de localização para carimbar este lugar.",
     "permissionTitle": "Permissão necessária",
-    "tooFarBody": "Você precisa estar mais perto deste lugar para carimbar seu passaporte.",
+    "tooFarBody": "Você ainda não está perto o suficiente para carimbar. Aproxime-se mais e desbloqueie seu carimbo!",
     "tooFarTitle": "Você está longe demais",
     "unavailableBody": "Não foi possível validar sua localização para carimbar este lugar.",
     "unavailableTitle": "Localização indisponível"

@@ -18,7 +18,7 @@
     "alreadyVisitedTitle": "Site already visited",
     "permissionBody": "Enable location permission to stamp this place.",
     "permissionTitle": "Permission required",
-    "tooFarBody": "You need to be closer to this place to stamp your passport.",
+    "tooFarBody": "You're not close enough to stamp yet. Move closer and unlock your stamp!",
     "tooFarTitle": "You're too far away",
     "unavailableBody": "We couldn't validate your location to stamp this place.",
     "unavailableTitle": "Location unavailable"
