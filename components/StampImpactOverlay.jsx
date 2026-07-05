@@ -3,8 +3,8 @@ import {
   Animated,
   Easing,
   Image,
+  Pressable,
   StyleSheet,
-  TouchableOpacity,
   useWindowDimensions,
   View,
   Text,
@@ -21,6 +21,7 @@ const FADE_MS = 260
 function StampImpactOverlay({
   visible,
   stampUri,
+  unlockedAchievements = [],
   accentColor = '#D93B48',
   paperColor = '#F9F1DE',
   canDismiss = false,
@@ -121,6 +122,12 @@ function StampImpactOverlay({
     inputRange: [-12, 12],
     outputRange: ['-12deg', '12deg'],
   })
+  const achievements = Array.isArray(unlockedAchievements)
+    ? unlockedAchievements.filter((achievement) => achievement?.$id)
+    : []
+  const achievementNames = achievements.map((achievement) => achievement.name).filter(Boolean).join(', ')
+  const visibleAchievementBadges = achievements.slice(0, 3)
+  const hiddenAchievementCount = Math.max(0, achievements.length - visibleAchievementBadges.length)
 
   return (
     <Animated.View
@@ -153,22 +160,49 @@ function StampImpactOverlay({
           />
         </Animated.View>
       </View>
+      {canDismiss && achievements.length ? (
+        <View style={[styles.unlockPanel, { backgroundColor: paperColor }]}>
+          <Text style={[styles.unlockTitle, { color: accentColor }]}>
+            {t('stampOverlay:achievementsUnlockedTitle', { count: achievements.length })}
+          </Text>
+          <View style={styles.unlockBadgeRow}>
+            {visibleAchievementBadges.map((achievement) => (
+              <Image
+                key={achievement.$id}
+                source={achievement.badge ? { uri: achievement.badge } : require('../assets/icon.png')}
+                style={styles.unlockBadge}
+                resizeMode="cover"
+              />
+            ))}
+            {hiddenAchievementCount > 0 ? (
+              <View style={[styles.hiddenBadgeCount, { borderColor: accentColor }]}>
+                <Text style={[styles.hiddenBadgeText, { color: accentColor }]}>
+                  +{hiddenAchievementCount}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {achievementNames ? (
+            <Text style={styles.unlockNames} numberOfLines={2}>
+              {achievementNames}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       {canDismiss ? (
         <>
-        <TouchableOpacity
+        <Pressable
           style={styles.closeBtn}
           onPress={onSecondaryDismiss || onDismiss}
-          activeOpacity={0.7}
         >
           <Text style={styles.closeText}>✕</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </Pressable>
+        <Pressable
           style={styles.ctaButton}
           onPress={onDismiss}
-          activeOpacity={0.85}
         >
           <Text style={styles.ctaText}>{t('stampOverlay:viewPassport')}</Text>
-        </TouchableOpacity>
+        </Pressable>
         </>
       ) : null}
     </Animated.View>
@@ -207,6 +241,58 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 18,
+  },
+  unlockPanel: {
+    position: 'absolute',
+    left: 22,
+    right: 22,
+    bottom: 106,
+    alignSelf: 'center',
+    maxWidth: 430,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+  },
+  unlockTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  unlockBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  unlockBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#EFE5CF',
+  },
+  hiddenBadgeCount: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+  },
+  hiddenBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  unlockNames: {
+    marginTop: 8,
+    color: '#2B241B',
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   closeBtn: {
     position: 'absolute',

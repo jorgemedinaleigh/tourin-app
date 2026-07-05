@@ -1,3 +1,5 @@
 {
+  "achievementsUnlockedTitle_one": "Achievement unlocked",
+  "achievementsUnlockedTitle_other": "{{count}} achievements unlocked",
   "viewPassport": "View passport"
 }

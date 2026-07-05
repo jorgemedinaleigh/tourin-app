@@ -1,5 +1,8 @@
 {
+  "loadError": "Achievements couldn't be loaded.",
+  "loading": "Loading achievements...",
   "locked": "Locked",
+  "progressLabel": "{{current}}/{{target}} completed",
   "title": "Achievements",
   "unlockedAt": "Unlocked on {{date}}"
 }

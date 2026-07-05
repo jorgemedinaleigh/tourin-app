@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../hooks/useUser'
 import { useSiteVisits } from '../hooks/useSiteVisits'
+import { useAchievements } from '../hooks/useAchievements'
 import { useEffect, useMemo, useState } from 'react'
 import { useStats } from '../hooks/useStats'
 import { useRouter } from 'expo-router'
@@ -58,12 +59,14 @@ function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false
   const { user } = useUser()
   const { getVisit, stampVisit, fetchVisits } = useSiteVisits(user.$id)
   const { addPoints, siteVisited, getStats } = useStats(user.$id)
+  const { evaluateAndUnlockAchievements } = useAchievements(user.$id)
   const router = useRouter()
 
   const [isVisited, setIsVisited] = useState(false)
   const [stamping, setStamping] = useState(false)
   const [showStampOverlay, setShowStampOverlay] = useState(false)
   const [overlayDismissible, setOverlayDismissible] = useState(false)
+  const [unlockedAchievements, setUnlockedAchievements] = useState([])
   const cardMaxHeight = height * 0.9
   const locale = i18n.resolvedLanguage || i18n.language || 'en'
 
@@ -206,6 +209,7 @@ function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false
 
       setStamping(true)
       setOverlayDismissible(false)
+      setUnlockedAchievements([])
       const stampResult = await stampVisit(info.id)
 
       if (!stampResult?.created) {
@@ -221,7 +225,9 @@ function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false
 
       await addPoints(info.score)
       await siteVisited()
+      const newlyUnlockedAchievements = await evaluateAndUnlockAchievements({ sourceSiteId: info.id })
       await Promise.all([getStats(), fetchVisits(user.$id)])
+      setUnlockedAchievements(newlyUnlockedAchievements)
       setIsVisited(true)
       if (stampUri) {
         Image.prefetch(stampUri).catch(() => {})
@@ -276,12 +282,14 @@ function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false
 
   const handleOverlayDismiss = () => {
     setShowStampOverlay(false)
+    setUnlockedAchievements([])
     onClose?.()
     router.push('/dashboard/passportScreen')
   }
 
   const handleOverlayCloseHere = () => {
     setShowStampOverlay(false)
+    setUnlockedAchievements([])
   }
 
   const handleWebsitePress = async () => {
@@ -471,6 +479,7 @@ function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false
           onSecondaryDismiss={handleOverlayCloseHere}
           onFinish={handleOverlayFinish}
           stampUri={stampUri}
+          unlockedAchievements={unlockedAchievements}
         />
       </Portal>
     </>

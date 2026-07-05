@@ -56,3 +56,12 @@ Result: `getLocalizedField(row, 'name', 'en', { fallbackLocale: 'es' })` returns
 
 - `name`, `description`, and `criteria` are localized JSONB values.
 - `badge_path` stores a path in the public `content` Storage bucket.
+- `rule_type` stores the machine-readable evaluator name. Supported client rule types are:
+  - `manual` — visible in the app but not auto-unlocked.
+  - `route_completed` — unlocks when all published sites for a route are stamped.
+  - `site_count_by_attribute` — unlocks when stamped published sites matching an attribute reach a target.
+- `rule_config` stores evaluator-specific JSONB:
+  - `route_completed`: `{ "routeId": "<route id>" }`
+  - `site_count_by_attribute`: `{ "siteField": "sub_type", "siteValues": ["museum"], "target": 5 }`
+- `site_count_by_attribute.siteField` supports `type`, `sub_type`, `route_id`, `region`, `comuna`, and `is_free`.
+- Existing rows without a rule should use `manual` and `{}`.

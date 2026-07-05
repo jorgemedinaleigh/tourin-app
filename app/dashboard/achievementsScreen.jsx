@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { Text, FlatList, StyleSheet, Modal, Image, View, TouchableOpacity } from 'react-native'
+import { ActivityIndicator, FlatList, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Card } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
@@ -10,25 +10,82 @@ import { useAchievements } from '../../hooks/useAchievements'
 import { formatDate } from '../../i18n/formatters'
 import { posthog } from '../../lib/posthog'
 
+const FALLBACK_BADGE = require('../../assets/icon.png')
+
+const getBadgeSource = (badge) => (badge ? { uri: badge, cache: 'force-cache' } : FALLBACK_BADGE)
+
+const AchievementRow = memo(function AchievementRow({
+  badge,
+  criteria,
+  id,
+  isUnlocked,
+  name,
+  onPress,
+  progressCurrent,
+  progressLabel,
+  progressPercent,
+  progressTarget,
+  statusLabel,
+}) {
+  const handlePress = useCallback(() => {
+    onPress(id)
+  }, [id, onPress])
+  const showProgress = !isUnlocked && Number.isFinite(progressTarget) && progressTarget > 0
+
+  return (
+    <Card style={styles.card}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={handlePress}
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      >
+        <Image
+          source={getBadgeSource(badge)}
+          style={[styles.badgeLeft, !isUnlocked && styles.badgeLocked]}
+          resizeMode="cover"
+          onError={(e) => console.log('Error Image:', e.nativeEvent)}
+        />
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={2}>
+            {name}
+          </Text>
+          <Text style={[styles.status, isUnlocked && styles.unlockedStatus]} numberOfLines={1}>
+            {statusLabel}
+          </Text>
+          {!!criteria && (
+            <Text style={styles.criteria} numberOfLines={2}>
+              {criteria}
+            </Text>
+          )}
+          {showProgress ? (
+            <View style={styles.progressBlock}>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${Math.max(0, Math.min(100, progressPercent))}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressText}>
+                {progressLabel || `${progressCurrent}/${progressTarget}`}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+    </Card>
+  )
+})
+
 const AchievementsScreen = () => {
   const { user } = useUser()
-  const { achievements, fetchAchievements } = useAchievements(user?.$id)
+  const { achievements, fetchAchievements, loading, error } = useAchievements(user?.$id)
   const { locale } = useI18n()
   const { t } = useTranslation('achievements')
 
   const [viewerVisible, setViewerVisible] = useState(false)
   const [viewerUri, setViewerUri] = useState(null)
-
-  const openImage = (item) => {
-    setViewerUri(item.badge)
-    setViewerVisible(true)
-
-    posthog.capture('achievement_viewed', {
-      achievement_id: item.$id,
-      achievement_name: item.name,
-      is_unlocked: !!item.unlockedAt,
-    })
-  }
 
   useFocusEffect(
     useCallback(() => {
@@ -40,50 +97,93 @@ const AchievementsScreen = () => {
 
   const achievementsById = useMemo(() => {
     const acc = {}
-    for (const a of achievements || []) acc[a.$id] = a
+    for (const achievement of achievements || []) acc[achievement.$id] = achievement
     return acc
   }, [achievements])
 
+  const openAchievement = useCallback(
+    (achievementId) => {
+      const item = achievementsById[achievementId]
+      if (!item) return
+
+      setViewerUri(item.badge)
+      setViewerVisible(true)
+
+      posthog.capture('achievement_viewed', {
+        achievement_id: item.$id,
+        achievement_name: item.name,
+        is_unlocked: !!item.unlockedAt,
+      })
+    },
+    [achievementsById]
+  )
+
+  const closeViewer = useCallback(() => {
+    setViewerVisible(false)
+    setViewerUri(null)
+  }, [])
+
+  const renderAchievement = useCallback(
+    ({ item }) => {
+      const statusLabel = item.unlockedAt
+        ? t('unlockedAt', { date: formatDate(item.unlockedAt, locale) })
+        : t('locked')
+      const progressLabel = item.progressTarget
+        ? t('progressLabel', {
+            current: item.progressCurrent,
+            target: item.progressTarget,
+          })
+        : ''
+
+      return (
+        <AchievementRow
+          badge={item.badge}
+          criteria={item.criteria}
+          id={item.$id}
+          isUnlocked={item.isUnlocked}
+          name={item.name}
+          onPress={openAchievement}
+          progressCurrent={item.progressCurrent}
+          progressLabel={progressLabel}
+          progressPercent={item.progressPercent}
+          progressTarget={item.progressTarget}
+          statusLabel={statusLabel}
+        />
+      )
+    },
+    [locale, openAchievement, t]
+  )
+
+  const keyExtractor = useCallback((item) => String(item.$id), [])
+
   return (
-    <ThemedView style={{ padding: 20 }} safe>
+    <ThemedView style={styles.screen} safe>
       <Text style={styles.title}>{t('title')}</Text>
+
+      {loading && !achievements.length ? (
+        <View style={styles.stateBlock}>
+          <ActivityIndicator size="small" color="#1F4D5C" />
+          <Text style={styles.stateText}>{t('loading')}</Text>
+        </View>
+      ) : null}
+
+      {error && !achievements.length ? (
+        <View style={styles.stateBlock}>
+          <Text style={styles.stateText}>{t('loadError')}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={achievements}
-        keyExtractor={(item) => String(item.$id)}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        renderItem={({ item }) => (
-          <Card style={styles.card} onPress={() => openImage(item)}>
-            <View style={styles.row}>
-              <Image
-                source={{ uri: item.badge }}
-                style={styles.badgeLeft}
-                resizeMode="cover"
-                onError={(e) => console.log('Error Image:', e.nativeEvent)}
-              />
-              <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={2}>
-                  {item.name}
-                </Text>
-                {achievementsById[item.$id]?.unlockedAt ? (
-                  <Text style={styles.date}>
-                    {t('unlockedAt', {
-                      date: formatDate(achievementsById[item.$id].unlockedAt, locale),
-                    })}
-                  </Text>
-                ) : (
-                  <Text style={styles.date}>{t('locked')}</Text>
-                )}
-              </View>
-            </View>
-          </Card>
-        )}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={styles.listContent}
+        renderItem={renderAchievement}
       />
 
-      <Modal visible={viewerVisible} transparent onRequestClose={() => setViewerVisible(false)}>
+      <Modal visible={viewerVisible} transparent onRequestClose={closeViewer}>
         <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.modalBackdrop} onPress={() => setViewerVisible(false)} />
-          <Image source={{ uri: viewerUri }} style={styles.modalImage} resizeMode="contain" />
+          <Pressable style={styles.modalBackdrop} onPress={closeViewer} />
+          <Image source={getBadgeSource(viewerUri)} style={styles.modalImage} resizeMode="contain" />
         </View>
       </Modal>
     </ThemedView>
@@ -93,6 +193,11 @@ const AchievementsScreen = () => {
 export default AchievementsScreen
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -100,20 +205,30 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
+  listContent: {
+    paddingBottom: 24,
+  },
   card: {
     marginBottom: 12,
     overflow: 'hidden',
   },
   row: {
+    minHeight: 112,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
+  },
+  rowPressed: {
+    opacity: 0.88,
   },
   badgeLeft: {
-    width: 96,
-    height: 96,
+    width: 104,
+    height: 112,
     borderTopLeftRadius: 4,
     borderBottomLeftRadius: 4,
     backgroundColor: '#eee',
+  },
+  badgeLocked: {
+    opacity: 0.45,
   },
   info: {
     flex: 1,
@@ -122,11 +237,53 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 4,
   },
-  date: {
-    opacity: 0.7,
+  status: {
+    color: '#6F6F6F',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  unlockedStatus: {
+    color: '#1B7D4A',
+  },
+  criteria: {
+    marginTop: 6,
+    color: '#555555',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  progressBlock: {
+    marginTop: 10,
+    gap: 5,
+  },
+  progressTrack: {
+    height: 7,
+    overflow: 'hidden',
+    borderRadius: 4,
+    backgroundColor: '#E6E6E6',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: '#C7373F',
+  },
+  progressText: {
+    color: '#6F6F6F',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  stateBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 24,
+  },
+  stateText: {
+    color: '#555555',
+    fontSize: 14,
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,

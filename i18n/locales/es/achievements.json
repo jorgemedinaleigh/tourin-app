@@ -1,5 +1,8 @@
 {
+  "loadError": "No se pudieron cargar los logros.",
+  "loading": "Cargando logros...",
   "locked": "Bloqueado",
+  "progressLabel": "{{current}}/{{target}} completado",
   "title": "Logros",
   "unlockedAt": "Desbloqueado el {{date}}"
 }

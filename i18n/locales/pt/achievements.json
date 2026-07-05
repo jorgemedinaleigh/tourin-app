@@ -1,5 +1,8 @@
 {
+  "loadError": "Não foi possível carregar as conquistas.",
+  "loading": "Carregando conquistas...",
   "locked": "Bloqueado",
+  "progressLabel": "{{current}}/{{target}} concluído",
   "title": "Conquistas",
   "unlockedAt": "Desbloqueado em {{date}}"
 }

@@ -1,3 +1,5 @@
 {
+  "achievementsUnlockedTitle_one": "Conquista desbloqueada",
+  "achievementsUnlockedTitle_other": "{{count}} conquistas desbloqueadas",
   "viewPassport": "Ver passaporte"
 }
