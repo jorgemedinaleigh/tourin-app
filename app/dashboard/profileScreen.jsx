@@ -155,13 +155,6 @@ const profileScreen = () => {
         <Text style={styles.summaryText}>{t('common:counts.sites', { count: stats?.sitesVisited ?? 0 })}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.summaryCard, styles.raised]} disabled activeOpacity={1}>
-        <View style={styles.summaryIcon}>
-          <Ionicons name="calendar" size={18} color="#6f6f6f" />
-        </View>
-        <Text style={styles.summaryText}>{t('common:counts.events', { count: stats?.eventsAttended ?? 0 })}</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity
         style={[styles.summaryCard, styles.raised]}
         onPress={() => router.push('dashboard/achievementsScreen')}
