@@ -197,7 +197,10 @@ export function useAchievements(userId) {
       nextSiteRows,
       nextRouteRows,
     ] = await Promise.all([
-      listAllRows('achievements', mapAchievementRow, { orderBy: 'id' }),
+      listAllRows('achievements', mapAchievementRow, {
+        orderBy: 'id',
+        publishedOnly: true,
+      }),
       userId
         ? listAllRows('user_achievements', mapUserAchievementRow, {
             ascending: false,
