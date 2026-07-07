@@ -8,7 +8,7 @@ const MIN_ZOOM = 14
 const METRO_ICON_ID = "metro-icon"
 // Set a local image when you choose a metro icon, e.g. require("../assets/metro-icon.png").
 const METRO_ICON_ASSET = require("../assets/letter-m.png")
-const METRO_ICON_SIZE = 0.8
+const METRO_ICON_SIZE = 1
 
 function MetroLayer({ onPointPress }) {
   const mountedRef = useRef(true)

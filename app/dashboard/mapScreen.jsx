@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { Pressable, StyleSheet, Alert, Text, Platform } from 'react-native'
-import { MapView, Camera, UserLocation, PointAnnotation, UserLocationRenderMode, Logger } from '@maplibre/maplibre-react-native'
+import { MapView, Camera, PointAnnotation, ShapeSource, CircleLayer, Logger } from '@maplibre/maplibre-react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { ActivityIndicator, IconButton, Modal, Portal } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
@@ -22,16 +22,31 @@ import {
 } from '../../lib/devLocation'
 
 const CAMERA_DEFAULT_SETTINGS = Object.freeze({ zoomLevel: 16 })
-const CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS = 1_500
-const CAMERA_USER_INTERACTION_GRACE_MS = 1_200
-const CAMERA_CENTER_EPSILON = 0.00001
-const CAMERA_ZOOM_EPSILON = 0.01
 const FOLLOW_USER_ZOOM_LEVEL = 16
-const USER_LOCATION_MIN_DISPLACEMENT_M = 0
+const USER_LOCATION_SOURCE_ID = 'user-location-source'
+const USER_LOCATION_PULSE_LAYER_ID = 'user-location-pulse'
+const USER_LOCATION_OUTER_LAYER_ID = 'user-location-outer'
+const USER_LOCATION_INNER_LAYER_ID = 'user-location-inner'
 const EXPO_LOCATION_OPTIONS = Object.freeze({
   accuracy: Location.Accuracy.High,
   timeInterval: 1_000,
   distanceInterval: 0,
+})
+const USER_LOCATION_PULSE_STYLE = Object.freeze({
+  circleRadius: 15,
+  circleColor: '#33B5E5',
+  circleOpacity: 0.2,
+  circlePitchAlignment: 'map',
+})
+const USER_LOCATION_OUTER_STYLE = Object.freeze({
+  circleRadius: 9,
+  circleColor: '#fff',
+  circlePitchAlignment: 'map',
+})
+const USER_LOCATION_INNER_STYLE = Object.freeze({
+  circleRadius: 6,
+  circleColor: '#33B5E5',
+  circlePitchAlignment: 'map',
 })
 const LAST_LOCATION_UNAVAILABLE_LOG = Object.freeze({
   tag: 'Mbgl-LocationComponent',
@@ -60,6 +75,37 @@ function isValidCoordinate(position) {
   return Number.isFinite(latitude) && Number.isFinite(longitude)
 }
 
+function UserLocationMarker({ coordinate }) {
+  const shape = useMemo(() => {
+    if (!Array.isArray(coordinate) || coordinate.length !== 2) return null
+
+    const [longitude, latitude] = coordinate
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+        },
+        properties: {},
+      }],
+    }
+  }, [coordinate])
+
+  if (!shape) return null
+
+  return (
+    <ShapeSource id={USER_LOCATION_SOURCE_ID} shape={shape}>
+      <CircleLayer id={USER_LOCATION_PULSE_LAYER_ID} style={USER_LOCATION_PULSE_STYLE} />
+      <CircleLayer id={USER_LOCATION_OUTER_LAYER_ID} style={USER_LOCATION_OUTER_STYLE} />
+      <CircleLayer id={USER_LOCATION_INNER_LAYER_ID} style={USER_LOCATION_INNER_STYLE} />
+    </ShapeSource>
+  )
+}
+
 function GeoDataStatus() {
   const { loading, error, refresh } = useGeoData()
   const { t } = useTranslation('map')
@@ -79,19 +125,49 @@ function GeoDataStatus() {
 const MapScreen = () => {
   const { t } = useTranslation('map')
   const insets = useSafeAreaInsets()
-  const devLocationOverrideCoordinate = getDevLocationOverrideCoordinate()
+  const devLocationOverrideCoordinate = useMemo(() => getDevLocationOverrideCoordinate(), [])
   const hasDevLocationOverride = isDevLocationOverrideEnabled && Array.isArray(devLocationOverrideCoordinate)
   const [coord, setCoord] = useState(devLocationOverrideCoordinate)
-  const [hasLocationPermission, setHasLocationPermission] = useState(hasDevLocationOverride || Platform.OS !== 'android')
+  const [initialCameraCoordinate, setInitialCameraCoordinate] = useState(devLocationOverrideCoordinate)
+  const [hasPreparedInitialCamera, setHasPreparedInitialCamera] = useState(hasDevLocationOverride)
+  const [usesInitialCameraDefault, setUsesInitialCameraDefault] = useState(true)
+  const [hasLocationPermission, setHasLocationPermission] = useState(hasDevLocationOverride)
   const [popup, setPopup] = useState(null)
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
   const cameraRef = useRef(null)
   const latestUserLocationRef = useRef(getDevLocationOverridePosition())
-  const programmaticCameraUntilRef = useRef(Date.now() + 3_000)
-  const lastUserInteractionAtRef = useRef(0)
-  const lastStableViewportRef = useRef(null)
-  const hasInitialCenteredRef = useRef(hasDevLocationOverride)
+  const clearCameraStopTimeoutRef = useRef(null)
+
+  const clearCameraStop = useCallback((delayMs = 0) => {
+    if (clearCameraStopTimeoutRef.current) {
+      clearTimeout(clearCameraStopTimeoutRef.current)
+      clearCameraStopTimeoutRef.current = null
+    }
+
+    const clearStop = () => {
+      clearCameraStopTimeoutRef.current = null
+      cameraRef.current?.setCamera({
+        animationDuration: 0,
+        animationMode: 'moveTo',
+      })
+    }
+
+    if (delayMs > 0) {
+      clearCameraStopTimeoutRef.current = setTimeout(clearStop, delayMs)
+      return
+    }
+
+    clearStop()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (clearCameraStopTimeoutRef.current) {
+        clearTimeout(clearCameraStopTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const showModal = () => setVisible(true)
   const hideModal = () => {
@@ -108,11 +184,6 @@ const MapScreen = () => {
     return nextCoord
   }
 
-  const setCameraSafely = (config, lockMs = CAMERA_PROGRAMMATIC_MOVE_WINDOW_MS) => {
-    programmaticCameraUntilRef.current = Date.now() + lockMs
-    cameraRef.current?.setCamera(config)
-  }
-
   const requestForegroundLocationPermission = async () => {
     if (hasDevLocationOverride) return true
 
@@ -122,89 +193,38 @@ const MapScreen = () => {
     return granted
   }
 
-  const saveViewport = (feature) => {
-    const center = feature?.geometry?.coordinates
-    if (!Array.isArray(center) || center.length !== 2) return
-
-    const zoom = feature?.properties?.zoomLevel
-    lastStableViewportRef.current = {
-      center: [center[0], center[1]],
-      zoom: Number.isFinite(zoom) ? zoom : null,
-    }
-  }
-
-  const stopProgrammaticCameraMove = (feature) => {
-    const center = feature?.geometry?.coordinates
-    if (!Array.isArray(center) || center.length !== 2) return
-
-    const zoom = feature?.properties?.zoomLevel
-    programmaticCameraUntilRef.current = 0
-    cameraRef.current?.setCamera({
-      centerCoordinate: [center[0], center[1]],
-      zoomLevel: Number.isFinite(zoom) ? zoom : undefined,
-      animationDuration: 0,
-    })
-  }
-
-  const handleRegionIsChanging = (feature) => {
-    if (feature?.properties?.isUserInteraction) {
-      const now = Date.now()
-      lastUserInteractionAtRef.current = now
-      if (now <= programmaticCameraUntilRef.current) stopProgrammaticCameraMove(feature)
-      saveViewport(feature)
-    }
-  }
-
-  const handleRegionDidChange = (feature) => {
-    const center = feature?.geometry?.coordinates
-    if (!Array.isArray(center) || center.length !== 2) return
-
-    const zoom = feature?.properties?.zoomLevel
-    const isUserInteraction = Boolean(feature?.properties?.isUserInteraction)
-    const now = Date.now()
-
-    if (isUserInteraction) {
-      lastUserInteractionAtRef.current = now
-      if (now <= programmaticCameraUntilRef.current) stopProgrammaticCameraMove(feature)
-    }
-
-    const withinProgrammaticWindow = now <= programmaticCameraUntilRef.current
-    const withinUserGrace = now - lastUserInteractionAtRef.current <= CAMERA_USER_INTERACTION_GRACE_MS
-
-    if (isUserInteraction || withinProgrammaticWindow || withinUserGrace || !lastStableViewportRef.current) {
-      saveViewport(feature)
-      return
-    }
-
-    const last = lastStableViewportRef.current
-    const movedCenter =
-      Math.abs(last.center[0] - center[0]) > CAMERA_CENTER_EPSILON ||
-      Math.abs(last.center[1] - center[1]) > CAMERA_CENTER_EPSILON
-    const movedZoom =
-      Number.isFinite(last.zoom) &&
-      Number.isFinite(zoom) &&
-      Math.abs(last.zoom - zoom) > CAMERA_ZOOM_EPSILON
-
-    if (!movedCenter && !movedZoom) return
-    // Evita recentrar automáticamente al mover la cámara desde el cliente.
-    // En vez de forzar un restore, actualizamos el viewport estable para
-    // respetar la interacción del usuario y evitar saltos inesperados.
-    saveViewport(feature)
-  }
-
   useEffect(() => {
     if (hasDevLocationOverride) return undefined
 
     let isActive = true
 
-    const requestPermission = async () => {
+    const prepareInitialCamera = async () => {
       const granted = await requestForegroundLocationPermission()
-      if (isActive) {
-        setHasLocationPermission(granted)
+      if (!isActive) return
+
+      if (!granted) {
+        setHasPreparedInitialCamera(true)
+        return
       }
+
+      const lastKnownPosition = await Location.getLastKnownPositionAsync().catch(() => null)
+      const initialPosition = lastKnownPosition || await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      }).catch(() => null)
+
+      if (!isActive) return
+
+      if (initialPosition && isValidCoordinate(initialPosition)) {
+        latestUserLocationRef.current = initialPosition
+        const initialCoord = toCoordinate(initialPosition)
+        setCoord(initialCoord)
+        setInitialCameraCoordinate(initialCoord)
+      }
+
+      setHasPreparedInitialCamera(true)
     }
 
-    requestPermission()
+    prepareInitialCamera()
 
     return () => {
       isActive = false
@@ -220,19 +240,7 @@ const MapScreen = () => {
 
     latestUserLocationRef.current = position
 
-    const userCoord = updateUserCoord(position)
-    if (!userCoord) return null
-
-    if (!hasInitialCenteredRef.current) {
-      hasInitialCenteredRef.current = true
-      setCameraSafely({
-        centerCoordinate: userCoord,
-        zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
-        animationDuration: 350,
-      }, 700)
-    }
-
-    return userCoord
+    return updateUserCoord(position)
   }
 
   useEffect(() => {
@@ -263,6 +271,16 @@ const MapScreen = () => {
       }
 
       subscription = nextSubscription
+
+      if (!lastKnownPosition) {
+        const currentPosition = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        }).catch(() => null)
+
+        if (isActive && currentPosition) {
+          handleUserLocationUpdate(currentPosition)
+        }
+      }
     }
 
     startLocationWatch()
@@ -293,11 +311,12 @@ const MapScreen = () => {
       return
     }
 
-    setCameraSafely({
+    cameraRef.current?.setCamera({
       centerCoordinate: currentCoord,
       zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
       animationDuration: 220,
-    }, 700)
+    })
+    clearCameraStop(350)
 
     posthog.capture('location_centered', {
       latitude: currentCoord[1],
@@ -309,6 +328,8 @@ const MapScreen = () => {
   }
 
   const handleSitePress = useCallback((feature) => {
+    clearCameraStop()
+
     const pointCoordinate = Array.isArray(feature.geometry?.coordinates)
       ? feature.geometry.coordinates
       : null
@@ -329,72 +350,76 @@ const MapScreen = () => {
     })
 
     showModal()
-  }, [])
+  }, [clearCameraStop])
 
   const handleMetroPress = useCallback((feature) => {
+    clearCameraStop()
+
     const props = feature.properties || {}
     const [lon, lat] = feature.geometry?.coordinates || []
 
     setMetroPopup({ props, lat, lon })
     setPopup(null)
-    setCameraSafely({
-      centerCoordinate: [lon, lat],
-      zoomLevel: FOLLOW_USER_ZOOM_LEVEL,
-      animationDuration: 600,
-    })
-
     posthog.capture('metro_info_viewed', {
       station_name: props.name,
       line: props.line,
     })
 
     showModal()
+  }, [clearCameraStop])
+
+  const handleMapLoaded = useCallback(() => {
+    setUsesInitialCameraDefault(false)
   }, [])
 
   const shouldRenderUserLocation = !hasDevLocationOverride && (Platform.OS !== 'android' || hasLocationPermission)
-  const cameraDefaultSettings = hasDevLocationOverride
-    ? { ...CAMERA_DEFAULT_SETTINGS, centerCoordinate: devLocationOverrideCoordinate }
-    : CAMERA_DEFAULT_SETTINGS
+  const cameraDefaultSettings = useMemo(() => {
+    if (!usesInitialCameraDefault) return CAMERA_DEFAULT_SETTINGS
+
+    const centerCoordinate = hasDevLocationOverride
+      ? devLocationOverrideCoordinate
+      : initialCameraCoordinate
+
+    if (!Array.isArray(centerCoordinate) || centerCoordinate.length !== 2) return CAMERA_DEFAULT_SETTINGS
+
+    return { ...CAMERA_DEFAULT_SETTINGS, centerCoordinate }
+  }, [devLocationOverrideCoordinate, hasDevLocationOverride, initialCameraCoordinate, usesInitialCameraDefault])
 
   return (
     <GeoDataProvider>
       <ThemedView style={{ flex: 1 }} >
-        <MapView
-          style={ StyleSheet.absoluteFillObject }
-          mapStyle={mapStyle}
-          compassEnabled={true}
-          logoEnabled={false}
-          attributionEnabled={false}
-          compassViewPosition={5}
-          compassViewMargins={{ x: 15, y: insets.bottom + 40 }}
-          onRegionIsChanging={handleRegionIsChanging}
-          onRegionDidChange={handleRegionDidChange}
-          regionDidChangeDebounceTime={120}
-        >
-          <Camera
-            ref={cameraRef}
-            defaultSettings={cameraDefaultSettings}
-            followUserLocation={false}
-          />
-          <StampRadiusLayer userCoordinate={coord} />
-          <PointsLayer onPointPress={handleSitePress} />
-          <MetroLayer onPointPress={handleMetroPress} />
-          {hasDevLocationOverride ? (
-            <PointAnnotation id="dev-location-override" coordinate={devLocationOverrideCoordinate}>
-              <Ionicons name="radio-button-on" size={26} color="#2563eb" />
-            </PointAnnotation>
-          ) : null}
-          {shouldRenderUserLocation ? (
-            <UserLocation
-              renderMode={UserLocationRenderMode.Native}
-              androidRenderMode="compass"
-              androidPreferredFramesPerSecond={60}
-              showsUserHeadingIndicator={true}
-              minDisplacement={USER_LOCATION_MIN_DISPLACEMENT_M}
-              onUpdate={handleUserLocationUpdate}
+        {hasPreparedInitialCamera ? (
+          <MapView
+            style={ StyleSheet.absoluteFillObject }
+            mapStyle={mapStyle}
+            compassEnabled={true}
+            logoEnabled={false}
+            attributionEnabled={false}
+            compassViewPosition={5}
+            compassViewMargins={{ x: 15, y: insets.bottom + 40 }}
+            onDidFinishLoadingMap={handleMapLoaded}
+          >
+            <Camera
+              key={usesInitialCameraDefault ? 'initial-camera' : 'stable-camera'}
+              ref={cameraRef}
+              defaultSettings={cameraDefaultSettings}
+              followUserLocation={false}
             />
-          ) : null}
-        </MapView>
+            <StampRadiusLayer userCoordinate={coord} />
+            <PointsLayer onPointPress={handleSitePress} />
+            <MetroLayer onPointPress={handleMetroPress} />
+            {hasDevLocationOverride ? (
+              <PointAnnotation id="dev-location-override" coordinate={devLocationOverrideCoordinate}>
+                <Ionicons name="radio-button-on" size={26} color="#2563eb" />
+              </PointAnnotation>
+            ) : null}
+            {shouldRenderUserLocation ? (
+              <UserLocationMarker coordinate={coord} />
+            ) : null}
+          </MapView>
+        ) : (
+          <ActivityIndicator animating={true} size={'large'} style={styles.mapLoading} />
+        )}
 
         <IconButton
           mode="contained-tonal"
@@ -432,6 +457,11 @@ const MapScreen = () => {
 export default MapScreen
 
 const styles = StyleSheet.create({
+  mapLoading: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+  },
   buttonFollow: {
     position: "absolute",
     right: 10,
