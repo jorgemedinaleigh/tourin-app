@@ -161,7 +161,12 @@ function StampImpactOverlay({
         </Animated.View>
       </View>
       {canDismiss && achievements.length ? (
-        <View style={[styles.unlockPanel, { backgroundColor: paperColor }]}>
+        <View
+          style={[
+            styles.unlockPanel,
+            { backgroundColor: paperColor, height: height / 3 },
+          ]}
+        >
           <Text style={[styles.unlockTitle, { color: accentColor }]}>
             {t('stampOverlay:achievementsUnlockedTitle', { count: achievements.length })}
           </Text>
@@ -250,14 +255,15 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxWidth: 430,
     borderRadius: 16,
-    paddingVertical: 12,
+    paddingVertical: 18,
     paddingHorizontal: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.12)',
   },
   unlockTitle: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
   },
@@ -269,29 +275,29 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   unlockBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#EFE5CF',
   },
   hiddenBadgeCount: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
   hiddenBadgeText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '800',
   },
   unlockNames: {
     marginTop: 8,
     color: '#2B241B',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 16,
+    lineHeight: 22,
     textAlign: 'center',
   },
   closeBtn: {

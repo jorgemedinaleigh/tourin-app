@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { ActivityIndicator, FlatList, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { Card } from 'react-native-paper'
+import { Card, useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import { useI18n } from '../../contexts/I18nContext'
@@ -16,6 +16,7 @@ const getBadgeSource = (badge) => (badge ? { uri: badge, cache: 'force-cache' } 
 
 const AchievementRow = memo(function AchievementRow({
   badge,
+  cardStyle,
   criteria,
   id,
   isUnlocked,
@@ -28,14 +29,16 @@ const AchievementRow = memo(function AchievementRow({
   statusLabel,
 }) {
   const handlePress = useCallback(() => {
-    onPress(id)
-  }, [id, onPress])
+    if (isUnlocked) onPress(id)
+  }, [id, isUnlocked, onPress])
   const showProgress = !isUnlocked && Number.isFinite(progressTarget) && progressTarget > 0
 
   return (
-    <Card style={styles.card}>
+    <Card mode="contained" style={[styles.card, cardStyle]}>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: !isUnlocked }}
+        disabled={!isUnlocked}
         onPress={handlePress}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       >
@@ -83,6 +86,11 @@ const AchievementsScreen = () => {
   const { achievements, fetchAchievements, loading, error } = useAchievements(user?.$id)
   const { locale } = useI18n()
   const { t } = useTranslation('achievements')
+  const theme = useTheme()
+  const cardStyle = useMemo(() => ({
+    backgroundColor: theme.colors.surface || '#FFFFFF',
+    borderColor: theme.colors.outlineVariant || '#D8D1C5',
+  }), [theme.colors.outlineVariant, theme.colors.surface])
 
   const [viewerVisible, setViewerVisible] = useState(false)
   const [viewerUri, setViewerUri] = useState(null)
@@ -104,7 +112,7 @@ const AchievementsScreen = () => {
   const openAchievement = useCallback(
     (achievementId) => {
       const item = achievementsById[achievementId]
-      if (!item) return
+      if (!item?.isUnlocked) return
 
       setViewerUri(item.badge)
       setViewerVisible(true)
@@ -138,6 +146,7 @@ const AchievementsScreen = () => {
       return (
         <AchievementRow
           badge={item.badge}
+          cardStyle={cardStyle}
           criteria={item.criteria}
           id={item.$id}
           isUnlocked={item.isUnlocked}
@@ -151,32 +160,35 @@ const AchievementsScreen = () => {
         />
       )
     },
-    [locale, openAchievement, t]
+    [cardStyle, locale, openAchievement, t]
   )
 
   const keyExtractor = useCallback((item) => String(item.$id), [])
 
   return (
-    <ThemedView style={styles.screen} safe>
-      <Text style={styles.title}>{t('title')}</Text>
-
-      {loading && !achievements.length ? (
-        <View style={styles.stateBlock}>
-          <ActivityIndicator size="small" color="#1F4D5C" />
-          <Text style={styles.stateText}>{t('loading')}</Text>
-        </View>
-      ) : null}
-
-      {error && !achievements.length ? (
-        <View style={styles.stateBlock}>
-          <Text style={styles.stateText}>{t('loadError')}</Text>
-        </View>
-      ) : null}
-
+    <ThemedView style={styles.screen}>
       <FlatList
         data={achievements}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={(
+          <>
+            <Text style={styles.title}>{t('title')}</Text>
+
+            {loading && !achievements.length ? (
+              <View style={styles.stateBlock}>
+                <ActivityIndicator size="small" color="#1F4D5C" />
+                <Text style={styles.stateText}>{t('loading')}</Text>
+              </View>
+            ) : null}
+
+            {error && !achievements.length ? (
+              <View style={styles.stateBlock}>
+                <Text style={styles.stateText}>{t('loadError')}</Text>
+              </View>
+            ) : null}
+          </>
+        )}
         renderItem={renderAchievement}
       />
 
@@ -195,22 +207,22 @@ export default AchievementsScreen
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 10,
     marginBottom: 10,
     textAlign: 'center',
   },
   listContent: {
-    paddingBottom: 24,
+    padding: 20,
+    paddingBottom: 28,
   },
   card: {
     marginBottom: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderRadius: 22,
   },
   row: {
     minHeight: 112,
@@ -222,12 +234,13 @@ const styles = StyleSheet.create({
   },
   badgeLeft: {
     width: 104,
-    height: 112,
+    alignSelf: 'stretch',
     borderTopLeftRadius: 4,
     borderBottomLeftRadius: 4,
     backgroundColor: '#eee',
   },
   badgeLocked: {
+    filter: [{ grayscale: 1 }],
     opacity: 0.45,
   },
   info: {
