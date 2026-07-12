@@ -19,6 +19,7 @@ const DashboardLayout = () => {
     <UserOnly>
       <LegalConsentGate>
         <Tabs
+          backBehavior="history"
           screenOptions={{
             headerShown: false,
             sceneStyle: {

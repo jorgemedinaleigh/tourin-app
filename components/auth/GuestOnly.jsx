@@ -9,7 +9,7 @@ const GuestOnly = ({ children }) => {
 
   useEffect(() => {
     if (authChecked && user !== null) {
-      router.replace('/dashboard/mapScreen')
+      router.replace(user.hasSeenWelcome ? '/dashboard/mapScreen' : '/')
     }
   }, [user, authChecked, router])
 

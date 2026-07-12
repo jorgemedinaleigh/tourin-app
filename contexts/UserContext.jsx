@@ -21,6 +21,7 @@ const PROFILE_COLUMNS = [
   'locale',
   'avatar_path',
   'country_code',
+  'welcome_seen_at',
   ...LEGAL_CONSENT_PROFILE_FIELDS,
   'created_at',
   'updated_at',
@@ -86,6 +87,7 @@ function normalizeUser(authUser, profile, privateDetails) {
     name: profile?.display_name || getMetadataName(authUser),
     countryCode: profile?.country_code || null,
     dateOfBirth: privateDetails?.date_of_birth || null,
+    hasSeenWelcome: !!profile?.welcome_seen_at,
     privateDetails: privateDetails || null,
     legalConsent,
     prefs,
@@ -371,6 +373,26 @@ export function UserProvider({ children }){
     }
   }
 
+  async function markWelcomeSeen() {
+    if (!user) return null
+    if (user.hasSeenWelcome) return user
+
+    const welcomeSeenAt = new Date().toISOString()
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .update({ welcome_seen_at: welcomeSeenAt })
+      .eq('id', user.$id)
+      .select(PROFILE_COLUMNS)
+      .single()
+
+    if (error) throw error
+
+    const authUser = user.rawAuthUser || { id: user.$id, email: user.email }
+    const response = normalizeUser(authUser, profile, user.privateDetails)
+    setUser(response)
+    return response
+  }
+
   async function updateProfileDetails(details = {}) {
     if (!user) return null
 
@@ -516,7 +538,7 @@ export function UserProvider({ children }){
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs, updateProfileDetails, acceptLegalDocuments }} >
+    <UserContext.Provider value={{ user, login, register, logout, authChecked, updatePrefs, updateProfileDetails, acceptLegalDocuments, markWelcomeSeen }} >
       {children}
     </UserContext.Provider>
   )
