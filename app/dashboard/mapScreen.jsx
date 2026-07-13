@@ -15,6 +15,8 @@ import InfoCard from '../../components/InfoCard'
 import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
 import { posthog } from '../../lib/posthog'
+import { useUser } from '../../hooks/useUser'
+import { useSiteVisits } from '../../hooks/useSiteVisits'
 import {
   getDevLocationOverrideCoordinate,
   getDevLocationOverridePosition,
@@ -124,6 +126,8 @@ function GeoDataStatus() {
 
 const MapScreen = () => {
   const { t } = useTranslation('map')
+  const { user } = useUser()
+  const { visits, fetchVisits } = useSiteVisits(user?.$id)
   const insets = useSafeAreaInsets()
   const devLocationOverrideCoordinate = useMemo(() => getDevLocationOverrideCoordinate(), [])
   const hasDevLocationOverride = isDevLocationOverrideEnabled && Array.isArray(devLocationOverrideCoordinate)
@@ -168,6 +172,19 @@ const MapScreen = () => {
       }
     }
   }, [])
+
+  useEffect(() => {
+    fetchVisits(user?.$id)
+  }, [user?.$id])
+
+  const visitedSiteIds = useMemo(
+    () => new Set((visits ?? []).map((visit) => visit.siteId).filter(Boolean).map(String)),
+    [visits]
+  )
+
+  const handleVisitStamped = useCallback(() => {
+    fetchVisits(user?.$id)
+  }, [user?.$id])
 
   const showModal = () => setVisible(true)
   const hideModal = () => {
@@ -405,8 +422,14 @@ const MapScreen = () => {
               defaultSettings={cameraDefaultSettings}
               followUserLocation={false}
             />
-            <StampRadiusLayer userCoordinate={coord} />
-            <PointsLayer onPointPress={handleSitePress} />
+            <StampRadiusLayer
+              userCoordinate={coord}
+              visitedSiteIds={visitedSiteIds}
+            />
+            <PointsLayer
+              onPointPress={handleSitePress}
+              visitedSiteIds={visitedSiteIds}
+            />
             <MetroLayer onPointPress={handleMetroPress} />
             {hasDevLocationOverride ? (
               <PointAnnotation id="dev-location-override" coordinate={devLocationOverrideCoordinate}>
@@ -440,6 +463,7 @@ const MapScreen = () => {
               <InfoCard
                 info={popup.props}
                 onClose={hideModal}
+                onVisitStamped={handleVisitStamped}
                 userCoordinate={coord}
                 hasLocationPermission={hasLocationPermission}
               />

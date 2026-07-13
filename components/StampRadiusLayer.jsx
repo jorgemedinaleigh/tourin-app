@@ -36,7 +36,7 @@ const getSiteKey = (feature, index, siteLat, siteLon) => {
   return `${siteLat}:${siteLon}:${index}`
 }
 
-function StampRadiusLayer({ userCoordinate }) {
+function StampRadiusLayer({ userCoordinate, visitedSiteIds }) {
   const { geoData } = useGeoData()
   const [animatedRadii, setAnimatedRadii] = useState({})
   const previousEligibleSiteIdsRef = useRef(new Set())
@@ -71,6 +71,9 @@ function StampRadiusLayer({ userCoordinate }) {
         return null
       }
 
+      const siteId = getSiteKey(feature, index, siteLat, siteLon)
+      if (visitedSiteIds?.has(siteId)) return null
+
       const effectiveRadius = getEffectiveStampRadius(radius)
       if (!Number.isFinite(effectiveRadius)) return null
 
@@ -78,7 +81,7 @@ function StampRadiusLayer({ userCoordinate }) {
       if (!Number.isFinite(distance) || distance > effectiveRadius) return null
 
       return {
-        siteId: getSiteKey(feature, index, siteLat, siteLon),
+        siteId,
         siteLat,
         siteLon,
         stampRadius: radius,
@@ -86,7 +89,7 @@ function StampRadiusLayer({ userCoordinate }) {
         distanceMeters: Math.round(distance),
       }
     }).filter(Boolean)
-  }, [geoData, userCoordinate])
+  }, [geoData, userCoordinate, visitedSiteIds])
 
   useEffect(() => {
     return () => {

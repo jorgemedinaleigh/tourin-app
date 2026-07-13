@@ -3,7 +3,10 @@ import { Ionicons } from "@expo/vector-icons"
 import { PointAnnotation } from "@maplibre/maplibre-react-native"
 import { useGeoData } from "../contexts/GeoDataContext"
 
-function PointsLayer({ onPointPress }) {
+const DEFAULT_PIN_COLOR = '#e03939ff'
+const VISITED_PIN_COLOR = 'rgb(0, 0, 0)'
+
+function PointsLayer({ onPointPress, visitedSiteIds }) {
   const { geoData } = useGeoData()
 
   const handlePress = useCallback((feature) => {
@@ -21,6 +24,7 @@ function PointsLayer({ onPointPress }) {
         if (!coordinates?.length) return null
         const baseId = feature.properties?.id ?? feature.id ?? `point-${index}`
         const markerId = `heritage-${baseId}`
+        const isVisited = visitedSiteIds?.has(String(baseId))
 
         return (
           <PointAnnotation
@@ -29,7 +33,11 @@ function PointsLayer({ onPointPress }) {
             coordinate={coordinates}
             onSelected={() => handlePress(feature)}
           >
-            <Ionicons name="location-sharp" size={30} color="#e03939ff" />
+            <Ionicons
+              name="location-sharp"
+              size={30}
+              color={isVisited ? VISITED_PIN_COLOR : DEFAULT_PIN_COLOR}
+            />
           </PointAnnotation>
         )
       })}

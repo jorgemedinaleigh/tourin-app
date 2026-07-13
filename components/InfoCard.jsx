@@ -52,7 +52,7 @@ const findUri = (candidates) => {
   return null
 }
 
-function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false }) {
+function InfoCard({ info, onClose, onVisitStamped, userCoordinate, hasLocationPermission = false }) {
   const theme = useTheme()
   const { height } = useWindowDimensions()
   const { t, i18n } = useTranslation(['common', 'infoCard'])
@@ -229,6 +229,7 @@ function InfoCard({ info, onClose, userCoordinate, hasLocationPermission = false
       await Promise.all([getStats(), fetchVisits(user.$id)])
       setUnlockedAchievements(newlyUnlockedAchievements)
       setIsVisited(true)
+      onVisitStamped?.(info.id)
       if (stampUri) {
         Image.prefetch(stampUri).catch(() => {})
       }
