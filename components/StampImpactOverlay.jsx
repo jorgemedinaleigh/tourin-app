@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Animated,
   Easing,
@@ -31,7 +31,9 @@ function StampImpactOverlay({
   onImpact,
 }) {
   const { t } = useTranslation(['common', 'stampOverlay'])
-  const { height } = useWindowDimensions()
+  const { height, width } = useWindowDimensions()
+  const achievementCount = Array.isArray(unlockedAchievements) ? unlockedAchievements.length : 0
+  const [showUnlockNotification, setShowUnlockNotification] = useState(false)
 
   const dropY = useRef(new Animated.Value(-height * 0.85)).current
   const scale = useRef(new Animated.Value(0.9)).current
@@ -47,6 +49,20 @@ function StampImpactOverlay({
   useEffect(() => {
     impactCbRef.current = onImpact
   }, [onImpact])
+
+  useEffect(() => {
+    if (!visible || !canDismiss || !achievementCount) {
+      setShowUnlockNotification(false)
+      return
+    }
+
+    setShowUnlockNotification(true)
+    const notificationTimeout = setTimeout(() => {
+      setShowUnlockNotification(false)
+    }, 3000)
+
+    return () => clearTimeout(notificationTimeout)
+  }, [visible, canDismiss, achievementCount])
 
   useEffect(() => {
     if (!visible) return
@@ -128,6 +144,20 @@ function StampImpactOverlay({
   const achievementNames = achievements.map((achievement) => achievement.name).filter(Boolean).join(', ')
   const visibleAchievementBadges = achievements.slice(0, 3)
   const hiddenAchievementCount = Math.max(0, achievements.length - visibleAchievementBadges.length)
+  const badgeSlotCount = visibleAchievementBadges.length + (hiddenAchievementCount > 0 ? 1 : 0)
+  const availableBadgeWidth = Math.min(width - 72, 402)
+  const badgeGapWidth = Math.max(0, badgeSlotCount - 1) * 8
+  const preferredBadgeSize = badgeSlotCount === 1 ? 108 : 92
+  const badgeSize = Math.min(
+    preferredBadgeSize,
+    (availableBadgeWidth - badgeGapWidth) / Math.max(1, badgeSlotCount),
+    Math.max(64, height / 3 - 120)
+  )
+  const badgeStyle = {
+    width: badgeSize,
+    height: badgeSize,
+    borderRadius: badgeSize / 2,
+  }
 
   return (
     <Animated.View
@@ -160,7 +190,7 @@ function StampImpactOverlay({
           />
         </Animated.View>
       </View>
-      {canDismiss && achievements.length ? (
+      {canDismiss && achievements.length && showUnlockNotification ? (
         <View
           style={[
             styles.unlockPanel,
@@ -175,12 +205,12 @@ function StampImpactOverlay({
               <Image
                 key={achievement.$id}
                 source={achievement.badge ? { uri: achievement.badge } : require('../assets/icon.png')}
-                style={styles.unlockBadge}
-                resizeMode="cover"
+                style={[styles.unlockBadge, badgeStyle]}
+                resizeMode="contain"
               />
             ))}
             {hiddenAchievementCount > 0 ? (
-              <View style={[styles.hiddenBadgeCount, { borderColor: accentColor }]}>
+              <View style={[styles.hiddenBadgeCount, badgeStyle, { borderColor: accentColor }]}>
                 <Text style={[styles.hiddenBadgeText, { color: accentColor }]}>
                   +{hiddenAchievementCount}
                 </Text>
@@ -275,15 +305,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   unlockBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
     backgroundColor: '#EFE5CF',
   },
   hiddenBadgeCount: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
