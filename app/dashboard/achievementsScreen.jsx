@@ -1,5 +1,5 @@
-import { memo, useCallback, useMemo, useState } from 'react'
-import { useFocusEffect } from 'expo-router'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, FlatList, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Card, useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
@@ -87,6 +87,9 @@ const AchievementsScreen = () => {
   const { locale } = useI18n()
   const { t } = useTranslation('achievements')
   const theme = useTheme()
+  const router = useRouter()
+  const { achievementId } = useLocalSearchParams()
+  const autoOpenedAchievementRef = useRef(null)
   const cardStyle = useMemo(() => ({
     backgroundColor: theme.colors.surface || '#FFFFFF',
     borderColor: theme.colors.outlineVariant || '#D8D1C5',
@@ -130,6 +133,23 @@ const AchievementsScreen = () => {
     setViewerVisible(false)
     setViewerUri(null)
   }, [])
+
+  useEffect(() => {
+    const targetAchievementId = Array.isArray(achievementId) ? achievementId[0] : achievementId
+
+    if (!targetAchievementId) {
+      autoOpenedAchievementRef.current = null
+      return
+    }
+    if (autoOpenedAchievementRef.current === targetAchievementId) return
+
+    const achievement = achievementsById[targetAchievementId]
+    if (!achievement?.isUnlocked) return
+
+    autoOpenedAchievementRef.current = targetAchievementId
+    openAchievement(targetAchievementId)
+    router.setParams({ achievementId: '' })
+  }, [achievementId, achievementsById, openAchievement, router])
 
   const renderAchievement = useCallback(
     ({ item }) => {

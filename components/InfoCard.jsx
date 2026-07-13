@@ -2,6 +2,7 @@ import { Alert, Text, View, StyleSheet, useWindowDimensions, Image, ScrollView, 
 import { Button, Card, Chip, IconButton, Portal, useTheme } from 'react-native-paper'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import * as Haptics from 'expo-haptics'
 import { useUser } from '../hooks/useUser'
 import { useSiteVisits } from '../hooks/useSiteVisits'
 import { useAchievements } from '../hooks/useAchievements'
@@ -50,6 +51,23 @@ const findUri = (candidates) => {
     if (uri) return uri
   }
   return null
+}
+
+const prefetchImagesWithTimeout = async (uris, timeoutMs = 700) => {
+  const uniqueUris = [...new Set(uris.filter(Boolean))]
+  if (!uniqueUris.length) return
+
+  let timeoutId
+  try {
+    await Promise.race([
+      Promise.allSettled(uniqueUris.map((uri) => Image.prefetch(uri))),
+      new Promise((resolve) => {
+        timeoutId = setTimeout(resolve, timeoutMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 function InfoCard({ info, onClose, onVisitStamped, userCoordinate, hasLocationPermission = false }) {
@@ -227,12 +245,13 @@ function InfoCard({ info, onClose, onVisitStamped, userCoordinate, hasLocationPe
       await siteVisited()
       const newlyUnlockedAchievements = await evaluateAndUnlockAchievements({ sourceSiteId: info.id })
       await Promise.all([getStats(), fetchVisits(user.$id)])
+      await prefetchImagesWithTimeout([
+        stampUri,
+        ...newlyUnlockedAchievements.map((achievement) => achievement.badge),
+      ])
       setUnlockedAchievements(newlyUnlockedAchievements)
       setIsVisited(true)
       onVisitStamped?.(info.id)
-      if (stampUri) {
-        Image.prefetch(stampUri).catch(() => {})
-      }
       setShowStampOverlay(true)
 
       // Track successful site stamp - key conversion event
@@ -291,6 +310,22 @@ function InfoCard({ info, onClose, onVisitStamped, userCoordinate, hasLocationPe
   const handleOverlayCloseHere = () => {
     setShowStampOverlay(false)
     setUnlockedAchievements([])
+  }
+
+  const handleStampImpact = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {})
+  }
+
+  const handleAchievementPress = (achievement) => {
+    if (!achievement?.$id) return
+
+    setShowStampOverlay(false)
+    setUnlockedAchievements([])
+    onClose?.()
+    router.push({
+      pathname: '/dashboard/achievementsScreen',
+      params: { achievementId: String(achievement.$id) },
+    })
   }
 
   const handleWebsitePress = async () => {
@@ -479,6 +514,8 @@ function InfoCard({ info, onClose, onVisitStamped, userCoordinate, hasLocationPe
           onDismiss={handleOverlayDismiss}
           onSecondaryDismiss={handleOverlayCloseHere}
           onFinish={handleOverlayFinish}
+          onImpact={handleStampImpact}
+          onAchievementPress={handleAchievementPress}
           stampUri={stampUri}
           unlockedAchievements={unlockedAchievements}
         />

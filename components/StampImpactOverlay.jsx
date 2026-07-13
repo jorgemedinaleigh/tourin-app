@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Image,
@@ -10,14 +11,17 @@ import {
   Text,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import AchievementUnlockCelebration from './AchievementUnlockCelebration'
 
 const TOTAL_MS = 1200
+const REDUCED_TOTAL_MS = 500
 const DROP_MS = 520
 const HIT_MS = 220
-const RING_MS = 200
-const FADE_MS = 260
+const RING_MS = 420
+const SETTLE_MS = 200
+const EXIT_MS = 260
 
-// Overlay de animacion de sello cayendo. Usa Animated nativo y dura exactamente 1200ms.
+// Overlay de animacion de sello cayendo, seguido de la celebracion de logros desbloqueados.
 function StampImpactOverlay({
   visible,
   stampUri,
@@ -29,16 +33,27 @@ function StampImpactOverlay({
   onSecondaryDismiss,
   onFinish,
   onImpact,
+  onAchievementPress,
 }) {
   const { t } = useTranslation(['common', 'stampOverlay'])
-  const { height, width } = useWindowDimensions()
-  const achievementCount = Array.isArray(unlockedAchievements) ? unlockedAchievements.length : 0
-  const [showUnlockNotification, setShowUnlockNotification] = useState(false)
+  const { height } = useWindowDimensions()
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [celebrationComplete, setCelebrationComplete] = useState(false)
+
+  const achievements = Array.isArray(unlockedAchievements)
+    ? unlockedAchievements.filter((achievement) => achievement?.$id)
+    : []
+  const achievementKey = achievements.map((achievement) => achievement.$id).join('|')
+  const hasAchievements = achievements.length > 0
+  const finalAchievement = achievements[achievements.length - 1] || null
+  const interactionsEnabled = canDismiss && (!hasAchievements || celebrationComplete)
 
   const dropY = useRef(new Animated.Value(-height * 0.85)).current
   const scale = useRef(new Animated.Value(0.9)).current
   const rotate = useRef(new Animated.Value(-10)).current
   const wobble = useRef(new Animated.Value(0)).current
+  const stampOpacity = useRef(new Animated.Value(1)).current
+  const impactPulse = useRef(new Animated.Value(0)).current
   const finishCbRef = useRef(onFinish)
   const impactCbRef = useRef(onImpact)
 
@@ -51,81 +66,174 @@ function StampImpactOverlay({
   }, [onImpact])
 
   useEffect(() => {
-    if (!visible || !canDismiss || !achievementCount) {
-      setShowUnlockNotification(false)
-      return
+    let active = true
+
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (active) setReducedMotion(enabled)
+      })
+      .catch(() => {})
+
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      setReducedMotion
+    )
+
+    return () => {
+      active = false
+      subscription.remove()
     }
+  }, [])
 
-    setShowUnlockNotification(true)
-    const notificationTimeout = setTimeout(() => {
-      setShowUnlockNotification(false)
-    }, 3000)
-
-    return () => clearTimeout(notificationTimeout)
-  }, [visible, canDismiss, achievementCount])
+  useEffect(() => {
+    setCelebrationComplete(false)
+  }, [achievementKey, visible])
 
   useEffect(() => {
     if (!visible) return
 
-    dropY.setValue(-height * 0.85)
-    scale.setValue(0.9)
-    rotate.setValue(-10)
+    const impactMs = reducedMotion ? 180 : DROP_MS
+    const totalMs = reducedMotion ? REDUCED_TOTAL_MS : TOTAL_MS
+
+    dropY.setValue(reducedMotion ? 0 : -height * 0.85)
+    scale.setValue(reducedMotion ? 0.96 : 0.9)
+    rotate.setValue(reducedMotion ? 0 : -10)
     wobble.setValue(0)
+    stampOpacity.setValue(reducedMotion ? 0 : 1)
+    impactPulse.setValue(0)
 
-    const sequence = Animated.sequence([
-      Animated.timing(dropY, {
-        toValue: 0,
-        duration: DROP_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.parallel([
-        Animated.timing(scale, {
-          toValue: 1.08,
-          duration: HIT_MS,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotate, {
-          toValue: 0,
-          duration: HIT_MS,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.sequence([
-          Animated.timing(wobble, {
+    const sequence = reducedMotion
+      ? Animated.sequence([
+          Animated.parallel([
+            Animated.timing(stampOpacity, {
+              toValue: 1,
+              duration: 220,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(scale, {
+              toValue: 1,
+              duration: 220,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.delay(100),
+          hasAchievements
+            ? Animated.parallel([
+                Animated.timing(stampOpacity, {
+                  toValue: 0.14,
+                  duration: 180,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(scale, {
+                  toValue: 0.72,
+                  duration: 180,
+                  useNativeDriver: true,
+                }),
+              ])
+            : Animated.delay(180),
+        ])
+      : Animated.sequence([
+          Animated.timing(dropY, {
+            toValue: 0,
+            duration: DROP_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.parallel([
+            Animated.timing(scale, {
+              toValue: 1.08,
+              duration: HIT_MS,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(rotate, {
+              toValue: 0,
+              duration: HIT_MS,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(wobble, {
+                toValue: 1,
+                duration: HIT_MS / 2,
+                easing: Easing.linear,
+                useNativeDriver: true,
+              }),
+              Animated.timing(wobble, {
+                toValue: -1,
+                duration: HIT_MS / 2,
+                easing: Easing.linear,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+          Animated.timing(scale, {
             toValue: 1,
-            duration: HIT_MS / 2,
-            easing: Easing.linear,
+            duration: SETTLE_MS,
+            easing: Easing.out(Easing.quad),
             useNativeDriver: true,
           }),
-          Animated.timing(wobble, {
-            toValue: -1,
-            duration: HIT_MS / 2,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: RING_MS,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.delay(FADE_MS),
-    ])
+          hasAchievements
+            ? Animated.parallel([
+                Animated.timing(dropY, {
+                  toValue: -height * 0.22,
+                  duration: EXIT_MS,
+                  easing: Easing.inOut(Easing.quad),
+                  useNativeDriver: true,
+                }),
+                Animated.timing(scale, {
+                  toValue: 0.58,
+                  duration: EXIT_MS,
+                  easing: Easing.inOut(Easing.quad),
+                  useNativeDriver: true,
+                }),
+                Animated.timing(stampOpacity, {
+                  toValue: 0.14,
+                  duration: EXIT_MS,
+                  useNativeDriver: true,
+                }),
+              ])
+            : Animated.delay(EXIT_MS),
+        ])
 
-    const impactTimeout = setTimeout(() => impactCbRef.current?.(), DROP_MS)
-    const finishTimeout = setTimeout(() => finishCbRef.current?.(), TOTAL_MS)
+    const impactAnimation = Animated.timing(impactPulse, {
+      toValue: 1,
+      duration: RING_MS,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    })
+    const impactTimeout = setTimeout(() => {
+      if (!reducedMotion) impactAnimation.start()
+      impactCbRef.current?.()
+    }, impactMs)
+    const finishTimeout = setTimeout(() => finishCbRef.current?.(), totalMs)
+
     sequence.start()
 
     return () => {
       clearTimeout(impactTimeout)
       clearTimeout(finishTimeout)
       sequence.stop()
+      impactAnimation.stop()
     }
-  }, [visible, height, dropY, scale, rotate, wobble])
+  }, [
+    visible,
+    height,
+    hasAchievements,
+    reducedMotion,
+    dropY,
+    impactPulse,
+    rotate,
+    scale,
+    stampOpacity,
+    wobble,
+  ])
+
+  const handleCelebrationComplete = useCallback(() => {
+    setCelebrationComplete(true)
+  }, [])
 
   if (!visible) return null
 
@@ -133,31 +241,26 @@ function StampImpactOverlay({
     inputRange: [-1, 1],
     outputRange: [-4, 4],
   })
-
   const rotation = rotate.interpolate({
     inputRange: [-12, 12],
     outputRange: ['-12deg', '12deg'],
   })
-  const achievements = Array.isArray(unlockedAchievements)
-    ? unlockedAchievements.filter((achievement) => achievement?.$id)
-    : []
-  const achievementNames = achievements.map((achievement) => achievement.name).filter(Boolean).join(', ')
-  const visibleAchievementBadges = achievements.slice(0, 3)
-  const hiddenAchievementCount = Math.max(0, achievements.length - visibleAchievementBadges.length)
-  const badgeSlotCount = visibleAchievementBadges.length + (hiddenAchievementCount > 0 ? 1 : 0)
-  const availableBadgeWidth = Math.min(width - 72, 402)
-  const badgeGapWidth = Math.max(0, badgeSlotCount - 1) * 8
-  const preferredBadgeSize = badgeSlotCount === 1 ? 108 : 92
-  const badgeSize = Math.min(
-    preferredBadgeSize,
-    (availableBadgeWidth - badgeGapWidth) / Math.max(1, badgeSlotCount),
-    Math.max(64, height / 3 - 120)
-  )
-  const badgeStyle = {
-    width: badgeSize,
-    height: badgeSize,
-    borderRadius: badgeSize / 2,
-  }
+  const ringOpacity = impactPulse.interpolate({
+    inputRange: [0, 0.18, 1],
+    outputRange: [0, 0.76, 0],
+  })
+  const outerRingOpacity = impactPulse.interpolate({
+    inputRange: [0, 0.28, 1],
+    outputRange: [0, 0.5, 0],
+  })
+  const ringScale = impactPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.62, 1.32],
+  })
+  const outerRingScale = impactPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.54, 1.56],
+  })
 
   return (
     <Animated.View
@@ -165,14 +268,39 @@ function StampImpactOverlay({
       style={[
         StyleSheet.absoluteFillObject,
         styles.overlay,
-        { backgroundColor: 'rgba(0,0,0,0.55)' },
+        { backgroundColor: 'rgba(0,0,0,0.68)' },
       ]}
     >
       <View style={styles.centerLayer} pointerEvents="none">
+        {!reducedMotion ? (
+          <>
+            <Animated.View
+              style={[
+                styles.impactRing,
+                {
+                  borderColor: accentColor,
+                  opacity: outerRingOpacity,
+                  transform: [{ scale: outerRingScale }],
+                },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.impactRing,
+                {
+                  borderColor: paperColor,
+                  opacity: ringOpacity,
+                  transform: [{ scale: ringScale }],
+                },
+              ]}
+            />
+          </>
+        ) : null}
         <Animated.View
           style={[
             styles.stamp,
             {
+              opacity: stampOpacity,
               transform: [
                 { translateY: dropY },
                 { translateX: shake },
@@ -190,54 +318,43 @@ function StampImpactOverlay({
           />
         </Animated.View>
       </View>
-      {canDismiss && achievements.length && showUnlockNotification ? (
-        <View
-          style={[
-            styles.unlockPanel,
-            { backgroundColor: paperColor, height: height / 3 },
-          ]}
-        >
-          <Text style={[styles.unlockTitle, { color: accentColor }]}>
-            {t('stampOverlay:achievementsUnlockedTitle', { count: achievements.length })}
-          </Text>
-          <View style={styles.unlockBadgeRow}>
-            {visibleAchievementBadges.map((achievement) => (
-              <Image
-                key={achievement.$id}
-                source={achievement.badge ? { uri: achievement.badge } : require('../assets/icon.png')}
-                style={[styles.unlockBadge, badgeStyle]}
-                resizeMode="contain"
-              />
-            ))}
-            {hiddenAchievementCount > 0 ? (
-              <View style={[styles.hiddenBadgeCount, badgeStyle, { borderColor: accentColor }]}>
-                <Text style={[styles.hiddenBadgeText, { color: accentColor }]}>
-                  +{hiddenAchievementCount}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          {achievementNames ? (
-            <Text style={styles.unlockNames} numberOfLines={2}>
-              {achievementNames}
-            </Text>
-          ) : null}
-        </View>
+
+      {hasAchievements ? (
+        <AchievementUnlockCelebration
+          achievements={achievements}
+          accentColor={accentColor}
+          paperColor={paperColor}
+          reducedMotion={reducedMotion}
+          visible={canDismiss}
+          onComplete={handleCelebrationComplete}
+          onAchievementPress={onAchievementPress}
+        />
       ) : null}
-      {canDismiss ? (
+
+      {interactionsEnabled ? (
         <>
-        <Pressable
-          style={styles.closeBtn}
-          onPress={onSecondaryDismiss || onDismiss}
-        >
-          <Text style={styles.closeText}>✕</Text>
-        </Pressable>
-        <Pressable
-          style={styles.ctaButton}
-          onPress={onDismiss}
-        >
-          <Text style={styles.ctaText}>{t('stampOverlay:viewPassport')}</Text>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.closeBtn}
+            onPress={onSecondaryDismiss || onDismiss}
+          >
+            <Text style={styles.closeText}>✕</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaButtonPressed]}
+            onPress={
+              hasAchievements
+                ? () => onAchievementPress?.(finalAchievement)
+                : onDismiss
+            }
+          >
+            <Text style={styles.ctaText}>
+              {hasAchievements
+                ? t('stampOverlay:viewAchievements')
+                : t('stampOverlay:viewPassport')}
+            </Text>
+          </Pressable>
         </>
       ) : null}
     </Animated.View>
@@ -259,6 +376,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 22,
   },
+  impactRing: {
+    position: 'absolute',
+    width: '80%',
+    maxWidth: 410,
+    aspectRatio: 1,
+    borderRadius: 999,
+    borderWidth: 7,
+  },
   stamp: {
     width: '86%',
     maxWidth: 420,
@@ -277,57 +402,11 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 18,
   },
-  unlockPanel: {
-    position: 'absolute',
-    left: 22,
-    right: 22,
-    bottom: 106,
-    alignSelf: 'center',
-    maxWidth: 430,
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.12)',
-  },
-  unlockTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  unlockBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-  },
-  unlockBadge: {
-    backgroundColor: '#EFE5CF',
-  },
-  hiddenBadgeCount: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.75)',
-  },
-  hiddenBadgeText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  unlockNames: {
-    marginTop: 8,
-    color: '#2B241B',
-    fontSize: 16,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
   closeBtn: {
     position: 'absolute',
     top: 32,
     right: 22,
+    zIndex: 4,
     width: 42,
     height: 42,
     borderRadius: 21,
@@ -346,18 +425,30 @@ const styles = StyleSheet.create({
   ctaButton: {
     position: 'absolute',
     bottom: 46,
+    zIndex: 4,
     alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 14,
+    minWidth: 190,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 16,
     backgroundColor: '#111',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  ctaButtonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
   },
   ctaText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 })

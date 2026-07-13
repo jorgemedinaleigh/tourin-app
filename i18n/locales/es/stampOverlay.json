@@ -1,5 +1,6 @@
 {
   "achievementsUnlockedTitle_one": "Logro desbloqueado",
   "achievementsUnlockedTitle_other": "{{count}} logros desbloqueados",
+  "viewAchievements": "Ver logros",
   "viewPassport": "Ver pasaporte"
 }
