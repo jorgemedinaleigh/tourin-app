@@ -14,6 +14,7 @@ import StampRadiusLayer from '../../components/StampRadiusLayer'
 import InfoCard from '../../components/InfoCard'
 import MetroLayer from '../../components/MetroLayer'
 import MetroInfoCard from '../../components/MetroInfoCard'
+import SummaryAvailableBanner from '../../components/SummaryAvailableBanner'
 import { posthog } from '../../lib/posthog'
 import { useUser } from '../../hooks/useUser'
 import { useSiteVisits } from '../../hooks/useSiteVisits'
@@ -139,6 +140,7 @@ const MapScreen = () => {
   const [popup, setPopup] = useState(null)
   const [metroPopup, setMetroPopup] = useState(null)
   const [visible, setVisible] = useState(false)
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0)
   const cameraRef = useRef(null)
   const latestUserLocationRef = useRef(getDevLocationOverridePosition())
   const clearCameraStopTimeoutRef = useRef(null)
@@ -184,6 +186,7 @@ const MapScreen = () => {
 
   const handleVisitStamped = useCallback(() => {
     fetchVisits(user?.$id)
+    setSummaryRefreshKey((current) => current + 1)
   }, [user?.$id])
 
   const showModal = () => setVisible(true)
@@ -453,6 +456,12 @@ const MapScreen = () => {
           style={styles.buttonFollow}
           onPress={centerOnUser}
           testID="toggle-follow-button"
+        />
+
+        <SummaryAvailableBanner
+          refreshKey={summaryRefreshKey}
+          safeTop={insets.top}
+          userId={user?.$id}
         />
         
         <Portal>

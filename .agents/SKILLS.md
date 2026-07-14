@@ -92,6 +92,11 @@ This inventory is based on current source references to `posthog.capture(...)`.
 | `route_maps_opened` | User opens route navigation/maps | `app/dashboard/routeDetails.jsx` |
 | `achievement_unlocked` | Achievement unlock | `hooks/useAchievements.js` |
 | `achievement_viewed` | User opens an achievement badge/detail | `app/dashboard/achievementsScreen.jsx` |
+| `summary_viewed` | User opens a daily or weekly exploration recap | `app/dashboard/summaryScreen.jsx` |
+| `summary_shared` | User completes the native share flow for a recap card | `app/dashboard/summaryScreen.jsx` |
+| `summary_recommendation_opened` | User follows the next-adventure recommendation from a recap | `app/dashboard/summaryScreen.jsx` |
+| `summary_preferences_updated` | User saves recap notification and sharing preferences | `hooks/useSummaryPreferences.js` |
+| `summary_notification_opened` | User opens a recap from a push notification | `app/_layout.jsx` |
 | `$exception` | Captured exception in critical flows | `app/auth/*`, `components/InfoCard.jsx` |
 
 Naming convention:

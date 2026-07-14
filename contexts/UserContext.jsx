@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from 'react'
 import * as Linking from 'expo-linking'
 import { supabase } from '../lib/supabase'
 import { posthog } from '../lib/posthog'
+import { cancelSummaryNotifications } from '../lib/notifications'
 import { normalizeCountryCode } from '../utils/profileDetails'
 import {
   isSubdivisionRequired,
@@ -497,6 +498,12 @@ export function UserProvider({ children }){
 
   async function logout() {
     posthog.capture('user_logged_out')
+
+    try {
+      await cancelSummaryNotifications(user?.$id)
+    } catch (error) {
+      console.warn('Summary notification cleanup failed', error)
+    }
 
     try {
       const { error } = await supabase.auth.signOut()

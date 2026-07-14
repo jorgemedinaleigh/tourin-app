@@ -44,7 +44,13 @@ export default {
       ],
       "expo-font",
       "expo-asset",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "color": "#1F4D5C"
+        }
+      ]
     ],
     extra: {
       router: {},

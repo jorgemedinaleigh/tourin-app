@@ -1,0 +1,104 @@
+{
+  "achievementsTitle": "Achievements unlocked",
+  "activeDay": {
+    "eyebrow": "Today's adventure",
+    "notificationDescription": "Receive your completed active-day recap the following morning.",
+    "title": "Your active-day recap"
+  },
+  "banner": {
+    "action": "View recap",
+    "activeDay": "Your latest exploration recap is ready to share.",
+    "weekly": "Your weekly exploration recap is ready."
+  },
+  "comparison": {
+    "fewer": "{{count}} fewer places than the previous period",
+    "more": "{{count}} more places than the previous period",
+    "same": "The same number of places as the previous period"
+  },
+  "empty": {
+    "body": "Stamp a place to create your first exploration recap.",
+    "title": "No recaps yet"
+  },
+  "explorerTitles": {
+    "achievement_hunter": "Achievement Hunter",
+    "explorer": "Explorer",
+    "place_discoverer": "Place Discoverer",
+    "route_finisher": "Route Finisher",
+    "super_explorer": "Super Explorer",
+    "weekend_adventurer": "Weekend Adventurer"
+  },
+  "featuredStamps": "Featured stamps",
+  "history": {
+    "action": "View recap history",
+    "title": "Recap history"
+  },
+  "insights": {
+    "bestDay": "Most active day: {{date}}",
+    "favoriteCategory": "Most explored category: {{category}}",
+    "freePlaces": "{{count}} free places discovered",
+    "personalBest": "New personal best",
+    "title": "Your exploration insights",
+    "topRegion": "Most explored area: {{region}}"
+  },
+  "live": "Updates as you explore",
+  "loadError": "We couldn't load this recap. Try again.",
+  "loading": "Preparing your recap…",
+  "notifications": {
+    "activeDay": {
+      "body": "Relive and share your latest day of exploration.",
+      "title": "Your Tourin recap is ready"
+    },
+    "weekly": {
+      "body": "Your Monday–Sunday exploration recap is ready to share.",
+      "title": "Your weekly Tourin recap is ready"
+    }
+  },
+  "metrics": {    "achievements": "Achievements",
+    "activeDays": "Active days",
+    "activeWeeks": "Active-week streak",
+    "places": "Places",
+    "points": "Points",
+    "routes": "Routes"
+  },
+  "preferences": {
+    "activeDayNotifications": "Active-day notifications",
+    "channelName": "Exploration summaries",
+    "description": "Choose when Tourin reminds you that a recap is ready.",
+    "invalidTime": "Use a valid 24-hour time in HH:MM format.",
+    "locationDescription": "Include only the general region, never exact coordinates.",
+    "permissionDenied": "Preferences were saved, but notifications are disabled in your device settings.",
+    "saveError": "We couldn't save your recap preferences.",
+    "shareLocation": "Show general location when sharing",
+    "timeLabel": "Delivery time",
+    "title": "Recaps and notifications",
+    "weeklyNotifications": "Weekly notifications"
+  },
+  "profile": {
+    "activeDayAction": "View today's recap",
+    "description": "Relive and share your recent exploration.",
+    "title": "Exploration recaps",
+    "weeklyAction": "View last week's recap"
+  },
+  "recommendation": {
+    "continueRoute": "Continue {{route}}",
+    "description": "You have visited {{current}} of {{total}} places. Your next stop could be {{site}}.",
+    "explorePlace": "Explore {{site}} next",
+    "openMap": "Open map",
+    "openRoute": "Open route",
+    "title": "Your next adventure"
+  },
+  "routesTitle": "Routes completed",
+  "share": {
+    "action": "Share recap",
+    "error": "We couldn't prepare the recap image. Try again.",
+    "preparing": "Preparing image…",
+    "unavailable": "Sharing isn't available on this device."
+  },
+  "sharedBrand": "Explored with Tourin",
+  "statusFinal": "Complete recap",
+  "weekly": {
+    "eyebrow": "Weekly exploration",
+    "notificationDescription": "Receive your Monday–Sunday recap every Monday.",
+    "title": "Your weekly recap"
+  }
+}

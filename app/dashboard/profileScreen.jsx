@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Button, HelperText, Modal, Portal, TextInput, useTheme } from 'react-native-paper'
 import { useUser } from '../../hooks/useUser'
 import { useStats } from '../../hooks/useStats'
@@ -9,7 +9,9 @@ import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import CountrySelect from '../../components/CountrySelect'
 import ExplorationModeSelect from '../../components/ExplorationModeSelect'
+import ProfileRecapSection from '../../components/ProfileRecapSection'
 import SubdivisionSelect from '../../components/SubdivisionSelect'
+import SummaryPreferencesModal from '../../components/SummaryPreferencesModal'
 import { useI18n } from '../../contexts/I18nContext'
 import { formatMonthYear } from '../../i18n/formatters'
 import { COUNTRY_CODE_PATTERN, formatDateOfBirthInput, getCountryFlagEmoji, normalizeCountryCode, normalizeDateOfBirth } from '../../utils/profileDetails'
@@ -24,7 +26,7 @@ const profileScreen = () => {
   const { user, logout, updateProfileDetails } = useUser()
   const { stats, getStats } = useStats(user.$id)
   const theme = useTheme()
-  const { t } = useTranslation(['common', 'profile'])
+  const { t } = useTranslation(['common', 'profile', 'summaries'])
   const { locale, setLocale, availableLocales } = useI18n()
   const [preferencesModalVisible, setPreferencesModalVisible] = useState(false)
   const [languageModalVisible, setLanguageModalVisible] = useState(false)
@@ -35,6 +37,7 @@ const profileScreen = () => {
   const [detailsDateOfBirth, setDetailsDateOfBirth] = useState('')
   const [detailsError, setDetailsError] = useState(null)
   const [detailsSaving, setDetailsSaving] = useState(false)
+  const [summaryPreferencesVisible, setSummaryPreferencesVisible] = useState(false)
 
   const displayName = user?.name || t('common:fallbacks.genericUser')
   const handle = user?.email ? user.email.split('@')[0] : t('common:fallbacks.handle')
@@ -68,6 +71,11 @@ const profileScreen = () => {
   const openLanguageModal = () => {
     setPreferencesModalVisible(false)
     setLanguageModalVisible(true)
+  }
+
+  const openSummaryPreferences = () => {
+    setPreferencesModalVisible(false)
+    setSummaryPreferencesVisible(true)
   }
 
   const openDetailsModal = () => {
@@ -157,6 +165,7 @@ const profileScreen = () => {
 
   return (
     <ThemedView style={styles.container} safe>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.profileCard}>
         <View style={styles.avatarSection}>
           <View style={styles.avatarRing}>
@@ -211,6 +220,8 @@ const profileScreen = () => {
         <Text style={styles.summaryText}>{t('common:counts.achievements', { count: stats?.achievementsUnlocked ?? 0 })}</Text>
       </TouchableOpacity>
 
+      <ProfileRecapSection userId={user?.$id} />
+
       <TouchableOpacity
         style={[styles.preferencesButton, styles.raised]}
         onPress={openPreferencesModal}
@@ -228,6 +239,8 @@ const profileScreen = () => {
         <Ionicons name="log-out-outline" size={18} color="#ffffff" style={styles.logoutIcon} />
         <Text style={styles.logoutText}>{t('profile:logout')}</Text>
       </TouchableOpacity>
+
+      </ScrollView>
 
       <Portal>
         <Modal
@@ -255,6 +268,16 @@ const profileScreen = () => {
               <Text style={styles.preferenceOptionTitle}>{t('profile:preferences.language')}</Text>
             </View>
             <Ionicons name="language" size={20} color="#5B6572" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.preferenceOption}
+            onPress={openSummaryPreferences}
+            activeOpacity={0.8}
+          >
+            <View style={styles.preferenceOptionTextBlock}>
+              <Text style={styles.preferenceOptionTitle}>{t('summaries:preferences.title')}</Text>
+            </View>
+            <Ionicons name="notifications" size={20} color="#5B6572" />
           </TouchableOpacity>
         </Modal>
         <Modal
@@ -354,6 +377,11 @@ const profileScreen = () => {
           </View>
         </Modal>
       </Portal>
+      <SummaryPreferencesModal
+        onDismiss={() => setSummaryPreferencesVisible(false)}
+        userId={user?.$id}
+        visible={summaryPreferencesVisible}
+      />
     </ThemedView>
   )
 }
@@ -362,9 +390,12 @@ export default profileScreen
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
     backgroundColor: '#EFEFEF',
     flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 32,
   },
   profileCard: {
     backgroundColor: '#E6E6E6',

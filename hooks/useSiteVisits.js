@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { mapHeritageSiteRow, mapSiteVisitRow } from '../lib/supabaseAdapters'
+import { getDeviceTimeZone } from '../lib/summaryPeriods'
 
 const PAGE_LIMIT = 100
 
@@ -16,6 +17,7 @@ export function useSiteVisits(userId) {
         .insert({
           user_id: targetUserId,
           site_id: siteId,
+          activity_timezone: getDeviceTimeZone(),
         })
         .select('*')
         .single()

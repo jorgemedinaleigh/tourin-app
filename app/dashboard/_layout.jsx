@@ -88,6 +88,18 @@ const DashboardLayout = () => {
             }}
           />
           <Tabs.Screen
+            name="summaryScreen"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
+            name="summaryHistoryScreen"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
             name="profileScreen"
             options={{
               title: t('tabs.profile'),

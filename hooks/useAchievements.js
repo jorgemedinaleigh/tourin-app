@@ -8,6 +8,7 @@ import {
   mapUserAchievementRow,
 } from '../lib/supabaseAdapters'
 import { posthog } from '../lib/posthog'
+import { getDeviceTimeZone } from '../lib/summaryPeriods'
 import { useI18n } from '../contexts/I18nContext'
 import getLocalizedField from '../i18n/getLocalizedField'
 import {
@@ -114,6 +115,7 @@ const insertAchievementUnlock = async ({ achievementId, unlockedAt, userId }) =>
       user_id: userId,
       achievement_id: achievementId,
       unlocked_at: unlockedAt,
+      activity_timezone: getDeviceTimeZone(),
     })
     .select('*')
     .single()

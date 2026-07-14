@@ -1,0 +1,104 @@
+{
+  "achievementsTitle": "Conquistas desbloqueadas",
+  "activeDay": {
+    "eyebrow": "A aventura de hoje",
+    "notificationDescription": "Receba o resumo completo do seu dia ativo na manhã seguinte.",
+    "title": "Resumo do seu dia ativo"
+  },
+  "banner": {
+    "action": "Ver resumo",
+    "activeDay": "Seu resumo de exploração mais recente está pronto para compartilhar.",
+    "weekly": "Seu resumo semanal de exploração está pronto."
+  },
+  "comparison": {
+    "fewer": "{{count}} lugares a menos que no período anterior",
+    "more": "{{count}} lugares a mais que no período anterior",
+    "same": "A mesma quantidade de lugares que no período anterior"
+  },
+  "empty": {
+    "body": "Carimbe um lugar para criar seu primeiro resumo de exploração.",
+    "title": "Ainda não há resumos"
+  },
+  "explorerTitles": {
+    "achievement_hunter": "Caçador de conquistas",
+    "explorer": "Explorador",
+    "place_discoverer": "Descobridor de lugares",
+    "route_finisher": "Finalizador de rotas",
+    "super_explorer": "Superexplorador",
+    "weekend_adventurer": "Aventureiro de fim de semana"
+  },
+  "featuredStamps": "Carimbos em destaque",
+  "history": {
+    "action": "Ver histórico de resumos",
+    "title": "Histórico de resumos"
+  },
+  "insights": {
+    "bestDay": "Dia mais ativo: {{date}}",
+    "favoriteCategory": "Categoria mais explorada: {{category}}",
+    "freePlaces": "{{count}} lugares gratuitos descobertos",
+    "personalBest": "Novo recorde pessoal",
+    "title": "Dados da sua exploração",
+    "topRegion": "Área mais explorada: {{region}}"
+  },
+  "live": "Atualiza enquanto você explora",
+  "loadError": "Não foi possível carregar este resumo. Tente novamente.",
+  "loading": "Preparando seu resumo…",
+  "notifications": {
+    "activeDay": {
+      "body": "Reviva e compartilhe seu último dia de exploração.",
+      "title": "Seu resumo do Tourin está pronto"
+    },
+    "weekly": {
+      "body": "Seu resumo de exploração de segunda a domingo está pronto para compartilhar.",
+      "title": "Seu resumo semanal do Tourin está pronto"
+    }
+  },
+  "metrics": {    "achievements": "Conquistas",
+    "activeDays": "Dias ativos",
+    "activeWeeks": "Sequência de semanas ativas",
+    "places": "Lugares",
+    "points": "Pontos",
+    "routes": "Rotas"
+  },
+  "preferences": {
+    "activeDayNotifications": "Notificações de dias ativos",
+    "channelName": "Resumos de exploração",
+    "description": "Escolha quando o Tourin avisará que um resumo está pronto.",
+    "invalidTime": "Use um horário válido no formato de 24 horas HH:MM.",
+    "locationDescription": "Inclui apenas a região geral, nunca coordenadas exatas.",
+    "permissionDenied": "As preferências foram salvas, mas as notificações estão desativadas nas configurações do dispositivo.",
+    "saveError": "Não foi possível salvar suas preferências de resumos.",
+    "shareLocation": "Mostrar localização geral ao compartilhar",
+    "timeLabel": "Horário de entrega",
+    "title": "Resumos e notificações",
+    "weeklyNotifications": "Notificações semanais"
+  },
+  "profile": {
+    "activeDayAction": "Ver resumo de hoje",
+    "description": "Reviva e compartilhe suas explorações recentes.",
+    "title": "Resumos de exploração",
+    "weeklyAction": "Ver resumo da semana passada"
+  },
+  "recommendation": {
+    "continueRoute": "Continue {{route}}",
+    "description": "Você visitou {{current}} de {{total}} lugares. Sua próxima parada pode ser {{site}}.",
+    "explorePlace": "Explore {{site}} agora",
+    "openMap": "Abrir mapa",
+    "openRoute": "Abrir rota",
+    "title": "Sua próxima aventura"
+  },
+  "routesTitle": "Rotas concluídas",
+  "share": {
+    "action": "Compartilhar resumo",
+    "error": "Não foi possível preparar a imagem do resumo. Tente novamente.",
+    "preparing": "Preparando imagem…",
+    "unavailable": "O compartilhamento não está disponível neste dispositivo."
+  },
+  "sharedBrand": "Explorado com Tourin",
+  "statusFinal": "Resumo completo",
+  "weekly": {
+    "eyebrow": "Exploração semanal",
+    "notificationDescription": "Receba toda segunda-feira o resumo de segunda a domingo.",
+    "title": "Seu resumo semanal"
+  }
+}
