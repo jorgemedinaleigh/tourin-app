@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "tsx --test i18n/getLocalizedField.test.js lib/achievementRules.test.js lib/routeLabels.test.js lib/legalDocuments.test.js utils/geo.test.js",
+    "test": "tsx --test i18n/getLocalizedField.test.js lib/achievementRules.test.js lib/routeLabels.test.js lib/legalDocuments.test.js utils/countrySubdivisions.test.js utils/explorationModes.test.js utils/geo.test.js",
     "test:geo": "tsx --test utils/geo.test.js",
     "test:i18n": "tsx --test i18n/getLocalizedField.test.js"
   },

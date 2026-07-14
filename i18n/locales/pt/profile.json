@@ -10,7 +10,13 @@
     "editAction": "EDITAR DADOS DO PERFIL",
     "invalidCountry": "Selecione um país da lista.",
     "invalidDateOfBirth": "Digite uma data de nascimento válida no formato AAAA-MM-DD.",
+    "invalidSubdivision": "Selecione uma região válida na lista.",
+    "missingExplorationMode": "Selecione pelo menos um modo de exploração.",
     "missingFields": "Digite sua data de nascimento e país.",
+    "missingSubdivision": "Selecione sua região.",
+    "regionLabel": "Região",
+    "regionPlaceholder": "Selecione sua região",
+    "regionSelectTitle": "Selecionar região",
     "saveError": "Não foi possível atualizar seus dados. Tente novamente.",
     "title": "Dados do perfil"
   },

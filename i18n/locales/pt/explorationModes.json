@@ -1,0 +1,15 @@
+{
+  "confirm": "Confirmar",
+  "multipleHint": "Você pode escolher mais de uma opção.",
+  "options": {
+    "couple": "Explorador em casal",
+    "family": "Explorador em família",
+    "friends": "Explorador com amigos",
+    "solo": "Explorador solo",
+    "work_or_study": "Explorador por trabalho ou estudo"
+  },
+  "placeholder": "Selecione um ou mais modos",
+  "question": "Escolha seu modo de exploração",
+  "singleHint": "Selecione uma opção.",
+  "singlePlaceholder": "Selecione um modo"
+}

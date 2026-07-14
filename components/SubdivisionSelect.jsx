@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import { Modal, Portal, TextInput } from 'react-native-paper'
-import { getCountryLabel, getCountryOptions, normalizeCountryCode } from '../utils/profileDetails'
+import {
+  getSubdivisionLabel,
+  getSubdivisionOptions,
+  normalizeSubdivisionCode,
+} from '../utils/countrySubdivisions'
 
-const CountrySelect = ({
+const SubdivisionSelect = ({
+  countryCode,
   label,
   locale,
   modalTitle,
@@ -12,14 +17,21 @@ const CountrySelect = ({
   value,
 }) => {
   const [visible, setVisible] = useState(false)
-  const countryOptions = useMemo(() => getCountryOptions(locale), [locale])
-  const selectedCode = normalizeCountryCode(value)
-  const selectedLabel = selectedCode ? getCountryLabel(selectedCode, locale) : ''
+  const subdivisionOptions = useMemo(
+    () => getSubdivisionOptions(countryCode, locale),
+    [countryCode, locale]
+  )
+  const selectedCode = normalizeSubdivisionCode(value)
+  const selectedLabel = selectedCode
+    ? getSubdivisionLabel(countryCode, selectedCode, locale)
+    : ''
 
-  const handleSelect = (countryCode) => {
-    onSelect(countryCode)
+  const handleSelect = (subdivisionCode) => {
+    onSelect(subdivisionCode)
     setVisible(false)
   }
+
+  if (!subdivisionOptions.length) return null
 
   return (
     <>
@@ -50,20 +62,25 @@ const CountrySelect = ({
         >
           <Text style={styles.modalTitle}>{modalTitle}</Text>
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-            {countryOptions.map((country) => {
-              const isSelected = country.code === selectedCode
+            {subdivisionOptions.map((subdivision) => {
+              const isSelected = subdivision.code === selectedCode
 
               return (
-                <TouchableOpacity
-                  key={country.code}
-                  style={[styles.option, isSelected && styles.optionSelected]}
-                  onPress={() => handleSelect(country.code)}
-                  activeOpacity={0.75}
+                <Pressable
+                  key={subdivision.code}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  style={({ pressed }) => [
+                    styles.option,
+                    isSelected && styles.optionSelected,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={() => handleSelect(subdivision.code)}
                 >
                   <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                    {country.label}
+                    {subdivision.label}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )
             })}
           </ScrollView>
@@ -73,7 +90,7 @@ const CountrySelect = ({
   )
 }
 
-export default CountrySelect
+export default SubdivisionSelect
 
 const styles = StyleSheet.create({
   fieldPressed: {
@@ -106,6 +123,9 @@ const styles = StyleSheet.create({
   optionSelected: {
     borderColor: '#1B7D4A',
     backgroundColor: '#F2FBF5',
+  },
+  optionPressed: {
+    opacity: 0.75,
   },
   optionText: {
     fontSize: 15,

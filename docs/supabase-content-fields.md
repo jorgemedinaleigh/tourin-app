@@ -37,6 +37,12 @@ Result: `getLocalizedField(row, 'name', 'en', { fallbackLocale: 'es' })` returns
   - Optional Storage path for future profile images
 - `profiles.country_code`
   - Optional ISO 3166-1 alpha-2 country code used for profile display
+- `profiles.subdivision_code`
+  - Optional ISO 3166-2 principal subdivision code associated with the residence country
+  - Required during new registrations when `country_code` is `CL`; existing Chilean profiles may remain null until edited
+- `profiles.exploration_modes`
+  - Existing profiles may be null; new registrations and profile-detail updates require at least one value
+  - Supported values: `solo`, `couple`, `family`, `friends`, and `work_or_study`
 - `user_private_details.date_of_birth`
   - Required for new registrations and kept in an owner-readable private table
 

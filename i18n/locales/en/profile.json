@@ -10,7 +10,13 @@
     "editAction": "EDIT PROFILE DETAILS",
     "invalidCountry": "Select a country from the list.",
     "invalidDateOfBirth": "Enter a valid date of birth in YYYY-MM-DD format.",
+    "invalidSubdivision": "Select a valid region from the list.",
+    "missingExplorationMode": "Select at least one exploration mode.",
     "missingFields": "Enter your date of birth and country.",
+    "missingSubdivision": "Select your region.",
+    "regionLabel": "Region",
+    "regionPlaceholder": "Select your region",
+    "regionSelectTitle": "Select region",
     "saveError": "We couldn't update your details. Try again.",
     "title": "Profile details"
   },

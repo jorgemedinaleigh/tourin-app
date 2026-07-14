@@ -8,9 +8,17 @@ import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import CountrySelect from '../../components/CountrySelect'
+import ExplorationModeSelect from '../../components/ExplorationModeSelect'
+import SubdivisionSelect from '../../components/SubdivisionSelect'
 import { useI18n } from '../../contexts/I18nContext'
 import { formatMonthYear } from '../../i18n/formatters'
 import { COUNTRY_CODE_PATTERN, formatDateOfBirthInput, getCountryFlagEmoji, normalizeCountryCode, normalizeDateOfBirth } from '../../utils/profileDetails'
+import {
+  isSubdivisionRequired,
+  isValidSubdivisionForCountry,
+  normalizeSubdivisionCode,
+} from '../../utils/countrySubdivisions'
+import { hasValidExplorationModes, normalizeExplorationModes } from '../../utils/explorationModes'
 
 const profileScreen = () => {
   const { user, logout, updateProfileDetails } = useUser()
@@ -22,6 +30,8 @@ const profileScreen = () => {
   const [languageModalVisible, setLanguageModalVisible] = useState(false)
   const [detailsModalVisible, setDetailsModalVisible] = useState(false)
   const [detailsCountryCode, setDetailsCountryCode] = useState('')
+  const [detailsSubdivisionCode, setDetailsSubdivisionCode] = useState('')
+  const [detailsExplorationModes, setDetailsExplorationModes] = useState([])
   const [detailsDateOfBirth, setDetailsDateOfBirth] = useState('')
   const [detailsError, setDetailsError] = useState(null)
   const [detailsSaving, setDetailsSaving] = useState(false)
@@ -40,6 +50,7 @@ const profileScreen = () => {
     .join('')
   const handleLabel = t('profile:handle', { date: joinDate, handle })
   const countryFlag = getCountryFlagEmoji(user?.countryCode || user?.profile?.country_code)
+  const requiresDetailsSubdivision = isSubdivisionRequired(detailsCountryCode)
 
   const handleLogout = async () => {
     await logout()
@@ -62,15 +73,29 @@ const profileScreen = () => {
   const openDetailsModal = () => {
     setPreferencesModalVisible(false)
     setDetailsCountryCode(user?.countryCode || user?.profile?.country_code || '')
+    setDetailsSubdivisionCode(user?.subdivisionCode || user?.profile?.subdivision_code || '')
+    setDetailsExplorationModes(
+      normalizeExplorationModes(user?.explorationModes || user?.profile?.exploration_modes)
+    )
     setDetailsDateOfBirth(user?.dateOfBirth || user?.privateDetails?.date_of_birth || '')
     setDetailsError(null)
     setDetailsModalVisible(true)
+  }
+
+  const handleDetailsCountrySelect = (nextCountryCode) => {
+    const normalizedCountryCode = normalizeCountryCode(nextCountryCode)
+    if (normalizedCountryCode !== normalizeCountryCode(detailsCountryCode)) {
+      setDetailsSubdivisionCode('')
+    }
+    setDetailsCountryCode(normalizedCountryCode)
   }
 
   const handleDetailsSave = async () => {
     setDetailsError(null)
 
     const countryCode = normalizeCountryCode(detailsCountryCode)
+    const subdivisionCode = normalizeSubdivisionCode(detailsSubdivisionCode)
+    const explorationModes = normalizeExplorationModes(detailsExplorationModes)
     const dateOfBirth = normalizeDateOfBirth(detailsDateOfBirth)
 
     if (!countryCode || !detailsDateOfBirth.trim()) {
@@ -88,10 +113,30 @@ const profileScreen = () => {
       return
     }
 
+    if (isSubdivisionRequired(countryCode) && !subdivisionCode) {
+      setDetailsError(t('profile:details.missingSubdivision'))
+      return
+    }
+
+    if (
+      isSubdivisionRequired(countryCode) &&
+      !isValidSubdivisionForCountry(countryCode, subdivisionCode)
+    ) {
+      setDetailsError(t('profile:details.invalidSubdivision'))
+      return
+    }
+
+    if (!hasValidExplorationModes(explorationModes)) {
+      setDetailsError(t('profile:details.missingExplorationMode'))
+      return
+    }
+
     try {
       setDetailsSaving(true)
       await updateProfileDetails({
         countryCode,
+        subdivisionCode,
+        explorationModes,
         dateOfBirth,
       })
       setDetailsModalVisible(false)
@@ -267,9 +312,25 @@ const profileScreen = () => {
             label={t('profile:details.countryCodeLabel')}
             locale={locale}
             modalTitle={t('profile:details.countrySelectTitle')}
-            onSelect={setDetailsCountryCode}
+            onSelect={handleDetailsCountrySelect}
             placeholder={t('profile:details.countryPlaceholder')}
             value={detailsCountryCode}
+          />
+          {requiresDetailsSubdivision ? (
+            <SubdivisionSelect
+              countryCode={detailsCountryCode}
+              label={t('profile:details.regionLabel')}
+              locale={locale}
+              modalTitle={t('profile:details.regionSelectTitle')}
+              onSelect={setDetailsSubdivisionCode}
+              placeholder={t('profile:details.regionPlaceholder')}
+              value={detailsSubdivisionCode}
+            />
+          ) : null}
+          <ExplorationModeSelect
+            disabled={detailsSaving}
+            onChange={setDetailsExplorationModes}
+            value={detailsExplorationModes}
           />
           <HelperText type="error" visible={!!detailsError}>
             {detailsError}

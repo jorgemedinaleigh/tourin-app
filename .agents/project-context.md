@@ -30,7 +30,7 @@ Tourin is a gamified mobile app for exploring points of interest, viewing routes
 
 - Supabase client config lives in `lib/supabase.js` and requires public env vars.
 - Localized content may use JSON fields and legacy suffixed fields. Follow `docs/supabase-content-fields.md`.
-- Profile locale/avatar/country data live in `profiles`; date of birth lives in `user_private_details`.
+- Profile locale/avatar/country/subdivision/exploration-mode selections live in `profiles`; date of birth lives in `user_private_details`.
 
 ## Coding style
 

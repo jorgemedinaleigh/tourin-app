@@ -4,6 +4,7 @@ import achievementsEn from './locales/en/achievements.json'
 import authEn from './locales/en/auth.json'
 import commonEn from './locales/en/common.json'
 import errorsEn from './locales/en/errors.json'
+import explorationModesEn from './locales/en/explorationModes.json'
 import homeEn from './locales/en/home.json'
 import infoCardEn from './locales/en/infoCard.json'
 import legalEn from './locales/en/legal.json'
@@ -16,6 +17,7 @@ import achievementsEs from './locales/es/achievements.json'
 import authEs from './locales/es/auth.json'
 import commonEs from './locales/es/common.json'
 import errorsEs from './locales/es/errors.json'
+import explorationModesEs from './locales/es/explorationModes.json'
 import homeEs from './locales/es/home.json'
 import infoCardEs from './locales/es/infoCard.json'
 import legalEs from './locales/es/legal.json'
@@ -28,6 +30,7 @@ import achievementsPt from './locales/pt/achievements.json'
 import authPt from './locales/pt/auth.json'
 import commonPt from './locales/pt/common.json'
 import errorsPt from './locales/pt/errors.json'
+import explorationModesPt from './locales/pt/explorationModes.json'
 import homePt from './locales/pt/home.json'
 import infoCardPt from './locales/pt/infoCard.json'
 import legalPt from './locales/pt/legal.json'
@@ -44,6 +47,7 @@ const resources = {
     auth: authEn,
     common: commonEn,
     errors: errorsEn,
+    explorationModes: explorationModesEn,
     home: homeEn,
     infoCard: infoCardEn,
     legal: legalEn,
@@ -58,6 +62,7 @@ const resources = {
     auth: authEs,
     common: commonEs,
     errors: errorsEs,
+    explorationModes: explorationModesEs,
     home: homeEs,
     infoCard: infoCardEs,
     legal: legalEs,
@@ -72,6 +77,7 @@ const resources = {
     auth: authPt,
     common: commonPt,
     errors: errorsPt,
+    explorationModes: explorationModesPt,
     home: homePt,
     infoCard: infoCardPt,
     legal: legalPt,

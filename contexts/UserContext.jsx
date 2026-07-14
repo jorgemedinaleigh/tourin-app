@@ -4,6 +4,16 @@ import { supabase } from '../lib/supabase'
 import { posthog } from '../lib/posthog'
 import { normalizeCountryCode } from '../utils/profileDetails'
 import {
+  isSubdivisionRequired,
+  isValidSubdivisionForCountry,
+  normalizeSubdivisionCode,
+} from '../utils/countrySubdivisions'
+import {
+  areExplorationModesEqual,
+  hasValidExplorationModes,
+  normalizeExplorationModes,
+} from '../utils/explorationModes'
+import {
   LEGAL_CONSENT_PROFILE_FIELDS,
   LEGAL_PRIVACY_VERSION,
   LEGAL_TERMS_VERSION,
@@ -21,6 +31,8 @@ const PROFILE_COLUMNS = [
   'locale',
   'avatar_path',
   'country_code',
+  'subdivision_code',
+  'exploration_modes',
   'welcome_seen_at',
   ...LEGAL_CONSENT_PROFILE_FIELDS,
   'created_at',
@@ -31,6 +43,8 @@ const REGISTRATION_REDIRECT_PATH = '/auth/loginScreen'
 const REGISTRATION_SOURCE = 'tourin_app'
 const REGISTRATION_METADATA_KEYS = [
   'country_code',
+  'subdivision_code',
+  'exploration_modes',
   'date_of_birth',
   'registration_source',
   'legal_terms_accepted',
@@ -86,6 +100,8 @@ function normalizeUser(authUser, profile, privateDetails) {
     email: authUser.email,
     name: profile?.display_name || getMetadataName(authUser),
     countryCode: profile?.country_code || null,
+    subdivisionCode: profile?.subdivision_code || null,
+    explorationModes: normalizeExplorationModes(profile?.exploration_modes),
     dateOfBirth: privateDetails?.date_of_birth || null,
     hasSeenWelcome: !!profile?.welcome_seen_at,
     privateDetails: privateDetails || null,
@@ -112,12 +128,15 @@ export function UserProvider({ children }){
   }
 
   async function createProfile(authUser, overrides = {}) {
+    const explorationModes = normalizeExplorationModes(overrides.exploration_modes)
     const payload = {
       id: authUser.id,
       display_name: overrides.display_name || getMetadataName(authUser),
       locale: overrides.locale || authUser.user_metadata?.prefs?.locale || DEFAULT_LOCALE,
       avatar_path: overrides.avatar_path || null,
       country_code: overrides.country_code || null,
+      subdivision_code: overrides.subdivision_code || null,
+      exploration_modes: explorationModes.length ? explorationModes : null,
     }
 
     LEGAL_CONSENT_PROFILE_FIELDS.forEach((field) => {
@@ -161,6 +180,16 @@ export function UserProvider({ children }){
       }
       if (Object.prototype.hasOwnProperty.call(overrides, 'country_code') && existingProfile.country_code !== overrides.country_code) {
         profilePatch.country_code = overrides.country_code
+      }
+      if (Object.prototype.hasOwnProperty.call(overrides, 'subdivision_code') && existingProfile.subdivision_code !== overrides.subdivision_code) {
+        profilePatch.subdivision_code = overrides.subdivision_code
+      }
+      if (
+        Object.prototype.hasOwnProperty.call(overrides, 'exploration_modes') &&
+        !areExplorationModesEqual(existingProfile.exploration_modes, overrides.exploration_modes)
+      ) {
+        const explorationModes = normalizeExplorationModes(overrides.exploration_modes)
+        profilePatch.exploration_modes = explorationModes.length ? explorationModes : null
       }
       if (!getLegalConsentStatus(existingProfile).isCurrent) {
         LEGAL_CONSENT_PROFILE_FIELDS.forEach((field) => {
@@ -268,8 +297,25 @@ export function UserProvider({ children }){
     const trimmedEmail = email.trim()
     const trimmedName = name.trim()
     const countryCode = normalizeCountryCode(details.countryCode)
+    const requestedSubdivisionCode = normalizeSubdivisionCode(details.subdivisionCode)
+    const subdivisionCode = isValidSubdivisionForCountry(countryCode, requestedSubdivisionCode)
+      ? requestedSubdivisionCode
+      : null
+    const explorationModes = normalizeExplorationModes(details.explorationModes)
     const legalConsentMetadata = buildLegalConsentMetadata()
     const legalConsentPatch = buildLegalConsentPatch()
+
+    if (isSubdivisionRequired(countryCode) && !subdivisionCode) {
+      const error = new Error('A valid subdivision is required for this country')
+      error.code = 'invalid_subdivision'
+      throw error
+    }
+
+    if (!hasValidExplorationModes(explorationModes)) {
+      const error = new Error('At least one exploration mode is required')
+      error.code = 'missing_exploration_mode'
+      throw error
+    }
 
     if (!details.termsAccepted || !details.privacyAccepted) {
       const error = new Error('Legal consent is required')
@@ -287,6 +333,8 @@ export function UserProvider({ children }){
             name: trimmedName,
             display_name: trimmedName,
             country_code: countryCode,
+            subdivision_code: subdivisionCode,
+            exploration_modes: explorationModes,
             date_of_birth: details.dateOfBirth,
             registration_source: REGISTRATION_SOURCE,
             ...legalConsentMetadata,
@@ -320,6 +368,8 @@ export function UserProvider({ children }){
         profile: {
           display_name: trimmedName,
           country_code: countryCode,
+          subdivision_code: subdivisionCode,
+          exploration_modes: explorationModes,
           ...legalConsentPatch,
         },
       })
@@ -397,6 +447,23 @@ export function UserProvider({ children }){
     if (!user) return null
 
     const countryCode = normalizeCountryCode(details.countryCode)
+    const requestedSubdivisionCode = normalizeSubdivisionCode(details.subdivisionCode)
+    const subdivisionCode = isValidSubdivisionForCountry(countryCode, requestedSubdivisionCode)
+      ? requestedSubdivisionCode
+      : null
+    const explorationModes = normalizeExplorationModes(details.explorationModes)
+
+    if (isSubdivisionRequired(countryCode) && !subdivisionCode) {
+      const error = new Error('A valid subdivision is required for this country')
+      error.code = 'invalid_subdivision'
+      throw error
+    }
+
+    if (!hasValidExplorationModes(explorationModes)) {
+      const error = new Error('At least one exploration mode is required')
+      error.code = 'missing_exploration_mode'
+      throw error
+    }
 
     try {
       const authUser = user.rawAuthUser || { id: user.$id, email: user.email }
@@ -404,7 +471,11 @@ export function UserProvider({ children }){
 
       const { data: updatedProfile, error: profileError } = await supabase
         .from('profiles')
-        .update({ country_code: countryCode })
+        .update({
+          country_code: countryCode,
+          subdivision_code: subdivisionCode,
+          exploration_modes: explorationModes,
+        })
         .eq('id', user.$id)
         .select(PROFILE_COLUMNS)
         .single()

@@ -8,13 +8,23 @@ import { authErrorToMessage } from '../../utils/authErrorToMessage'
 import ThemedView from '../../components/ThemedView'
 import { posthog } from '../../lib/posthog'
 import CountrySelect from '../../components/CountrySelect'
+import ExplorationModeSelect from '../../components/ExplorationModeSelect'
 import LegalDocumentConsent from '../../components/LegalDocumentConsent'
+import SubdivisionSelect from '../../components/SubdivisionSelect'
 import { COUNTRY_CODE_PATTERN, formatDateOfBirthInput, normalizeCountryCode, normalizeDateOfBirth } from '../../utils/profileDetails'
+import {
+  isSubdivisionRequired,
+  isValidSubdivisionForCountry,
+  normalizeSubdivisionCode,
+} from '../../utils/countrySubdivisions'
+import { hasValidExplorationModes, normalizeExplorationModes } from '../../utils/explorationModes'
 
 const registerScreen = () => {
   const [nameText, setNameText] = useState('')
   const [dateOfBirthText, setDateOfBirthText] = useState('')
   const [countryCodeText, setCountryCodeText] = useState('')
+  const [subdivisionCodeText, setSubdivisionCodeText] = useState('')
+  const [explorationModes, setExplorationModes] = useState([])
   const [emailText, setEmailText] = useState('')
   const [passwordText, setPasswordText] = useState('')
   const [confirmPasswordText, setConfirmPasswordText] = useState('')
@@ -28,6 +38,15 @@ const registerScreen = () => {
 
   const { register } = useUser()
   const { t, i18n } = useTranslation(['auth', 'legal'])
+  const requiresSubdivision = isSubdivisionRequired(countryCodeText)
+
+  const handleCountrySelect = (nextCountryCode) => {
+    const normalizedCountryCode = normalizeCountryCode(nextCountryCode)
+    if (normalizedCountryCode !== normalizeCountryCode(countryCodeText)) {
+      setSubdivisionCodeText('')
+    }
+    setCountryCodeText(normalizedCountryCode)
+  }
 
   const handleSubmit = async () => {
     if (submitLockedRef.current) return
@@ -36,6 +55,8 @@ const registerScreen = () => {
     setSuccessMessage(null)
 
     const countryCode = normalizeCountryCode(countryCodeText)
+    const subdivisionCode = normalizeSubdivisionCode(subdivisionCodeText)
+    const normalizedExplorationModes = normalizeExplorationModes(explorationModes)
     const dateOfBirth = normalizeDateOfBirth(dateOfBirthText)
 
     if (!emailText.trim() || !passwordText || !nameText.trim() || !dateOfBirthText.trim() || !countryCodeText.trim()) {
@@ -59,6 +80,33 @@ const registerScreen = () => {
       posthog.capture('signup_failed', {
         error_type: 'validation',
         validation_error: 'invalid_country',
+      })
+      return
+    }
+    if (isSubdivisionRequired(countryCode) && !subdivisionCode) {
+      setError(t('register.missingSubdivision'))
+      posthog.capture('signup_failed', {
+        error_type: 'validation',
+        validation_error: 'missing_subdivision',
+      })
+      return
+    }
+    if (
+      isSubdivisionRequired(countryCode) &&
+      !isValidSubdivisionForCountry(countryCode, subdivisionCode)
+    ) {
+      setError(t('register.invalidSubdivision'))
+      posthog.capture('signup_failed', {
+        error_type: 'validation',
+        validation_error: 'invalid_subdivision',
+      })
+      return
+    }
+    if (!hasValidExplorationModes(normalizedExplorationModes)) {
+      setError(t('register.missingExplorationMode'))
+      posthog.capture('signup_failed', {
+        error_type: 'validation',
+        validation_error: 'missing_exploration_mode',
       })
       return
     }
@@ -86,6 +134,8 @@ const registerScreen = () => {
     try {
       const response = await register(emailText, passwordText, nameText, {
         countryCode,
+        subdivisionCode,
+        explorationModes: normalizedExplorationModes,
         dateOfBirth,
         termsAccepted,
         privacyAccepted,
@@ -159,9 +209,26 @@ const registerScreen = () => {
             label={t('countryLabel')}
             locale={i18n.language}
             modalTitle={t('countrySelectTitle')}
-            onSelect={setCountryCodeText}
+            onSelect={handleCountrySelect}
             placeholder={t('countryPlaceholder')}
             value={countryCodeText}
+          />
+          {requiresSubdivision ? (
+            <SubdivisionSelect
+              countryCode={countryCodeText}
+              label={t('regionLabel')}
+              locale={i18n.language}
+              modalTitle={t('regionSelectTitle')}
+              onSelect={setSubdivisionCodeText}
+              placeholder={t('regionPlaceholder')}
+              value={subdivisionCodeText}
+            />
+          ) : null}
+          <ExplorationModeSelect
+            disabled={isSubmitting}
+            multiple={false}
+            onChange={setExplorationModes}
+            value={explorationModes}
           />
           <TextInput
             label={t('emailLabel')}
