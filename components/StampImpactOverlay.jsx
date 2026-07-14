@@ -39,14 +39,17 @@ function StampImpactOverlay({
   const { height } = useWindowDimensions()
   const [reducedMotion, setReducedMotion] = useState(false)
   const [celebrationComplete, setCelebrationComplete] = useState(false)
+  const [achievementsDismissed, setAchievementsDismissed] = useState(false)
 
   const achievements = Array.isArray(unlockedAchievements)
     ? unlockedAchievements.filter((achievement) => achievement?.$id)
     : []
   const achievementKey = achievements.map((achievement) => achievement.$id).join('|')
   const hasAchievements = achievements.length > 0
+  const showingAchievements = hasAchievements && !achievementsDismissed
   const finalAchievement = achievements[achievements.length - 1] || null
-  const interactionsEnabled = canDismiss && (!hasAchievements || celebrationComplete)
+  const interactionsEnabled = canDismiss && (!showingAchievements || celebrationComplete)
+  const stampHidden = canDismiss && showingAchievements
 
   const dropY = useRef(new Animated.Value(-height * 0.85)).current
   const scale = useRef(new Animated.Value(0.9)).current
@@ -87,6 +90,7 @@ function StampImpactOverlay({
 
   useEffect(() => {
     setCelebrationComplete(false)
+    setAchievementsDismissed(false)
   }, [achievementKey, visible])
 
   useEffect(() => {
@@ -119,20 +123,7 @@ function StampImpactOverlay({
             }),
           ]),
           Animated.delay(100),
-          hasAchievements
-            ? Animated.parallel([
-                Animated.timing(stampOpacity, {
-                  toValue: 0.14,
-                  duration: 180,
-                  useNativeDriver: true,
-                }),
-                Animated.timing(scale, {
-                  toValue: 0.72,
-                  duration: 180,
-                  useNativeDriver: true,
-                }),
-              ])
-            : Animated.delay(180),
+          Animated.delay(180),
         ])
       : Animated.sequence([
           Animated.timing(dropY, {
@@ -175,27 +166,7 @@ function StampImpactOverlay({
             easing: Easing.out(Easing.quad),
             useNativeDriver: true,
           }),
-          hasAchievements
-            ? Animated.parallel([
-                Animated.timing(dropY, {
-                  toValue: -height * 0.22,
-                  duration: EXIT_MS,
-                  easing: Easing.inOut(Easing.quad),
-                  useNativeDriver: true,
-                }),
-                Animated.timing(scale, {
-                  toValue: 0.58,
-                  duration: EXIT_MS,
-                  easing: Easing.inOut(Easing.quad),
-                  useNativeDriver: true,
-                }),
-                Animated.timing(stampOpacity, {
-                  toValue: 0.14,
-                  duration: EXIT_MS,
-                  useNativeDriver: true,
-                }),
-              ])
-            : Animated.delay(EXIT_MS),
+          Animated.delay(EXIT_MS),
         ])
 
     const impactAnimation = Animated.timing(impactPulse, {
@@ -234,6 +205,30 @@ function StampImpactOverlay({
   const handleCelebrationComplete = useCallback(() => {
     setCelebrationComplete(true)
   }, [])
+
+  const handleClosePress = useCallback(() => {
+    if (showingAchievements) {
+      dropY.setValue(0)
+      scale.setValue(1)
+      rotate.setValue(0)
+      wobble.setValue(0)
+      stampOpacity.setValue(1)
+      setAchievementsDismissed(true)
+      setCelebrationComplete(false)
+      return
+    }
+
+    ;(onSecondaryDismiss || onDismiss)?.()
+  }, [
+    dropY,
+    onDismiss,
+    onSecondaryDismiss,
+    rotate,
+    scale,
+    showingAchievements,
+    stampOpacity,
+    wobble,
+  ])
 
   if (!visible) return null
 
@@ -300,7 +295,7 @@ function StampImpactOverlay({
           style={[
             styles.stamp,
             {
-              opacity: stampOpacity,
+              opacity: stampHidden ? 0 : stampOpacity,
               transform: [
                 { translateY: dropY },
                 { translateX: shake },
@@ -325,7 +320,7 @@ function StampImpactOverlay({
           accentColor={accentColor}
           paperColor={paperColor}
           reducedMotion={reducedMotion}
-          visible={canDismiss}
+          visible={canDismiss && showingAchievements}
           onComplete={handleCelebrationComplete}
           onAchievementPress={onAchievementPress}
         />
@@ -336,7 +331,7 @@ function StampImpactOverlay({
           <Pressable
             accessibilityRole="button"
             style={styles.closeBtn}
-            onPress={onSecondaryDismiss || onDismiss}
+            onPress={handleClosePress}
           >
             <Text style={styles.closeText}>✕</Text>
           </Pressable>
@@ -344,13 +339,13 @@ function StampImpactOverlay({
             accessibilityRole="button"
             style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaButtonPressed]}
             onPress={
-              hasAchievements
+              showingAchievements
                 ? () => onAchievementPress?.(finalAchievement)
                 : onDismiss
             }
           >
             <Text style={styles.ctaText}>
-              {hasAchievements
+              {showingAchievements
                 ? t('stampOverlay:viewAchievements')
                 : t('stampOverlay:viewPassport')}
             </Text>
