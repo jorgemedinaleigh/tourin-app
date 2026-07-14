@@ -125,6 +125,15 @@ const insertAchievementUnlock = async ({ achievementId, unlockedAt, userId }) =>
 }
 
 const syncAchievementStats = async (userId, achievementsUnlocked) => {
+  const updateAchievementCount = async () => {
+    const { error } = await supabase
+      .from('user_stats')
+      .update({ achievements_unlocked: achievementsUnlocked })
+      .eq('user_id', userId)
+
+    if (error) throw error
+  }
+
   const { data: existingStats, error: readError } = await supabase
     .from('user_stats')
     .select('user_id')
@@ -134,12 +143,7 @@ const syncAchievementStats = async (userId, achievementsUnlocked) => {
   if (readError) throw readError
 
   if (existingStats) {
-    const { error } = await supabase
-      .from('user_stats')
-      .update({ achievements_unlocked: achievementsUnlocked })
-      .eq('user_id', userId)
-
-    if (error) throw error
+    await updateAchievementCount()
     return
   }
 
@@ -152,6 +156,11 @@ const syncAchievementStats = async (userId, achievementsUnlocked) => {
       events_attended: 0,
       achievements_unlocked: achievementsUnlocked,
     })
+
+  if (error?.code === '23505') {
+    await updateAchievementCount()
+    return
+  }
 
   if (error) throw error
 }

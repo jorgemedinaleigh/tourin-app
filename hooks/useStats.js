@@ -37,6 +37,20 @@ export function useStats(userId) {
         .select('*')
         .single()
 
+      if (createError?.code === '23505') {
+        const { data: existing, error: retryError } = await supabase
+          .from('user_stats')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (retryError) throw retryError
+
+        const normalized = mapUserStatsRow(existing)
+        setStats(normalized)
+        return normalized
+      }
+
       if (createError) throw createError
 
       const normalized = mapUserStatsRow(created)
