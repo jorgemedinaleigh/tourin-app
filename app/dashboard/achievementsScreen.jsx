@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, FlatList, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { Card, useTheme } from 'react-native-paper'
+import { Card, IconButton, useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import { useI18n } from '../../contexts/I18nContext'
@@ -13,6 +13,12 @@ import { posthog } from '../../lib/posthog'
 const FALLBACK_BADGE = require('../../assets/icon.png')
 
 const getBadgeSource = (badge) => (badge ? { uri: badge, cache: 'force-cache' } : FALLBACK_BADGE)
+
+const getAchievementSortRank = (achievement) => {
+  if (achievement?.isUnlocked) return 2
+  if (Number(achievement?.progressCurrent) > 0) return 0
+  return 1
+}
 
 const AchievementRow = memo(function AchievementRow({
   badge,
@@ -85,7 +91,7 @@ const AchievementsScreen = () => {
   const { user } = useUser()
   const { achievements, fetchAchievements, loading, error } = useAchievements(user?.$id)
   const { locale } = useI18n()
-  const { t } = useTranslation('achievements')
+  const { t } = useTranslation(['achievements', 'common'])
   const theme = useTheme()
   const router = useRouter()
   const { achievementId } = useLocalSearchParams()
@@ -96,7 +102,7 @@ const AchievementsScreen = () => {
   }), [theme.colors.outlineVariant, theme.colors.surface])
 
   const [viewerVisible, setViewerVisible] = useState(false)
-  const [viewerUri, setViewerUri] = useState(null)
+  const [viewerAchievement, setViewerAchievement] = useState(null)
 
   useFocusEffect(
     useCallback(() => {
@@ -104,6 +110,13 @@ const AchievementsScreen = () => {
       fetchAchievements({ signal: abortController.signal })
       return () => abortController.abort()
     }, [fetchAchievements])
+  )
+
+  const sortedAchievements = useMemo(
+    () => [...achievements].sort(
+      (left, right) => getAchievementSortRank(left) - getAchievementSortRank(right)
+    ),
+    [achievements]
   )
 
   const achievementsById = useMemo(() => {
@@ -117,7 +130,7 @@ const AchievementsScreen = () => {
       const item = achievementsById[achievementId]
       if (!item?.isUnlocked) return
 
-      setViewerUri(item.badge)
+      setViewerAchievement(item)
       setViewerVisible(true)
 
       posthog.capture('achievement_viewed', {
@@ -131,7 +144,7 @@ const AchievementsScreen = () => {
 
   const closeViewer = useCallback(() => {
     setViewerVisible(false)
-    setViewerUri(null)
+    setViewerAchievement(null)
   }, [])
 
   useEffect(() => {
@@ -188,7 +201,7 @@ const AchievementsScreen = () => {
   return (
     <ThemedView style={styles.screen}>
       <FlatList
-        data={achievements}
+        data={sortedAchievements}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={(
@@ -212,10 +225,42 @@ const AchievementsScreen = () => {
         renderItem={renderAchievement}
       />
 
-      <Modal visible={viewerVisible} transparent onRequestClose={closeViewer}>
+      <Modal
+        visible={viewerVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeViewer}
+      >
         <View style={styles.modalContainer}>
-          <Pressable style={styles.modalBackdrop} onPress={closeViewer} />
-          <Image source={getBadgeSource(viewerUri)} style={styles.modalImage} resizeMode="contain" />
+          <Pressable
+            accessible={false}
+            style={styles.modalBackdrop}
+            onPress={closeViewer}
+          />
+          <View accessibilityViewIsModal style={styles.modalContent}>
+            <IconButton
+              icon="close"
+              iconColor="#2B241B"
+              containerColor="#F9F1DE"
+              size={28}
+              accessibilityLabel={t('common:close')}
+              onPress={closeViewer}
+              style={styles.modalCloseButton}
+            />
+            <View style={styles.modalBadgeFrame}>
+              <Image
+                accessible
+                accessibilityLabel={viewerAchievement?.name}
+                source={getBadgeSource(viewerAchievement?.badge)}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.modalNameBlock}>
+              <Text style={styles.modalName}>{viewerAchievement?.name}</Text>
+            </View>
+          </View>
         </View>
       </Modal>
     </ThemedView>
@@ -327,8 +372,60 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
+  modalContent: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCloseButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 16,
+  },
+  modalBadgeFrame: {
+    width: 252,
+    height: 252,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 6,
+    borderColor: '#C7373F',
+    backgroundColor: '#F9F1DE',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.42,
+    shadowRadius: 20,
+    elevation: 18,
+  },
   modalImage: {
-    width: '90%',
-    height: '70%',
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+  },
+  modalNameBlock: {
+    maxWidth: 360,
+    minHeight: 72,
+    marginTop: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.68)',
+    backgroundColor: 'rgba(249,241,222,0.94)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.26,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  modalName: {
+    color: '#2B241B',
+    fontSize: 20,
+    lineHeight: 25,
+    fontWeight: '800',
+    textAlign: 'center',
   },
 })
