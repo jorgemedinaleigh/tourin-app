@@ -31,7 +31,6 @@ export const mapSummaryRow = (value) => {
     generatedAt: row.generated_at,
     payload: row.payload || {},
     periodType: row.period_type,
-    pointsEarned: Number(row.payload?.pointsEarned) || 0,
     freePlacesVisited: Number(row.payload?.freePlacesVisited) || 0,
     routesCompleted: Number(row.payload?.routesCompleted) || 0,
     sharedAt: row.shared_at,

@@ -52,7 +52,7 @@ export default function SummaryHistoryScreen() {
         </Text>
         <Text style={styles.cardPeriod}>{formatPeriod(item, locale)}</Text>
         <Text style={styles.cardMetrics}>
-          {t('common:counts.places', { count: item.sitesStamped })} · {item.pointsEarned} {t('summaries:metrics.points')}
+          {t('common:counts.places', { count: item.sitesStamped })}
         </Text>
       </View>
       <Ionicons color="#5B6572" name="chevron-forward" size={19} />

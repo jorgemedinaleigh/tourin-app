@@ -27,7 +27,6 @@
     "super_explorer": "Super Explorer",
     "weekend_adventurer": "Weekend Adventurer"
   },
-  "featuredStamps": "Featured stamps",
   "history": {
     "action": "View recap history",
     "title": "Recap history"
@@ -53,11 +52,11 @@
       "title": "Your weekly Tourin recap is ready"
     }
   },
-  "metrics": {    "achievements": "Achievements",
+  "metrics": {
+    "achievements": "Achievements",
     "activeDays": "Active days",
     "activeWeeks": "Active-week streak",
     "places": "Places",
-    "points": "Points",
     "routes": "Routes"
   },
   "preferences": {
@@ -92,6 +91,8 @@
     "action": "Share recap",
     "error": "We couldn't prepare the recap image. Try again.",
     "preparing": "Preparing image…",
+    "stampSelectionDescription": "{{selected}} of {{max}} selected. Tap a stamp to add or remove it from the shared image.",
+    "stampSelectionTitle": "Choose stamps to share",
     "unavailable": "Sharing isn't available on this device."
   },
   "sharedBrand": "Explored with Tourin",

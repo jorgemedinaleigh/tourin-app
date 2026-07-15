@@ -11,7 +11,7 @@ import { formatDate } from '../i18n/formatters'
 const formatPeriodDate = (dateKey, locale) =>
   formatDate(`${dateKey}T12:00:00`, locale, { dateStyle: 'medium' })
 
-const RecapButton = ({ icon, label, onPress, pointsLabel, summary, locale }) => (
+const RecapButton = ({ icon, label, onPress, summary, locale, t }) => (
   <Pressable
     onPress={onPress}
     style={({ pressed }) => [styles.recapButton, pressed && styles.pressed]}
@@ -22,7 +22,7 @@ const RecapButton = ({ icon, label, onPress, pointsLabel, summary, locale }) => 
     <View style={styles.buttonCopy}>
       <Text style={styles.buttonLabel}>{label}</Text>
       <Text style={styles.buttonMeta}>
-        {formatPeriodDate(summary.startsOn, locale)} · {summary.sitesStamped} · {summary.pointsEarned} {pointsLabel}
+        {formatPeriodDate(summary.startsOn, locale)} · {t('common:counts.places', { count: summary.sitesStamped })}
       </Text>
     </View>
     <Ionicons color="#5B6572" name="chevron-forward" size={18} />
@@ -30,7 +30,7 @@ const RecapButton = ({ icon, label, onPress, pointsLabel, summary, locale }) => 
 )
 
 export default function ProfileRecapSection({ userId }) {
-  const { t } = useTranslation('summaries')
+  const { t } = useTranslation(['summaries', 'common'])
   const { locale } = useI18n()
   const {
     activeDaySummary,
@@ -68,8 +68,8 @@ export default function ProfileRecapSection({ userId }) {
           label={t('profile.activeDayAction')}
           locale={locale}
           onPress={() => openSummary(activeDaySummary)}
-          pointsLabel={t('metrics.points')}
           summary={activeDaySummary}
+          t={t}
         />
       ) : null}
 
@@ -79,8 +79,8 @@ export default function ProfileRecapSection({ userId }) {
           label={t('profile.weeklyAction')}
           locale={locale}
           onPress={() => openSummary(weeklySummary)}
-          pointsLabel={t('metrics.points')}
           summary={weeklySummary}
+          t={t}
         />
       ) : null}
 

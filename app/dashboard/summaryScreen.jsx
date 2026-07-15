@@ -22,12 +22,26 @@ import { useUser } from '../../hooks/useUser'
 import { formatDate } from '../../i18n/formatters'
 import getLocalizedField from '../../i18n/getLocalizedField'
 import { posthog } from '../../lib/posthog'
+import { getStampRotation } from '../../utils/stampRotation'
 
 const FALLBACK_STAMP = require('../../assets/icon.png')
 const SHARE_CARD_WIDTH = 360
 const SHARE_CARD_HEIGHT = 640
+const SHARE_STAMP_LIMIT = 4
 
 const normalizeInsightValue = (value) => String(value || '').replace(/^"|"$/g, '').trim()
+
+const getInitialStampIds = (summary, sites) => {
+  const availableSiteIds = new Set(sites.map((site) => String(site.$id)))
+  const candidates = [
+    ...(summary?.featuredSiteIds || []),
+    ...sites.map((site) => site.$id),
+  ].map(String)
+
+  return [...new Set(candidates)]
+    .filter((siteId) => availableSiteIds.has(siteId))
+    .slice(0, SHARE_STAMP_LIMIT)
+}
 
 const formatPeriod = (summary, locale) => {
   if (!summary) return ''
@@ -49,7 +63,7 @@ const Metric = ({ icon, label, value }) => (
   </View>
 )
 
-const ShareStoryCard = ({ displayName, featuredSites, locale, preferences, summary, t }) => {
+const ShareStoryCard = ({ displayName, locale, preferences, selectedSites, summary, t }) => {
   const explorerTitle = t(`explorerTitles.${summary.payload?.explorerTitleKey || 'explorer'}`)
   const eyebrow = t(summary.periodType === 'weekly' ? 'weekly.eyebrow' : 'activeDay.eyebrow')
 
@@ -63,18 +77,21 @@ const ShareStoryCard = ({ displayName, featuredSites, locale, preferences, summa
       </View>
 
       <View style={storyStyles.stamps}>
-        {Array.from({ length: 4 }, (_, index) => {
-          const site = featuredSites[index]
-          return (
-            <View key={site?.$id || `empty-${index}`} style={storyStyles.stampFrame}>
-              <Image
-                resizeMode="contain"
-                source={site?.stamp ? { uri: site.stamp } : FALLBACK_STAMP}
-                style={[storyStyles.stamp, !site && storyStyles.emptyStamp]}
-              />
-            </View>
-          )
-        })}
+        {selectedSites.map((site) => (
+          <View
+            key={site.$id}
+            style={[
+              storyStyles.stampFrame,
+              { transform: [{ rotate: getStampRotation(site.$id) }] },
+            ]}
+          >
+            <Image
+              resizeMode="contain"
+              source={site.stamp ? { uri: site.stamp } : FALLBACK_STAMP}
+              style={storyStyles.stamp}
+            />
+          </View>
+        ))}
       </View>
 
       <View>
@@ -86,10 +103,6 @@ const ShareStoryCard = ({ displayName, featuredSites, locale, preferences, summa
           <View style={storyStyles.metric}>
             <Text style={storyStyles.metricValue}>{summary.sitesStamped}</Text>
             <Text style={storyStyles.metricLabel}>{t('metrics.places')}</Text>
-          </View>
-          <View style={storyStyles.metric}>
-            <Text style={storyStyles.metricValue}>{summary.pointsEarned}</Text>
-            <Text style={storyStyles.metricLabel}>{t('metrics.points')}</Text>
           </View>
           <View style={storyStyles.metric}>
             <Text style={storyStyles.metricValue}>{summary.routesCompleted}</Text>
@@ -129,7 +142,9 @@ export default function SummaryScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [sharing, setSharing] = useState(false)
+  const [selectedStampIds, setSelectedStampIds] = useState([])
   const viewedSummaryRef = useRef(null)
+  const stampSelectionSummaryRef = useRef(null)
   const shareCardRef = useRef(null)
 
   const loadSummary = useCallback(async () => {
@@ -154,6 +169,11 @@ export default function SummaryScreen() {
       setSummary(nextSummary)
       setDetails(nextDetails)
       setRecommendation(nextRecommendation)
+
+      if (stampSelectionSummaryRef.current !== nextSummary.$id) {
+        stampSelectionSummaryRef.current = nextSummary.$id
+        setSelectedStampIds(getInitialStampIds(nextSummary, nextDetails.sites))
+      }
 
       if (viewedSummaryRef.current !== nextSummary.$id) {
         viewedSummaryRef.current = nextSummary.$id
@@ -187,17 +207,17 @@ export default function SummaryScreen() {
     }, [loadSummary])
   )
 
-  const featuredSites = useMemo(() => {
+  const selectedSites = useMemo(() => {
     const sitesById = new Map(details.sites.map((site) => [String(site.$id), site]))
-    return summary?.featuredSiteIds
-      ?.map((siteId) => sitesById.get(String(siteId)))
-      .filter(Boolean) || []
-  }, [details.sites, summary?.featuredSiteIds])
+    return selectedStampIds
+      .map((siteId) => sitesById.get(siteId))
+      .filter(Boolean)
+  }, [details.sites, selectedStampIds])
 
   useEffect(() => {
-    const uris = featuredSites.map((site) => site.stamp).filter(Boolean)
+    const uris = selectedSites.map((site) => site.stamp).filter(Boolean)
     Promise.allSettled(uris.map((uri) => Image.prefetch(uri))).catch(() => {})
-  }, [featuredSites])
+  }, [selectedSites])
 
   const comparisonLabel = useMemo(() => {
     const delta = Number(summary?.payload?.sitesDelta) || 0
@@ -210,6 +230,17 @@ export default function SummaryScreen() {
     (row, fallback = '') => getLocalizedField(row, 'name', locale, { defaultValue: fallback }),
     [locale]
   )
+
+  const toggleStampSelection = useCallback((siteId) => {
+    const normalizedSiteId = String(siteId)
+    setSelectedStampIds((currentIds) => {
+      if (currentIds.includes(normalizedSiteId)) {
+        return currentIds.filter((currentId) => currentId !== normalizedSiteId)
+      }
+      if (currentIds.length >= SHARE_STAMP_LIMIT) return currentIds
+      return [...currentIds, normalizedSiteId]
+    })
+  }, [])
 
   const handleShare = async () => {
     if (!summary || !shareCardRef.current) return
@@ -333,7 +364,6 @@ export default function SummaryScreen() {
 
         <View style={styles.metricsGrid}>
           <Metric icon="location" label={t('summaries:metrics.places')} value={summary.sitesStamped} />
-          <Metric icon="star" label={t('summaries:metrics.points')} value={summary.pointsEarned} />
           <Metric icon="map" label={t('summaries:metrics.routes')} value={summary.routesCompleted} />
           <Metric icon="trophy" label={t('summaries:metrics.achievements')} value={summary.achievementsUnlocked} />
           {summary.periodType === 'weekly' ? (
@@ -401,21 +431,63 @@ export default function SummaryScreen() {
           </View>
         ) : null}
 
-        {featuredSites.length ? (
+        {details.sites.length ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('summaries:featuredStamps')}</Text>
+            <Text style={styles.sectionTitle}>{t('summaries:share.stampSelectionTitle')}</Text>
+            <Text style={styles.stampSelectionDescription}>
+              {t('summaries:share.stampSelectionDescription', {
+                max: SHARE_STAMP_LIMIT,
+                selected: selectedStampIds.length,
+              })}
+            </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.stampRow}>
-                {featuredSites.map((site) => (
-                  <View key={site.$id} style={styles.stampCard}>
-                    <Image
-                      resizeMode="contain"
-                      source={site.stamp ? { uri: site.stamp } : FALLBACK_STAMP}
-                      style={styles.stampImage}
-                    />
-                    <Text numberOfLines={2} style={styles.stampName}>{getName(site)}</Text>
-                  </View>
-                ))}
+                {details.sites.map((site) => {
+                  const selectedIndex = selectedStampIds.indexOf(String(site.$id))
+                  const isSelected = selectedIndex >= 0
+                  const disabled = !isSelected && selectedStampIds.length >= SHARE_STAMP_LIMIT
+
+                  return (
+                    <Pressable
+                      accessibilityLabel={getName(site)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: isSelected, disabled }}
+                      disabled={disabled}
+                      key={site.$id}
+                      onPress={() => toggleStampSelection(site.$id)}
+                      style={({ pressed }) => [
+                        styles.stampCard,
+                        disabled && styles.stampCardDisabled,
+                        pressed && styles.stampCardPressed,
+                      ]}
+                    >
+                      <View style={[
+                        styles.stampImageFrame,
+                        isSelected && styles.stampImageFrameSelected,
+                      ]}>
+                        <Image
+                          resizeMode="contain"
+                          source={site.stamp ? { uri: site.stamp } : FALLBACK_STAMP}
+                          style={[
+                            styles.stampImage,
+                            { transform: [{ rotate: getStampRotation(site.$id) }] },
+                          ]}
+                        />
+                        <View style={[
+                          styles.stampSelectionBadge,
+                          isSelected && styles.stampSelectionBadgeSelected,
+                        ]}>
+                          {isSelected ? (
+                            <Text style={styles.stampSelectionBadgeText}>{selectedIndex + 1}</Text>
+                          ) : (
+                            <Ionicons color="#1F4D5C" name="add" size={16} />
+                          )}
+                        </View>
+                      </View>
+                      <Text numberOfLines={2} style={styles.stampName}>{getName(site)}</Text>
+                    </Pressable>
+                  )
+                })}
               </View>
             </ScrollView>
           </View>
@@ -491,9 +563,9 @@ export default function SummaryScreen() {
       >
         <ShareStoryCard
           displayName={user?.name || t('common:fallbacks.genericUser')}
-          featuredSites={featuredSites}
           locale={locale}
           preferences={preferences}
+          selectedSites={selectedSites}
           summary={summary}
           t={(key, options) => t(`summaries:${key}`, options)}
         />
@@ -720,11 +792,29 @@ const styles = StyleSheet.create({
     marginRight: 12,
     width: 124,
   },
+  stampCardDisabled: {
+    opacity: 0.45,
+  },
+  stampCardPressed: {
+    opacity: 0.75,
+  },
   stampImage: {
+    height: '100%',
+    width: '100%',
+  },
+  stampImageFrame: {
+    alignItems: 'center',
     backgroundColor: '#F9F1DE',
+    borderColor: 'transparent',
     borderRadius: 16,
+    borderWidth: 2,
     height: 124,
+    justifyContent: 'center',
+    padding: 7,
     width: 124,
+  },
+  stampImageFrameSelected: {
+    borderColor: '#1F4D5C',
   },
   stampName: {
     color: '#4E5963',
@@ -736,6 +826,35 @@ const styles = StyleSheet.create({
   },
   stampRow: {
     flexDirection: 'row',
+    paddingTop: 5,
+  },
+  stampSelectionBadge: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#1F4D5C',
+    borderRadius: 13,
+    borderWidth: 1,
+    height: 26,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 5,
+    top: 5,
+    width: 26,
+  },
+  stampSelectionBadgeSelected: {
+    backgroundColor: '#1F4D5C',
+  },
+  stampSelectionBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  stampSelectionDescription: {
+    color: '#68737D',
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 12,
+    marginTop: -6,
   },
   stateScreen: {
     alignItems: 'center',
@@ -792,9 +911,6 @@ const storyStyles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 28,
     width: SHARE_CARD_WIDTH,
-  },
-  emptyStamp: {
-    opacity: 0.2,
   },
   explorerTitle: {
     color: '#25303B',
@@ -866,8 +982,7 @@ const storyStyles = StyleSheet.create({
   },
   stampFrame: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: '#F9F1DE',
     height: 126,
     justifyContent: 'center',
     padding: 4,

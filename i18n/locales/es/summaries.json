@@ -27,7 +27,6 @@
     "super_explorer": "Súper explorador",
     "weekend_adventurer": "Aventurero de fin de semana"
   },
-  "featuredStamps": "Sellos destacados",
   "history": {
     "action": "Ver historial de resúmenes",
     "title": "Historial de resúmenes"
@@ -53,11 +52,11 @@
       "title": "Tu resumen semanal de Tourin está listo"
     }
   },
-  "metrics": {    "achievements": "Logros",
+  "metrics": {
+    "achievements": "Logros",
     "activeDays": "Días activos",
     "activeWeeks": "Racha de semanas activas",
     "places": "Lugares",
-    "points": "Puntos",
     "routes": "Rutas"
   },
   "preferences": {
@@ -92,6 +91,8 @@
     "action": "Compartir resumen",
     "error": "No pudimos preparar la imagen del resumen. Inténtalo de nuevo.",
     "preparing": "Preparando imagen…",
+    "stampSelectionDescription": "{{selected}} de {{max}} seleccionados. Toca un sello para añadirlo o quitarlo de la imagen compartida.",
+    "stampSelectionTitle": "Elige los sellos para compartir",
     "unavailable": "No se puede compartir desde este dispositivo."
   },
   "sharedBrand": "Explorado con Tourin",

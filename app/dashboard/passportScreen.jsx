@@ -25,6 +25,7 @@ import ThemedView from '../../components/ThemedView'
 import getLocalizedField from '../../i18n/getLocalizedField'
 import { formatDate } from '../../i18n/formatters'
 import { getCountryFlagEmoji } from '../../utils/profileDetails'
+import { getStampRotation } from '../../utils/stampRotation'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const PAGE_SIZE = 6
@@ -73,13 +74,6 @@ const PassportScreen = () => {
     arr.sort((a, b) => b._obtainedTs - a._obtainedTs)
     return arr
   }, [sitesVisited, visitsBySite])
-
-  const angleFor = useCallback((id = '') => {
-    let h = 0
-    for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
-    const deg = (Math.abs(h) % 31) - 15
-    return `${deg}deg`
-  }, [])
 
   const openImage = (site) => {
     if (!site?.stamp) return
@@ -300,7 +294,7 @@ const PassportScreen = () => {
             <View style={styles.pageCard}>
               <View style={styles.gridWrap}>
                 {pageSites.map((site) => {
-                  const angle = angleFor(site.$id)
+                  const angle = getStampRotation(site.$id)
                   return (
                     <View key={String(site.$id)} style={styles.tile}>
                       <TouchableOpacity
