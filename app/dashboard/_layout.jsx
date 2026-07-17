@@ -88,6 +88,12 @@ const DashboardLayout = () => {
             }}
           />
           <Tabs.Screen
+            name="explorationStatsShareScreen"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
             name="routeDetails"
             options={{
               href: null,

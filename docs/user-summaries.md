@@ -33,4 +33,6 @@ Summary notifications are no longer scheduled. Previously scheduled summary noti
 
 ## Sharing
 
-The existing recap sharing implementation remains in `app/dashboard/summaryScreen.jsx` for reference and future reuse. Sharing is not yet available from the exploration statistics screen.
+The statistics filter includes a share action that opens `app/dashboard/explorationStatsShareScreen.jsx`. The editor shows a preview of the 9:16 image, lets the user select up to four stamps, optionally includes the most explored area, and opens the native share sheet with `expo-sharing`.
+
+The original recap sharing implementation remains in `app/dashboard/summaryScreen.jsx` for reference.

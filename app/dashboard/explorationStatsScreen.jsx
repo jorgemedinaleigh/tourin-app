@@ -130,6 +130,13 @@ export default function ExplorationStatsScreen() {
     setPeriod(nextPeriod)
   }
 
+  const openShareEditor = () => {
+    router.push({
+      pathname: '/dashboard/explorationStatsShareScreen',
+      params: { period },
+    })
+  }
+
   return (
     <ThemedView safe style={styles.screen}>
       <View style={styles.header}>
@@ -153,29 +160,47 @@ export default function ExplorationStatsScreen() {
 
         <View style={styles.selectorSection}>
           <Text style={styles.selectorLabel}>{t('summaries:stats.periodLabel')}</Text>
-          <Menu
-            anchor={(
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setPeriodMenuVisible(true)}
-                style={({ pressed }) => [styles.selector, pressed && styles.pressed]}
+          <View style={styles.selectorRow}>
+            <View style={styles.selectorMenu}>
+              <Menu
+                anchor={(
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setPeriodMenuVisible(true)}
+                    style={({ pressed }) => [styles.selector, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.selectorValue}>{selectedPeriodLabel}</Text>
+                    <Ionicons color="#1F4D5C" name="chevron-down" size={18} />
+                  </Pressable>
+                )}
+                onDismiss={() => setPeriodMenuVisible(false)}
+                visible={periodMenuVisible}
               >
-                <Text style={styles.selectorValue}>{selectedPeriodLabel}</Text>
-                <Ionicons color="#1F4D5C" name="chevron-down" size={18} />
-              </Pressable>
-            )}
-            onDismiss={() => setPeriodMenuVisible(false)}
-            visible={periodMenuVisible}
-          >
-            {PERIOD_OPTIONS.map((option) => (
-              <Menu.Item
-                key={option}
-                leadingIcon={option === period ? 'check' : undefined}
-                onPress={() => selectPeriod(option)}
-                title={t(`summaries:stats.periods.${option}`)}
-              />
-            ))}
-          </Menu>
+                {PERIOD_OPTIONS.map((option) => (
+                  <Menu.Item
+                    key={option}
+                    leadingIcon={option === period ? 'check' : undefined}
+                    onPress={() => selectPeriod(option)}
+                    title={t(`summaries:stats.periods.${option}`)}
+                  />
+                ))}
+              </Menu>
+            </View>
+            <Pressable
+              accessibilityLabel={t('summaries:stats.share.open')}
+              accessibilityRole="button"
+              disabled={!hasActivity || loading}
+              onPress={openShareEditor}
+              style={({ pressed }) => [
+                styles.shareEditorButton,
+                (!hasActivity || loading) && styles.shareEditorButtonDisabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons color="#FFFFFF" name="share-social-outline" size={19} />
+              <Text style={styles.shareEditorButtonText}>{t('summaries:stats.share.open')}</Text>
+            </Pressable>
+          </View>
           <Text style={styles.periodDescription}>
             {t(`summaries:stats.periodDescriptions.${period}`)}
           </Text>
@@ -695,12 +720,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 13,
+    width: '100%',
   },
   selectorLabel: {
     color: '#394550',
     fontSize: 13,
     fontWeight: '800',
     marginBottom: 7,
+  },
+  selectorMenu: {
+    flex: 1,
+  },
+  selectorRow: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+    gap: 10,
   },
   selectorSection: {
     marginTop: 18,
@@ -709,6 +743,23 @@ const styles = StyleSheet.create({
     color: '#25303B',
     fontSize: 15,
     fontWeight: '700',
+  },
+  shareEditorButton: {
+    alignItems: 'center',
+    backgroundColor: '#C7373F',
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 7,
+    justifyContent: 'center',
+    paddingHorizontal: 13,
+  },
+  shareEditorButtonDisabled: {
+    opacity: 0.45,
+  },
+  shareEditorButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   stateCard: {
     alignItems: 'center',

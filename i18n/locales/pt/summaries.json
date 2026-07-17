@@ -167,6 +167,20 @@
       "detail": "{{completed}} de {{started}} rotas concluídas",
       "title": "Progresso de rotas"
     },
+    "share": {
+      "action": "Compartilhar imagem",
+      "cardEyebrow": "Resumo da exploração",
+      "cardTitle": "Minha exploração",
+      "description": "Personalize a imagem antes de compartilhá-la.",
+      "locationDescription": "Inclua sua área mais explorada, nunca coordenadas exatas.",
+      "locationTitle": "Mostrar área mais explorada",
+      "noStamps": "Não há carimbos disponíveis para este período.",
+      "open": "Compartilhar",
+      "previewTitle": "Prévia",
+      "stampsDescription": "{{selected}} de {{max}} selecionados. Escolha os carimbos exibidos na imagem.",
+      "stampsTitle": "Carimbos da imagem",
+      "title": "Personalizar imagem"
+    },
     "timesOfDay": {
       "afternoon": "Tarde",
       "evening": "Noite",

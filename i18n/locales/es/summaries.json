@@ -167,6 +167,20 @@
       "detail": "{{completed}} de {{started}} rutas completadas",
       "title": "Progreso de rutas"
     },
+    "share": {
+      "action": "Compartir imagen",
+      "cardEyebrow": "Resumen de exploración",
+      "cardTitle": "Mi exploración",
+      "description": "Personaliza la imagen antes de compartirla.",
+      "locationDescription": "Incluye tu zona más explorada, nunca coordenadas exactas.",
+      "locationTitle": "Mostrar zona más explorada",
+      "noStamps": "No hay sellos disponibles para este período.",
+      "open": "Compartir",
+      "previewTitle": "Vista previa",
+      "stampsDescription": "{{selected}} de {{max}} seleccionados. Elige los sellos que aparecerán en la imagen.",
+      "stampsTitle": "Sellos de la imagen",
+      "title": "Personalizar imagen"
+    },
     "timesOfDay": {
       "afternoon": "Tarde",
       "evening": "Noche",

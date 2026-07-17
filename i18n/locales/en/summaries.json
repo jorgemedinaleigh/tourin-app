@@ -167,6 +167,20 @@
       "detail": "{{completed}} of {{started}} routes completed",
       "title": "Route progress"
     },
+    "share": {
+      "action": "Share image",
+      "cardEyebrow": "Exploration summary",
+      "cardTitle": "My exploration",
+      "description": "Customize the image before sharing it.",
+      "locationDescription": "Include your most explored area, never exact coordinates.",
+      "locationTitle": "Show most explored area",
+      "noStamps": "No stamps are available for this period.",
+      "open": "Share",
+      "previewTitle": "Preview",
+      "stampsDescription": "{{selected}} of {{max}} selected. Choose the stamps shown in the image.",
+      "stampsTitle": "Image stamps",
+      "title": "Customize image"
+    },
     "timesOfDay": {
       "afternoon": "Afternoon",
       "evening": "Evening",
