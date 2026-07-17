@@ -29,7 +29,13 @@ const SHARE_CARD_WIDTH = 360
 const SHARE_CARD_HEIGHT = 640
 const SHARE_STAMP_LIMIT = 4
 
-const normalizeInsightValue = (value) => String(value || '').replace(/^"|"$/g, '').trim()
+const normalizeInsightValue = (value, locale) => {
+  const normalizedValue = typeof value === 'string'
+    ? value.replace(/^"|"$/g, '').trim()
+    : value
+
+  return getLocalizedField({ value: normalizedValue }, 'value', locale, { defaultValue: '' })
+}
 
 const getInitialStampIds = (summary, sites) => {
   const availableSiteIds = new Set(sites.map((site) => String(site.$id)))
@@ -405,7 +411,7 @@ export default function SummaryScreen() {
                 <Ionicons color="#1F4D5C" name="shapes-outline" size={18} />
                 <Text style={styles.insightText}>
                   {t('summaries:insights.favoriteCategory', {
-                    category: normalizeInsightValue(summary.payload.topCategory),
+                    category: normalizeInsightValue(summary.payload.topCategory, locale),
                   })}
                 </Text>
               </View>
@@ -415,7 +421,7 @@ export default function SummaryScreen() {
                 <Ionicons color="#1F4D5C" name="map-outline" size={18} />
                 <Text style={styles.insightText}>
                   {t('summaries:insights.topRegion', {
-                    region: normalizeInsightValue(summary.payload.topRegion),
+                    region: normalizeInsightValue(summary.payload.topRegion, locale),
                   })}
                 </Text>
               </View>

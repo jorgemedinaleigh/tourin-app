@@ -38,6 +38,13 @@ runCase({
 })
 
 runCase({
+  name: 'parses and localizes serialized JSON objects',
+  row: { name: '{"es": "Inmueble"}' },
+  locale: 'es',
+  expected: 'Inmueble',
+})
+
+runCase({
   name: 'uses non-object raw value when no localized candidates contain value',
   row: { name: '  Valor directo  ' },
   locale: 'es',

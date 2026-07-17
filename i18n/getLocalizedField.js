@@ -15,10 +15,24 @@ const isLocalizedObject = (value) =>
   typeof value === 'object' &&
   !Array.isArray(value)
 
+const parseLocalizedObject = (value) => {
+  if (typeof value !== 'string') return value
+
+  const normalizedValue = value.trim()
+  if (!normalizedValue.startsWith('{') || !normalizedValue.endsWith('}')) return value
+
+  try {
+    const parsedValue = JSON.parse(normalizedValue)
+    return isLocalizedObject(parsedValue) ? parsedValue : value
+  } catch {
+    return value
+  }
+}
+
 export const getLocalizedField = (row, key, locale, options = {}) => {
   const fallbackLocale = normalizeLocale(options.fallbackLocale || DEFAULT_LOCALE)
   const normalizedLocale = normalizeLocale(locale)
-  const rawValue = row?.[key]
+  const rawValue = parseLocalizedObject(row?.[key])
   const localizedCandidates = isLocalizedObject(rawValue)
     ? [
         rawValue[normalizedLocale],
