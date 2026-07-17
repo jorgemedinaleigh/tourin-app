@@ -1,78 +1,20 @@
-import { Stack, usePathname, useGlobalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useRef } from 'react'
+import { Stack, usePathname, useGlobalSearchParams } from 'expo-router'
+import { useEffect, useRef } from 'react'
 import { StatusBar } from 'react-native'
 import { PostHogProvider } from 'posthog-react-native'
 import { UserProvider } from '../contexts/UserContext'
 import { I18nProvider } from '../contexts/I18nContext'
 import { posthog } from '../lib/posthog'
 import { useUser } from '../hooks/useUser'
-import {
-  configureSummaryNotificationChannel,
-  getSummaryTargetFromNotification,
-  Notifications,
-} from '../lib/notifications'
+import { cancelSummaryNotifications } from '../lib/notifications'
 
-const SummaryNotificationRouter = () => {
+const LegacySummaryNotificationCleanup = () => {
   const { user } = useUser()
-  const router = useRouter()
-  const pendingTargetRef = useRef(null)
-  const handledNotificationRef = useRef(null)
-
-  const navigateToSummary = useCallback((target) => {
-    if (!target) return
-
-    posthog.capture('summary_notification_opened', {
-      period_type: target.periodType,
-      summary_id: target.summaryId,
-    })
-    router.push({
-      pathname: '/dashboard/summaryScreen',
-      params: {
-        periodType: target.periodType || '',
-        startsOn: target.startsOn || '',
-        summaryId: target.summaryId || '',
-      },
-    })
-  }, [router])
-
-  const openNotificationSummary = useCallback((response) => {
-    const notificationId = response?.notification?.request?.identifier
-    if (notificationId && handledNotificationRef.current === notificationId) return
-
-    const target = getSummaryTargetFromNotification(response)
-    if (!target) return
-
-    Notifications.clearLastNotificationResponseAsync().catch(() => {})
-    if (notificationId) handledNotificationRef.current = notificationId
-    if (!user?.$id) {
-      pendingTargetRef.current = target
-      return
-    }
-
-    pendingTargetRef.current = null
-    navigateToSummary(target)
-  }, [navigateToSummary, user?.$id])
 
   useEffect(() => {
-    configureSummaryNotificationChannel().catch(() => {})
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      openNotificationSummary
-    )
-
-    Notifications.getLastNotificationResponseAsync()
-      .then(openNotificationSummary)
-      .catch(() => {})
-
-    return () => subscription.remove()
-  }, [openNotificationSummary])
-
-  useEffect(() => {
-    if (!user?.$id || !pendingTargetRef.current) return
-
-    const target = pendingTargetRef.current
-    pendingTargetRef.current = null
-    navigateToSummary(target)
-  }, [navigateToSummary, user?.$id])
+    if (!user?.$id) return
+    cancelSummaryNotifications(user.$id).catch(() => {})
+  }, [user?.$id])
 
   return null
 }
@@ -106,7 +48,7 @@ const RootLayout = () => {
     >
       <UserProvider>
         <I18nProvider>
-          <SummaryNotificationRouter />
+          <LegacySummaryNotificationCleanup />
           <StatusBar
             barStyle="dark-content"
             backgroundColor="transparent"

@@ -13,7 +13,6 @@ import StampImpactOverlay from './StampImpactOverlay'
 import { posthog } from '../lib/posthog'
 import { getDistanceMeters } from '../utils/geo'
 import { STAMP_GPS_BUFFER_METERS, getEffectiveStampRadius } from '../utils/stampRadius'
-import { scheduleSummaryNotificationsAfterActivity } from '../lib/notifications'
 import {
   buildAppleMapsDirectionsUrl,
   buildGoogleMapsDirectionsUrl,
@@ -253,9 +252,6 @@ function InfoCard({ info, onClose, onVisitStamped, userCoordinate, hasLocationPe
       setUnlockedAchievements(newlyUnlockedAchievements)
       setIsVisited(true)
       onVisitStamped?.(info.id)
-      scheduleSummaryNotificationsAfterActivity(user.$id).catch((notificationError) => {
-        console.warn('Summary notification scheduling failed:', notificationError)
-      })
       setShowStampOverlay(true)
 
       // Track successful site stamp - key conversion event

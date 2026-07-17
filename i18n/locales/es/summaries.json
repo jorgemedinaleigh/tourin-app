@@ -96,6 +96,94 @@
     "unavailable": "No se puede compartir desde este dispositivo."
   },
   "sharedBrand": "Explorado con Tourin",
+  "stats": {
+    "consistency": {
+      "averagePlaces": "Lugares por día activo",
+      "currentStreak": "Racha actual",
+      "longestStreak": "Racha más larga",
+      "title": "Constancia y ritmo"
+    },
+    "diversity": {
+      "categories": "Categorías",
+      "communes": "Comunas",
+      "distribution": "Distribución por categoría",
+      "regions": "Regiones",
+      "title": "Diversidad de exploración"
+    },
+    "empty": {
+      "body": "Aún no tienes actividad registrada en este período.",
+      "title": "Sin actividad"
+    },
+    "habits": {
+      "freeRatio": "Proporción de lugares gratuitos",
+      "timeOfDay": "Horario preferido",
+      "title": "Hábitos de exploración",
+      "weekday": "Día preferido"
+    },
+    "heroDescription": "Consulta tus estadísticas acumuladas y descubre cómo has explorado.",
+    "heroTitle": "Tu actividad en Tourin",
+    "insights": {
+      "bestDay": "Día más activo: {{date}}",
+      "favoriteCategory": "Categoría más explorada: {{category}}",
+      "title": "Datos de tu exploración",
+      "topRegion": "Zona más explorada: {{region}}"
+    },
+    "loadError": "No pudimos cargar tus estadísticas. Inténtalo de nuevo.",
+    "loading": "Calculando tus estadísticas…",
+    "metrics": {
+      "achievements": "Logros",
+      "activeDays": "Días activos",
+      "freePlaces": "Lugares gratuitos",
+      "places": "Lugares visitados",
+      "routes": "Rutas completadas"
+    },
+    "overallProgress": {
+      "achievements": "Logros desbloqueados",
+      "achievementsDetail": "{{current}} de {{total}} logros",
+      "places": "Lugares publicados visitados",
+      "placesDetail": "{{current}} de {{total}} lugares",
+      "title": "Progreso general"
+    },
+    "periodDescriptions": {
+      "all": "Toda la actividad registrada desde que comenzaste a usar Tourin.",
+      "day": "Actividad registrada durante las últimas 24 horas.",
+      "month": "Actividad registrada durante los últimos 30 días.",
+      "week": "Actividad registrada durante los últimos 7 días."
+    },
+    "periodLabel": "Período",
+    "periods": {
+      "all": "Todo el historial",
+      "day": "Último día",
+      "month": "Último mes",
+      "week": "Última semana"
+    },
+    "profile": {
+      "action": "Ver resumen de exploración",
+      "description": "Revisa tus estadísticas por día, semana, mes o todo el historial.",
+      "title": "Estadísticas de exploración"
+    },
+    "routeProgress": {
+      "completion": "Tasa de finalización",
+      "detail": "{{completed}} de {{started}} rutas completadas",
+      "title": "Progreso de rutas"
+    },
+    "timesOfDay": {
+      "afternoon": "Tarde",
+      "evening": "Noche",
+      "morning": "Mañana",
+      "night": "Madrugada"
+    },
+    "title": "Resumen de exploración",
+    "weekdays": {
+      "1": "Lunes",
+      "2": "Martes",
+      "3": "Miércoles",
+      "4": "Jueves",
+      "5": "Viernes",
+      "6": "Sábado",
+      "7": "Domingo"
+    }
+  },
   "statusFinal": "Resumen completo",
   "weekly": {
     "eyebrow": "Exploración semanal",

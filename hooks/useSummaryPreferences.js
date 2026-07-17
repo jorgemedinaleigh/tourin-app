@@ -5,10 +5,6 @@ import {
   getDeviceTimeZone,
   normalizeNotificationTime,
 } from '../lib/summaryPeriods'
-import {
-  applySummaryNotificationPreferences,
-  refreshSummaryNotificationSchedules,
-} from '../lib/notifications'
 
 const DEFAULT_PREFERENCES = Object.freeze({
   activeDayEnabled: true,
@@ -60,10 +56,6 @@ export function useSummaryPreferences(userId) {
       const nextPreferences = mapPreferences(data)
       setPreferences(nextPreferences)
 
-      if (data && (nextPreferences.activeDayEnabled || nextPreferences.weeklyEnabled)) {
-        refreshSummaryNotificationSchedules(userId, nextPreferences).catch(() => {})
-      }
-
       return nextPreferences
     } catch (loadError) {
       console.error('Error loading summary preferences:', loadError)
@@ -87,8 +79,6 @@ export function useSummaryPreferences(userId) {
         timezone: getDeviceTimeZone(),
         weeklyTime: normalizeNotificationTime(nextValues.weeklyTime, '10:00'),
       }
-      let notificationStatus = 'not_requested'
-
       const { data, error: saveError } = await supabase
         .from('summary_notification_preferences')
         .upsert({
@@ -109,22 +99,14 @@ export function useSummaryPreferences(userId) {
       const normalized = mapPreferences(data)
       setPreferences(normalized)
 
-      try {
-        const scheduling = await applySummaryNotificationPreferences(userId, normalized)
-        notificationStatus = scheduling.status
-      } catch (schedulingError) {
-        console.warn('Summary notification scheduling failed:', schedulingError)
-        notificationStatus = 'error'
-      }
-
       posthog.capture('summary_preferences_updated', {
         active_day_enabled: normalized.activeDayEnabled,
         weekly_enabled: normalized.weeklyEnabled,
         share_location: normalized.shareLocation,
-        notification_permission_status: notificationStatus,
+        notification_permission_status: 'disabled',
       })
 
-      return { notificationStatus, preferences: normalized }
+      return { notificationStatus: 'disabled', preferences: normalized }
     } catch (saveError) {
       console.error('Error saving summary preferences:', saveError)
       setError(saveError)

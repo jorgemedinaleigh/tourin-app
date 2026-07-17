@@ -9,9 +9,8 @@ import { useTranslation } from 'react-i18next'
 import ThemedView from '../../components/ThemedView'
 import CountrySelect from '../../components/CountrySelect'
 import ExplorationModeSelect from '../../components/ExplorationModeSelect'
-import ProfileRecapSection from '../../components/ProfileRecapSection'
+import ProfileStatsSection from '../../components/ProfileStatsSection'
 import SubdivisionSelect from '../../components/SubdivisionSelect'
-import SummaryPreferencesModal from '../../components/SummaryPreferencesModal'
 import { useI18n } from '../../contexts/I18nContext'
 import { formatMonthYear } from '../../i18n/formatters'
 import { COUNTRY_CODE_PATTERN, formatDateOfBirthInput, getCountryFlagEmoji, normalizeCountryCode, normalizeDateOfBirth } from '../../utils/profileDetails'
@@ -26,7 +25,7 @@ const profileScreen = () => {
   const { user, logout, updateProfileDetails } = useUser()
   const { stats, getStats } = useStats(user.$id)
   const theme = useTheme()
-  const { t } = useTranslation(['common', 'profile', 'summaries'])
+  const { t } = useTranslation(['common', 'profile'])
   const { locale, setLocale, availableLocales } = useI18n()
   const [preferencesModalVisible, setPreferencesModalVisible] = useState(false)
   const [languageModalVisible, setLanguageModalVisible] = useState(false)
@@ -37,7 +36,6 @@ const profileScreen = () => {
   const [detailsDateOfBirth, setDetailsDateOfBirth] = useState('')
   const [detailsError, setDetailsError] = useState(null)
   const [detailsSaving, setDetailsSaving] = useState(false)
-  const [summaryPreferencesVisible, setSummaryPreferencesVisible] = useState(false)
 
   const displayName = user?.name || t('common:fallbacks.genericUser')
   const handle = user?.email ? user.email.split('@')[0] : t('common:fallbacks.handle')
@@ -71,11 +69,6 @@ const profileScreen = () => {
   const openLanguageModal = () => {
     setPreferencesModalVisible(false)
     setLanguageModalVisible(true)
-  }
-
-  const openSummaryPreferences = () => {
-    setPreferencesModalVisible(false)
-    setSummaryPreferencesVisible(true)
   }
 
   const openDetailsModal = () => {
@@ -220,7 +213,7 @@ const profileScreen = () => {
         <Text style={styles.summaryText}>{t('common:counts.achievements', { count: stats?.achievementsUnlocked ?? 0 })}</Text>
       </TouchableOpacity>
 
-      <ProfileRecapSection userId={user?.$id} />
+      <ProfileStatsSection />
 
       <TouchableOpacity
         style={[styles.preferencesButton, styles.raised]}
@@ -268,16 +261,6 @@ const profileScreen = () => {
               <Text style={styles.preferenceOptionTitle}>{t('profile:preferences.language')}</Text>
             </View>
             <Ionicons name="language" size={20} color="#5B6572" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.preferenceOption}
-            onPress={openSummaryPreferences}
-            activeOpacity={0.8}
-          >
-            <View style={styles.preferenceOptionTextBlock}>
-              <Text style={styles.preferenceOptionTitle}>{t('summaries:preferences.title')}</Text>
-            </View>
-            <Ionicons name="notifications" size={20} color="#5B6572" />
           </TouchableOpacity>
         </Modal>
         <Modal
@@ -377,11 +360,6 @@ const profileScreen = () => {
           </View>
         </Modal>
       </Portal>
-      <SummaryPreferencesModal
-        onDismiss={() => setSummaryPreferencesVisible(false)}
-        userId={user?.$id}
-        visible={summaryPreferencesVisible}
-      />
     </ThemedView>
   )
 }
